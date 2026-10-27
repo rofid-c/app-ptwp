@@ -182,17 +182,17 @@ export default function DuesTable({
           {members.length > 0 && (
             <tfoot>
               <tr style={{ background: "#0b3b2b", color: "#ffffff" }}>
-                <td colSpan={3} style={{ padding: "12px 14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <td colSpan={3} style={{ padding: "12px 14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#ffffff" }}>
                   TOTAL ({period.toUpperCase()})
                 </td>
-                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalPusat)}</td>
-                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalDaerah)}</td>
-                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalCabang)}</td>
-                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalTournamen)}</td>
-                <td className="text-right font-mono-num" style={{ fontWeight: 800, color: "#eab308", fontSize: "14px" }}>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700, color: "#ffffff" }}>{formatNumber(totalPusat)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700, color: "#ffffff" }}>{formatNumber(totalDaerah)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700, color: "#ffffff" }}>{formatNumber(totalCabang)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700, color: "#ffffff" }}>{formatNumber(totalTournamen)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 800, color: "#fef08a", fontSize: "14px" }}>
                   {formatRupiah(grandTotal)}
                 </td>
-                <td colSpan={isAdmin ? 2 : 1} style={{ textAlign: "center", fontSize: "11px", color: "#91bfa9", fontWeight: 600 }}>
+                <td colSpan={isAdmin ? 2 : 1} style={{ textAlign: "center", fontSize: "11px", color: "#86efac", fontWeight: 700 }}>
                   Rekonsiliasi Selesai
                 </td>
               </tr>

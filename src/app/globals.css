@@ -738,20 +738,22 @@ body {
 
 /* Table Footer / Total Row */
 .data-table tfoot tr {
-  background: #e2e8f0;
+  background: #0b3b2b;
+  color: #ffffff;
   font-weight: 800;
   border-top: 2px solid var(--primary-700);
   border-bottom: 3px double #0f172a;
 }
 
 [data-theme="dark"] .data-table tfoot tr {
-  background: #113124;
+  background: #0b3b2b;
+  color: #ffffff;
   border-bottom: 3px double #f8fafc;
 }
 
 .data-table tfoot td {
   padding: 13px 14px;
-  color: var(--text-primary);
+  color: #ffffff;
   font-size: 13.5px;
 }
 
