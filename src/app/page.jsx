@@ -28,6 +28,7 @@ import DashboardView from "@/components/DashboardView";
 import AddCashModal from "@/components/AddCashModal";
 import PeriodPickerModal from "@/components/PeriodPickerModal";
 import AuthView from "@/components/AuthView";
+import UserProfileModal from "@/components/UserProfileModal";
 
 import {
   fetchMembersByPeriod,
@@ -77,6 +78,7 @@ export default function HomePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddCashOpen, setIsAddCashOpen] = useState(false);
   const [isPeriodPickerOpen, setIsPeriodPickerOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
 
   const reloadCashbook = async () => {
@@ -335,6 +337,7 @@ export default function HomePage() {
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthView(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
         totalMembersCount={members.length}
       />
 
@@ -347,6 +350,7 @@ export default function HomePage() {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           onOpenAuth={() => setIsAuthView(true)}
+          onOpenProfile={() => setIsProfileOpen(true)}
           onPrint={() => window.print()}
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
           currentUser={currentUser}
@@ -520,29 +524,9 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 2. Key Metric Bar (4 Kartu Sesuai Desain Stitch Rekap Iuran) */}
-              <div className="stitch-dash-grid" style={{ marginBottom: "16px" }}>
-                {/* Card 1: Target Tagihan */}
-                <div className="stitch-card">
-                  <div className="hairline-court"></div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Target Tagihan
-                    </span>
-                    <span style={{ color: "#0f5132" }}>🎯</span>
-                  </div>
-                  <div className="font-mono-num" style={{ fontSize: "19px", fontWeight: 700, color: "var(--text-main)" }}>
-                    {formatRupiah(totalTarget)}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
-                    <span style={{ background: "#dcfce7", color: "#16a34a", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>
-                      {members.length} Anggota
-                    </span>
-                    <span>Terdaftar aktif</span>
-                  </div>
-                </div>
-
-                {/* Card 2: Terkumpul */}
+              {/* 2. Key Metric Bar (Hanya Terkumpul & Saldo Kas PTWP) */}
+              <div className="stitch-dash-grid" style={{ marginBottom: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                {/* Card 1: Terkumpul */}
                 <div className="stitch-card">
                   <div className="hairline-court" style={{ background: "#16a34a" }}></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
@@ -562,27 +546,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Card 3: Belum Bayar */}
-                <div className="stitch-card">
-                  <div className="hairline-amber"></div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Belum Bayar
-                    </span>
-                    <Clock size={16} color="#d97706" />
-                  </div>
-                  <div className="font-mono-num" style={{ fontSize: "19px", fontWeight: 700, color: "#d97706" }}>
-                    {formatRupiah(totalUnpaid)}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
-                    <span style={{ background: "#fef3c7", color: "#d97706", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>
-                      {unpaidMembers.length} Pegawai
-                    </span>
-                    <span>Tersisa {percentageUnpaid}%</span>
-                  </div>
-                </div>
-
-                {/* Card 4: Saldo Kas PTWP */}
+                {/* Card 2: Saldo Kas PTWP */}
                 <div className="stitch-card">
                   <div className="hairline-gold"></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
@@ -655,10 +619,20 @@ export default function HomePage() {
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        currentUser={currentUser}
         onOpenAuth={() => setIsAuthView(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
       />
 
       {/* MODAL-MODAL DIALOG */}
+      <UserProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        currentUser={currentUser}
+        settings={settings}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onLogout={handleLogout}
+      />
       <ExcelExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}

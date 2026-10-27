@@ -6,7 +6,9 @@ import { LayoutDashboard, FileSpreadsheet, Wallet, User } from "lucide-react";
 export default function MobileBottomNav({
   activeTab = "dashboard",
   setActiveTab,
+  currentUser,
   onOpenAuth,
+  onOpenProfile,
 }) {
   return (
     <nav className="mobile-bottom-nav">
@@ -41,7 +43,13 @@ export default function MobileBottomNav({
         <button
           type="button"
           className="bottom-nav-item"
-          onClick={onOpenAuth}
+          onClick={() => {
+            if (currentUser && onOpenProfile) {
+              onOpenProfile();
+            } else if (onOpenAuth) {
+              onOpenAuth();
+            }
+          }}
         >
           <User className="icon" size={18} />
           <span>Akun</span>

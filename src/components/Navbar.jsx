@@ -18,6 +18,7 @@ export default function Navbar({
   theme = "light",
   onToggleTheme,
   onOpenAuth,
+  onOpenProfile,
   onPrint,
   onToggleMobileMenu,
   currentUser,
@@ -92,8 +93,14 @@ export default function Navbar({
         <button
           type="button"
           className="stitch-user-btn"
-          onClick={onOpenAuth}
-          title="Klik untuk informasi akun"
+          onClick={() => {
+            if (currentUser && onOpenProfile) {
+              onOpenProfile();
+            } else if (onOpenAuth) {
+              onOpenAuth();
+            }
+          }}
+          title={currentUser ? "Klik untuk melihat profil akun" : "Klik untuk masuk akun"}
         >
           <div className="stitch-user-text">
             <span className="stitch-user-name-label">{currentUser?.name || "Tamu / Anggota"}</span>

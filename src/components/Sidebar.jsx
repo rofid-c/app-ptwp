@@ -17,6 +17,7 @@ export default function Sidebar({
   currentUser,
   onOpenAuth,
   onOpenSettings,
+  onOpenProfile,
   totalMembersCount = 0,
 }) {
   const navItems = [
@@ -107,8 +108,14 @@ export default function Sidebar({
         {/* User Card */}
         <div
           className="stitch-user-card"
-          onClick={() => onOpenAuth && onOpenAuth()}
-          title="Klik untuk ubah akun / login"
+          onClick={() => {
+            if (currentUser && onOpenProfile) {
+              onOpenProfile();
+            } else if (onOpenAuth) {
+              onOpenAuth();
+            }
+          }}
+          title={currentUser ? "Klik untuk melihat profil akun" : "Klik untuk masuk akun"}
         >
           <div className="stitch-avatar">
             {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "P"}
