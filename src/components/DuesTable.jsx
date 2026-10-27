@@ -1,0 +1,219 @@
+"use client";
+
+import React from "react";
+import { Check, Clock, Edit2, Trash2, MessageCircle, FileText } from "lucide-react";
+
+export default function DuesTable({
+  members = [],
+  settings = {},
+  period = "September 2026",
+  onToggleStatus,
+  onEditMember,
+  onDeleteMember,
+  isAdmin = true,
+  onOpenImport,
+  onOpenAdd,
+  onLoadSample,
+}) {
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat("id-ID").format(Number(num || 0));
+  };
+
+  const formatRupiah = (val) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(Number(val || 0));
+  };
+
+  // Hitung penjumlahan kolom total
+  const totalPusat = members.reduce((sum, m) => sum + Number(m.pusat || 0), 0);
+  const totalDaerah = members.reduce((sum, m) => sum + Number(m.daerah || 0), 0);
+  const totalCabang = members.reduce((sum, m) => sum + Number(m.cabang || 0), 0);
+  const totalTournamen = members.reduce((sum, m) => sum + Number(m.tournamen || 0), 0);
+  const grandTotal = totalPusat + totalDaerah + totalCabang + totalTournamen;
+
+  const paidCount = members.filter((m) => m.paid).length;
+  const paidPct = members.length > 0 ? Math.round((paidCount / members.length) * 100) : 0;
+
+  const handleSendWhatsApp = (member, total) => {
+    const text = encodeURIComponent(
+      `Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu ${member.name},\n\nMengingatkan informasi Iuran PTWP Cabang ${settings.institution || "PA Gunung Sugih"} periode ${period} sebesar Rp ${formatNumber(total)}.\n\nPembayaran dapat diserahkan kepada Bendahara (${settings.treasurerName || "Bendahara Kantor"}).\n\nTerima kasih atas kerja samanya. Salam olahraga! 🎾`
+    );
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  return (
+    <div className="stitch-table-card">
+      <div className="table-responsive">
+        <table className="stitch-table" id="ptwp-dues-table">
+          <thead>
+            {/* Header Kolom Formal Sesuai Stitch */}
+            <tr>
+              <th style={{ width: "48px", textAlign: "center" }}>No</th>
+              <th style={{ minWidth: "220px" }}>Nama Lengkap</th>
+              <th style={{ minWidth: "130px" }}>Jabatan</th>
+              <th className="text-right" style={{ minWidth: "100px" }}>Pusat</th>
+              <th className="text-right" style={{ minWidth: "100px" }}>Daerah</th>
+              <th className="text-right" style={{ minWidth: "100px" }}>Cabang</th>
+              <th className="text-right" style={{ minWidth: "100px" }}>Tour</th>
+              <th className="text-right" style={{ minWidth: "110px" }}>Total</th>
+              <th style={{ width: "110px", textAlign: "center" }}>Status</th>
+              {isAdmin && <th style={{ width: "110px", textAlign: "center" }}>Aksi</th>}
+            </tr>
+
+            {/* Baris Panduan Nomor Resmi: 1, 2, 9, ... 15, 16 */}
+            <tr style={{ background: "rgba(15, 81, 50, 0.05)", height: "24px" }}>
+              <th style={{ textAlign: "center", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>1</th>
+              <th style={{ color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>2</th>
+              <th style={{ color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>9</th>
+              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
+              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
+              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
+              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>15</th>
+              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>16</th>
+              <th style={{ textAlign: "center", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
+              {isAdmin && <th style={{ textAlign: "center", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>}
+            </tr>
+          </thead>
+
+          <tbody>
+            {members.length === 0 ? (
+              <tr>
+                <td colSpan={isAdmin ? 10 : 9} style={{ textAlign: "center", padding: "48px 20px" }}>
+                  <div style={{ maxWidth: "380px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                    <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "var(--primary-50)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary-700)", fontSize: "22px" }}>
+                      📊
+                    </div>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>
+                      Data Iuran Periode Ini Masih Kosong
+                    </div>
+                    <p style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
+                      Impor berkas Excel (.xlsx / .csv) atau tambahkan data anggota baru.
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px", flexWrap: "wrap", justifyContent: "center" }}>
+                      {onOpenImport && (
+                        <button type="button" className="btn btn-primary btn-sm" onClick={onOpenImport}>
+                          <span>Import Excel / CSV</span>
+                        </button>
+                      )}
+                      {onOpenAdd && (
+                        <button type="button" className="btn btn-outline btn-sm" onClick={onOpenAdd}>
+                          <span>Tambah Anggota</span>
+                        </button>
+                      )}
+                      {onLoadSample && (
+                        <button type="button" className="btn btn-outline btn-sm" onClick={onLoadSample} style={{ color: "var(--text-secondary)" }}>
+                          <span>Muat Template</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              members.map((member, index) => {
+                const rowTotal =
+                  Number(member.pusat || 0) +
+                  Number(member.daerah || 0) +
+                  Number(member.cabang || 0) +
+                  Number(member.tournamen || 0);
+
+                return (
+                  <tr key={member.id || index} className="stitch-table-row">
+                    <td style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
+                      {index + 1}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{member.name}</div>
+                    </td>
+                    <td>
+                      <span style={{ color: "var(--text-muted)", fontSize: "12.5px" }}>{member.title || "-"}</span>
+                    </td>
+                    <td className="text-right font-mono-num">{formatNumber(member.pusat)}</td>
+                    <td className="text-right font-mono-num">{formatNumber(member.daerah)}</td>
+                    <td className="text-right font-mono-num">{formatNumber(member.cabang)}</td>
+                    <td className="text-right font-mono-num">{formatNumber(member.tournamen)}</td>
+                    <td className="text-right font-mono-num" style={{ fontWeight: 700, color: member.paid ? "var(--text-primary)" : "#d97706" }}>
+                      {formatNumber(rowTotal)}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => onToggleStatus && onToggleStatus(member.id)}
+                        className={`stitch-status-pill ${member.paid ? "lunas" : "belum"}`}
+                        title="Klik untuk ubah status lunas / belum"
+                      >
+                        {member.paid ? "Lunas" : "Belum Bayar"}
+                      </button>
+                    </td>
+                    {isAdmin && (
+                      <td style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
+                          {/* Tombol Edit */}
+                          <button
+                            type="button"
+                            className="stitch-row-action-btn edit"
+                            onClick={() => onEditMember && onEditMember(member)}
+                            title="Edit Data Anggota"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
+                          {/* Tombol WhatsApp Reminder (jika belum lunas) */}
+                          {!member.paid && (
+                            <button
+                              type="button"
+                              className="stitch-row-action-btn wa"
+                              onClick={() => handleSendWhatsApp(member, rowTotal)}
+                              title="Kirim Pengingat Tagihan WhatsApp"
+                            >
+                              <MessageCircle size={14} />
+                            </button>
+                          )}
+
+                          {/* Tombol Hapus */}
+                          <button
+                            type="button"
+                            className="stitch-row-action-btn delete"
+                            onClick={() => onDeleteMember && onDeleteMember(member.id)}
+                            title="Hapus dari Periode Ini"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+
+          {/* Baris Total Ringkasan Sesuai Format Resmi Stitch */}
+          {members.length > 0 && (
+            <tfoot>
+              <tr style={{ background: "#0b3b2b", color: "#ffffff" }}>
+                <td colSpan={3} style={{ padding: "12px 14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  TOTAL ({period.toUpperCase()})
+                </td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalPusat)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalDaerah)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalCabang)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 700 }}>{formatNumber(totalTournamen)}</td>
+                <td className="text-right font-mono-num" style={{ fontWeight: 800, color: "#eab308", fontSize: "14px" }}>
+                  {formatRupiah(grandTotal)}
+                </td>
+                <td colSpan={isAdmin ? 2 : 1} style={{ textAlign: "center", fontSize: "11px", color: "#91bfa9", fontWeight: 600 }}>
+                  Rekonsiliasi Selesai
+                </td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+
+    </div>
+  );
+}
