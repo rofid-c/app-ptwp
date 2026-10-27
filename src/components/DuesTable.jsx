@@ -63,19 +63,6 @@ export default function DuesTable({
               {isAdmin && <th style={{ width: "110px", textAlign: "center" }}>Aksi</th>}
             </tr>
 
-            {/* Baris Panduan Nomor Resmi: 1, 2, 9, ... 15, 16 */}
-            <tr style={{ background: "rgba(15, 81, 50, 0.05)", height: "24px" }}>
-              <th style={{ textAlign: "center", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>1</th>
-              <th style={{ color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>2</th>
-              <th style={{ color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>9</th>
-              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
-              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
-              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
-              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>15</th>
-              <th style={{ textAlign: "right", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>16</th>
-              <th style={{ textAlign: "center", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>
-              {isAdmin && <th style={{ textAlign: "center", color: "#64748b", fontWeight: "normal", fontSize: "10.5px" }}>-</th>}
-            </tr>
           </thead>
 
           <tbody>
