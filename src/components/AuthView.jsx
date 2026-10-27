@@ -536,34 +536,6 @@ export default function AuthView({
                   <ArrowRight size={16} />
                 </button>
 
-                {/* Akses Cepat / Demo Akun */}
-                <div style={{ marginTop: "10px", paddingTop: "12px", borderTop: "1px dashed #e2e8f0" }}>
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", textAlign: "center" }}>
-                    ⚡ Akses Cepat 1-Klik:
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin("bendahara")}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #d1fae5",
-                      background: "#ecfdf5",
-                      color: "#0f5132",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <UserCheck size={15} />
-                    <span>Masuk Cepat sebagai Bendahara Cabang</span>
-                  </button>
-                </div>
               </form>
             ) : (
               /* ========================================================
