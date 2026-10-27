@@ -230,194 +230,57 @@ export default function AuthView({
           position: "relative",
           zIndex: 1,
           width: "100%",
-          maxWidth: "1280px",
+          maxWidth: "480px",
           margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+          display: "flex",
+          flexDirection: "column",
           alignItems: "center",
-          padding: "32px 24px",
-          gap: "40px",
+          justifyContent: "center",
+          minHeight: "100vh",
+          padding: "36px 20px",
+          gap: "20px",
         }}
       >
-        {/* ========================================================
-            KOLOM KIRI: HERO BRANDING & VISUAL IDENTITAS PTWP
-            ======================================================== */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "28px", padding: "12px" }}>
-          {/* Badge Lembaga */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #16a34a 0%, #0f5132 100%)",
-                border: "2px solid rgba(234, 179, 8, 0.5)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 8px 20px rgba(0, 0, 0, 0.35)",
-              }}
-            >
-              <ShieldCheck size={26} color="#fef08a" />
-            </div>
-
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "1.5px", color: "#fef08a", textTransform: "uppercase" }}>
-                MAHKAMAH AGUNG REPUBLIK INDONESIA
-              </div>
-              <div style={{ fontSize: "16px", fontWeight: 800, color: "#ffffff", letterSpacing: "0.5px" }}>
-                PTWP-HUB SISTEM TERPADU
-              </div>
-            </div>
-          </div>
-
-          {/* Headline Utama */}
-          <div>
-            <h1
-              style={{
-                fontSize: "clamp(28px, 4vw, 42px)",
-                fontWeight: 800,
-                lineHeight: 1.18,
-                color: "#ffffff",
-                letterSpacing: "-0.5px",
-                marginBottom: "14px",
-              }}
-            >
-              Pengelolaan Iuran & Kas Tenis{" "}
-              <span
-                style={{
-                  background: "linear-gradient(90deg, #4ade80 0%, #fef08a 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                Transparan & Akuntabel
-              </span>
-            </h1>
-            <p style={{ fontSize: "14.5px", lineHeight: 1.6, color: "rgba(226, 240, 234, 0.8)", maxWidth: "520px" }}>
-              Sistem informasi terintegrasi untuk pendataan iuran 4 pos (Pusat, Daerah, Cabang, Turnamen), pembukuan kas otomatis, dan rekonsiliasi berjenjang dari Tingkat Cabang ke Pengurus Pusat.
-            </p>
-          </div>
-
-          {/* 3 Keunggulan Fitur Card */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "480px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: "14px",
-                padding: "12px 16px",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "10px",
-                  background: "rgba(74, 222, 128, 0.15)",
-                  color: "#4ade80",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Landmark size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: "13.5px", fontWeight: 700, color: "#ffffff" }}>Arsitektur Cabang & Pusat Terpadu</div>
-                <div style={{ fontSize: "11.5px", color: "rgba(226, 240, 234, 0.7)" }}>
-                  Satker mengelola iuran lokal dan setoran ke Pengurus Pusat secara terpisah & otomatis.
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: "14px",
-                padding: "12px 16px",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "10px",
-                  background: "rgba(234, 179, 8, 0.15)",
-                  color: "#fef08a",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Sparkles size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: "13.5px", fontWeight: 700, color: "#ffffff" }}>Impor Multi-Sheet Excel 1-Klik</div>
-                <div style={{ fontSize: "11.5px", color: "rgba(226, 240, 234, 0.7)" }}>
-                  Deteksi otomatis bulan Januari s.d. Desember dari format buku iuran resmi pengadilan.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tombol Bypass / Masuk Langsung Sebagai Tamu */}
-          {onBypassToDashboard && (
-            <div style={{ paddingTop: "6px" }}>
-              <button
-                type="button"
-                onClick={onBypassToDashboard}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  background: "transparent",
-                  border: "1px dashed rgba(226, 240, 234, 0.4)",
-                  color: "rgba(226, 240, 234, 0.9)",
-                  padding: "8px 16px",
-                  borderRadius: "99px",
-                  fontSize: "12.5px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#fef08a")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(226, 240, 234, 0.4)")}
-              >
-                <span>Lihat Dashboard Langsung (Mode Pratinjau)</span>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ========================================================
-            KOLOM KANAN: KARTU LOGIN & REGISTRASI ELEGAN
-            ======================================================== */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        {/* Header Logo & Title */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "8px" }}>
           <div
             style={{
-              width: "100%",
-              maxWidth: "460px",
-              background: "#ffffff",
-              borderRadius: "24px",
-              padding: "32px 28px",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)",
-              color: "#0f172a",
-              position: "relative",
+              width: "52px",
+              height: "52px",
+              borderRadius: "16px",
+              background: "linear-gradient(135deg, #16a34a 0%, #0f5132 100%)",
+              border: "2px solid rgba(234, 179, 8, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
             }}
           >
+            <ShieldCheck size={28} color="#fef08a" />
+          </div>
+
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "1.5px", color: "#fef08a", textTransform: "uppercase" }}>
+              MAHKAMAH AGUNG REPUBLIK INDONESIA
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: 800, color: "#ffffff", letterSpacing: "0.5px" }}>
+              PTWP-HUB SISTEM TERPADU
+            </div>
+          </div>
+        </div>
+
+        {/* KARTU LOGIN & REGISTRASI ELEGAN */}
+        <div
+          style={{
+            width: "100%",
+            background: "#ffffff",
+            borderRadius: "24px",
+            padding: "32px 28px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)",
+            color: "#0f172a",
+            position: "relative",
+          }}
+        >
             {/* Tab Switcher Masuk vs Daftar */}
             <div
               style={{
@@ -1008,8 +871,34 @@ export default function AuthView({
                 </button>
               </form>
             )}
-          </div>
         </div>
+
+        {/* Tombol Bypass / Masuk Langsung Sebagai Tamu */}
+        {onBypassToDashboard && (
+          <button
+            type="button"
+            onClick={onBypassToDashboard}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "transparent",
+              border: "1px dashed rgba(226, 240, 234, 0.4)",
+              color: "rgba(226, 240, 234, 0.9)",
+              padding: "8px 18px",
+              borderRadius: "99px",
+              fontSize: "12.5px",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#fef08a")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(226, 240, 234, 0.4)")}
+          >
+            <span>Lihat Dashboard Langsung (Mode Pratinjau)</span>
+            <ChevronRight size={14} />
+          </button>
+        )}
       </div>
     </div>
   );
