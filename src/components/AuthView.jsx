@@ -14,7 +14,6 @@ import {
   Sparkles,
   CheckCircle2,
   Landmark,
-  ChevronRight,
   Globe2,
   KeyRound,
   UserCheck,
@@ -22,20 +21,21 @@ import {
 } from "lucide-react";
 
 export const SAMPLE_SATKER = [
-  "Pengadilan Agama Gunung Sugih",
-  "Pengadilan Agama Tanjung Karang",
-  "Pengadilan Agama Metro",
-  "Pengadilan Agama Kalianda",
-  "Pengadilan Agama Kotabumi",
-  "Pengadilan Agama Liwa",
-  "Pengadilan Agama Tulang Bawang",
-  "Pengadilan Agama Gedong Tataan",
-  "Pengadilan Agama Sukadana",
-  "Pengadilan Agama Pringsewu",
-  "Pengadilan Agama Mesuji",
-  "Pengadilan Agama Tulang Bawang Tengah",
-  "Pengadilan Tinggi Agama Bandar Lampung",
-  "Pengurus Pusat PTWP - Mahkamah Agung RI",
+  "PA Gunung Sugih",
+  "PTA Bandar Lampung",
+  "PA Tanjung Karang",
+  "PA Metro",
+  "PA Kalianda",
+  "PA Tanggamus",
+  "PA Pringsewu",
+  "PA Gedong Tataan",
+  "PA Sukadana",
+  "PA Kotabumi",
+  "PA Blambangan Umpu",
+  "PA Krui",
+  "PA Tulang Bawang Tengah",
+  "PA Tulang Bawang",
+  "PA Mesuji",
 ];
 
 export default function AuthView({
@@ -51,14 +51,14 @@ export default function AuthView({
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [loginSatker, setLoginSatker] = useState("Pengadilan Agama Gunung Sugih");
+  const [loginSatker, setLoginSatker] = useState("PA Gunung Sugih");
   const [rememberMe, setRememberMe] = useState(true);
 
   // Register form state
   const [regName, setRegName] = useState("");
   const [regNip, setRegNip] = useState("");
   const [regPhone, setRegPhone] = useState("");
-  const [regSatker, setRegSatker] = useState("Pengadilan Agama Gunung Sugih");
+  const [regSatker, setRegSatker] = useState("PA Gunung Sugih");
   const [regTitle, setRegTitle] = useState("Hakim");
   const [regRole, setRegRole] = useState("bendahara");
   const [regPassword, setRegPassword] = useState("");
@@ -138,7 +138,7 @@ export default function AuthView({
         role: "bendahara",
         roleLabel: "Bendahara Cabang PA GS",
         title: "Bendahara Pengeluaran",
-        satker: "Pengadilan Agama Gunung Sugih",
+        satker: "PA Gunung Sugih",
         level: "cabang",
       };
     } else if (roleType === "pusat") {
@@ -160,7 +160,7 @@ export default function AuthView({
         role: "anggota",
         roleLabel: "Pegawai / Anggota",
         title: "Hakim Pratama",
-        satker: "Pengadilan Agama Gunung Sugih",
+        satker: "PA Gunung Sugih",
         level: "cabang",
       };
     }
@@ -767,33 +767,6 @@ export default function AuthView({
               </form>
             )}
         </div>
-
-        {/* Tombol Bypass / Masuk Langsung Sebagai Tamu */}
-        {onBypassToDashboard && (
-          <button
-            type="button"
-            onClick={onBypassToDashboard}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "transparent",
-              border: "1px dashed rgba(226, 240, 234, 0.4)",
-              color: "rgba(226, 240, 234, 0.9)",
-              padding: "8px 18px",
-              borderRadius: "99px",
-              fontSize: "12.5px",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#fef08a")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(226, 240, 234, 0.4)")}
-          >
-            <span>Lihat Dashboard Langsung (Mode Pratinjau)</span>
-            <ChevronRight size={14} />
-          </button>
-        )}
       </div>
     </div>
   );

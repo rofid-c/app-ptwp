@@ -320,7 +320,6 @@ export default function HomePage() {
           setCurrentUser(user);
           setIsAuthView(false);
         }}
-        onBypassToDashboard={() => setIsAuthView(false)}
         defaultMode="login"
       />
     );
