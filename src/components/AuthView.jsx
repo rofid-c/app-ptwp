@@ -336,58 +336,6 @@ export default function AuthView({
               </button>
             </div>
 
-            {/* Selector Tingkat Satker (Cabang vs Pusat) */}
-            <div style={{ marginBottom: "18px" }}>
-              <div style={{ fontSize: "11.5px", fontWeight: 700, color: "#64748b", marginBottom: "6px", textTransform: "uppercase" }}>
-                Tingkat Organisasi:
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <button
-                  type="button"
-                  onClick={() => setLevel("cabang")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 10px",
-                    borderRadius: "10px",
-                    border: level === "cabang" ? "1.5px solid #0f5132" : "1px solid #e2e8f0",
-                    background: level === "cabang" ? "#f0fdf4" : "#ffffff",
-                    color: level === "cabang" ? "#0f5132" : "#64748b",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Building2 size={15} />
-                  <span>Pengurus Cabang</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setLevel("pusat")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 10px",
-                    borderRadius: "10px",
-                    border: level === "pusat" ? "1.5px solid #0f5132" : "1px solid #e2e8f0",
-                    background: level === "pusat" ? "#f0fdf4" : "#ffffff",
-                    color: level === "pusat" ? "#0f5132" : "#64748b",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Globe2 size={15} />
-                  <span>Pengurus Pusat / MA</span>
-                </button>
-              </div>
-            </div>
-
             {/* Alert Messages */}
             {errorMsg && (
               <div
@@ -433,12 +381,11 @@ export default function AuthView({
                 ======================================================== */}
             {mode === "login" ? (
               <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                {/* Pilihan Satker (jika cabang) */}
-                {level === "cabang" && (
-                  <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
-                      Satuan Kerja / Cabang Pengadilan
-                    </label>
+                {/* Pilihan Satker */}
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Satuan Kerja / Cabang Pengadilan
+                  </label>
                     <div style={{ position: "relative" }}>
                       <select
                         value={loginSatker}
@@ -463,7 +410,6 @@ export default function AuthView({
                       </select>
                     </div>
                   </div>
-                )}
 
                 {/* Username / NIP / WA */}
                 <div>
@@ -593,53 +539,30 @@ export default function AuthView({
                 {/* Akses Cepat / Demo Akun */}
                 <div style={{ marginTop: "10px", paddingTop: "12px", borderTop: "1px dashed #e2e8f0" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", textAlign: "center" }}>
-                    ⚡ Akses Cepat 1-Klik (Demo Role):
+                    ⚡ Akses Cepat 1-Klik:
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin("bendahara")}
-                      style={{
-                        padding: "7px 10px",
-                        borderRadius: "8px",
-                        border: "1px solid #d1fae5",
-                        background: "#ecfdf5",
-                        color: "#0f5132",
-                        fontSize: "11.5px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      <UserCheck size={14} />
-                      <span>Bendahara Cabang</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin("pusat")}
-                      style={{
-                        padding: "7px 10px",
-                        borderRadius: "8px",
-                        border: "1px solid #fef3c7",
-                        background: "#fffbeb",
-                        color: "#b45309",
-                        fontSize: "11.5px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      <Globe2 size={14} />
-                      <span>Pengurus Pusat</span>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin("bendahara")}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #d1fae5",
+                      background: "#ecfdf5",
+                      color: "#0f5132",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <UserCheck size={15} />
+                    <span>Masuk Cepat sebagai Bendahara Cabang</span>
+                  </button>
                 </div>
               </form>
             ) : (
