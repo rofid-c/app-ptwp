@@ -272,28 +272,6 @@ export default function DashboardView({
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <div
-            onClick={onOpenPeriodPicker}
-            title="Klik untuk memilih bulan & tahun"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "5px 12px",
-              borderRadius: "99px",
-              background: "var(--primary-50)",
-              color: "var(--primary-700)",
-              fontSize: "12.5px",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "transform 150ms",
-            }}
-          >
-            <Calendar size={14} />
-            <span>{period}</span>
-            <span style={{ fontSize: "11px", opacity: 0.7 }}>▾</span>
-          </div>
-
-          <div
             style={{
               display: "flex",
               alignItems: "center",
@@ -314,40 +292,9 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* 2. 4 Kartu Metrik Dashboard */}
-      <div className="stitch-dash-grid">
-        {/* Card 1: Target Iuran Bulanan */}
-        <div className="stitch-card">
-          <div className="hairline-primary"></div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Target Iuran Bulanan
-            </span>
-            <div
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "6px",
-                background: "var(--primary-50)",
-                color: "#003820",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Target size={16} />
-            </div>
-          </div>
-          <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>
-            {formatRupiah(totalTarget)}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "12px", color: "var(--text-muted)" }}>
-            <Users size={14} />
-            <span>{members.length} Anggota Terdaftar</span>
-          </div>
-        </div>
-
-        {/* Card 2: Iuran Terkumpul */}
+      {/* 2. Kartu Metrik Dashboard (Iuran Terkumpul & Saldo Kas Cabang) */}
+      <div className="stitch-dash-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        {/* Card 1: Iuran Terkumpul */}
         <div className="stitch-card">
           <div className="hairline-court"></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
@@ -374,27 +321,7 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Card 3: Belum Lunas */}
-        <div className="stitch-card">
-          <div className="hairline-amber"></div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Belum Lunas / Tunggakan
-            </span>
-            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "#fef3c7", color: "#d97706" }}>
-              {unpaidMembers.length} Pegawai
-            </span>
-          </div>
-          <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "#d97706" }}>
-            {formatRupiah(totalUnpaid)}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "12px", color: "var(--text-muted)" }}>
-            <Clock size={14} color="#d97706" />
-            <span>{percentageUnpaid}% Dari Total Target</span>
-          </div>
-        </div>
-
-        {/* Card 4: Saldo Kas Cabang */}
+        {/* Card 2: Saldo Kas Cabang */}
         <div className="stitch-card">
           <div className="hairline-gold"></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>

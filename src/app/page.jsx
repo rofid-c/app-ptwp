@@ -396,16 +396,9 @@ export default function HomePage() {
                       Rekap Iuran
                     </span>
                     <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0f5132", display: "inline-block" }}></span>
-                    <button
-                      type="button"
-                      onClick={() => setIsPeriodPickerOpen(true)}
-                      className="stitch-period-pill"
-                      style={{ cursor: "pointer", border: "1px solid var(--border-light)", background: "#dcfce7", color: "#0f5132" }}
-                      title="Klik untuk memilih bulan & tahun"
-                    >
-                      <span style={{ fontSize: "12.5px", fontWeight: 700 }}>{period}</span>
-                      <span style={{ fontSize: "10px", opacity: 0.8 }}>▾</span>
-                    </button>
+                    <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 500 }}>
+                      Periode {period}
+                    </span>
                   </div>
 
                   {/* Tombol Aksi Utama */}
