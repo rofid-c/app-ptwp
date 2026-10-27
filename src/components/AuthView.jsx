@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ShieldCheck,
   Lock,
@@ -18,24 +18,26 @@ import {
   KeyRound,
   UserCheck,
   ExternalLink,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 
 export const SAMPLE_SATKER = [
-  "PA Gunung Sugih",
-  "PTA Bandar Lampung",
-  "PA Tanjung Karang",
-  "PA Metro",
-  "PA Kalianda",
-  "PA Tanggamus",
-  "PA Pringsewu",
-  "PA Gedong Tataan",
-  "PA Sukadana",
-  "PA Kotabumi",
-  "PA Blambangan Umpu",
-  "PA Krui",
-  "PA Tulang Bawang Tengah",
-  "PA Tulang Bawang",
-  "PA Mesuji",
+  "Pengadilan Agama Gunung Sugih",
+  "Pengadilan Tinggi Agama Bandar Lampung",
+  "Pengadilan Agama Tanjung Karang",
+  "Pengadilan Agama Metro",
+  "Pengadilan Agama Kalianda",
+  "Pengadilan Agama Tanggamus",
+  "Pengadilan Agama Pringsewu",
+  "Pengadilan Agama Gedong Tataan",
+  "Pengadilan Agama Sukadana",
+  "Pengadilan Agama Kotabumi",
+  "Pengadilan Agama Blambangan Umpu",
+  "Pengadilan Agama Krui",
+  "Pengadilan Agama Tulang Bawang Tengah",
+  "Pengadilan Agama Tulang Bawang",
+  "Pengadilan Agama Mesuji",
 ];
 
 export default function AuthView({
@@ -51,18 +53,37 @@ export default function AuthView({
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [loginSatker, setLoginSatker] = useState("PA Gunung Sugih");
+  const [loginSatker, setLoginSatker] = useState("Pengadilan Agama Gunung Sugih");
   const [rememberMe, setRememberMe] = useState(true);
 
   // Register form state
   const [regName, setRegName] = useState("");
   const [regNip, setRegNip] = useState("");
   const [regPhone, setRegPhone] = useState("");
-  const [regSatker, setRegSatker] = useState("PA Gunung Sugih");
+  const [regSatker, setRegSatker] = useState("Pengadilan Agama Gunung Sugih");
   const [regTitle, setRegTitle] = useState("Hakim");
   const [regRole, setRegRole] = useState("bendahara");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
+
+  // Custom Dropdown states
+  const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
+  const [isRegDropdownOpen, setIsRegDropdownOpen] = useState(false);
+  const loginDropdownRef = useRef(null);
+  const regDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (loginDropdownRef.current && !loginDropdownRef.current.contains(e.target)) {
+        setIsLoginDropdownOpen(false);
+      }
+      if (regDropdownRef.current && !regDropdownRef.current.contains(e.target)) {
+        setIsRegDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Feedback status
   const [errorMsg, setErrorMsg] = useState("");
@@ -138,7 +159,7 @@ export default function AuthView({
         role: "bendahara",
         roleLabel: "Bendahara Cabang PA GS",
         title: "Bendahara Pengeluaran",
-        satker: "PA Gunung Sugih",
+        satker: "Pengadilan Agama Gunung Sugih",
         level: "cabang",
       };
     } else if (roleType === "pusat") {
@@ -160,7 +181,7 @@ export default function AuthView({
         role: "anggota",
         roleLabel: "Pegawai / Anggota",
         title: "Hakim Pratama",
-        satker: "PA Gunung Sugih",
+        satker: "Pengadilan Agama Gunung Sugih",
         level: "cabang",
       };
     }
@@ -386,30 +407,99 @@ export default function AuthView({
                   <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
                     Satuan Kerja / Cabang Pengadilan
                   </label>
-                    <div style={{ position: "relative" }}>
-                      <select
-                        value={loginSatker}
-                        onChange={(e) => setLoginSatker(e.target.value)}
+                  <div style={{ position: "relative" }} ref={loginDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsLoginDropdownOpen((prev) => !prev)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "8px",
+                        padding: "10px 14px",
+                        borderRadius: "10px",
+                        border: `1.5px solid ${isLoginDropdownOpen ? "#16a34a" : "#cbd5e1"}`,
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        background: "#f8fafc",
+                        outline: "none",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.15s ease",
+                        boxShadow: isLoginDropdownOpen ? "0 0 0 3px rgba(22, 163, 74, 0.15)" : "none",
+                      }}
+                    >
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {loginSatker}
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        color="#64748b"
                         style={{
-                          width: "100%",
-                          padding: "10px 12px",
-                          borderRadius: "10px",
+                          flexShrink: 0,
+                          transform: isLoginDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 0.2s ease",
+                        }}
+                      />
+                    </button>
+
+                    {isLoginDropdownOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 4px)",
+                          left: 0,
+                          right: 0,
+                          zIndex: 60,
+                          background: "#ffffff",
+                          borderRadius: "12px",
                           border: "1.5px solid #cbd5e1",
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "#0f172a",
-                          background: "#f8fafc",
-                          outline: "none",
+                          boxShadow: "0 14px 30px -4px rgba(0, 0, 0, 0.2), 0 4px 10px -2px rgba(0, 0, 0, 0.08)",
+                          maxHeight: "220px",
+                          overflowY: "auto",
+                          padding: "6px",
                         }}
                       >
                         {SAMPLE_SATKER.map((satker, idx) => (
-                          <option key={idx} value={satker}>
-                            {satker}
-                          </option>
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setLoginSatker(satker);
+                              setIsLoginDropdownOpen(false);
+                            }}
+                            style={{
+                              padding: "9px 12px",
+                              borderRadius: "8px",
+                              fontSize: "12.5px",
+                              fontWeight: satker === loginSatker ? 700 : 500,
+                              color: satker === loginSatker ? "#166534" : "#1e293b",
+                              background: satker === loginSatker ? "#dcfce7" : "transparent",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "8px",
+                              transition: "background 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (satker !== loginSatker) e.currentTarget.style.background = "#f1f5f9";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (satker !== loginSatker) e.currentTarget.style.background = "transparent";
+                            }}
+                          >
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {satker}
+                            </span>
+                            {satker === loginSatker && <Check size={14} color="#16a34a" style={{ flexShrink: 0 }} />}
+                          </div>
                         ))}
-                      </select>
-                    </div>
+                      </div>
+                    )}
                   </div>
+                </div>
 
                 {/* Username / NIP / WA */}
                 <div>
@@ -616,26 +706,98 @@ export default function AuthView({
                   <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
                     Satuan Kerja Pengadilan
                   </label>
-                  <select
-                    value={regSatker}
-                    onChange={(e) => setRegSatker(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: "10px",
-                      border: "1.5px solid #cbd5e1",
-                      fontSize: "12.5px",
-                      fontWeight: 600,
-                      background: "#f8fafc",
-                      outline: "none",
-                    }}
-                  >
-                    {SAMPLE_SATKER.map((satker, idx) => (
-                      <option key={idx} value={satker}>
-                        {satker}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ position: "relative" }} ref={regDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsRegDropdownOpen((prev) => !prev)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "8px",
+                        padding: "8px 12px",
+                        borderRadius: "10px",
+                        border: `1.5px solid ${isRegDropdownOpen ? "#16a34a" : "#cbd5e1"}`,
+                        fontSize: "12.5px",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        background: "#f8fafc",
+                        outline: "none",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.15s ease",
+                        boxShadow: isRegDropdownOpen ? "0 0 0 3px rgba(22, 163, 74, 0.15)" : "none",
+                      }}
+                    >
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {regSatker}
+                      </span>
+                      <ChevronDown
+                        size={15}
+                        color="#64748b"
+                        style={{
+                          flexShrink: 0,
+                          transform: isRegDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 0.2s ease",
+                        }}
+                      />
+                    </button>
+
+                    {isRegDropdownOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 4px)",
+                          left: 0,
+                          right: 0,
+                          zIndex: 60,
+                          background: "#ffffff",
+                          borderRadius: "12px",
+                          border: "1.5px solid #cbd5e1",
+                          boxShadow: "0 14px 30px -4px rgba(0, 0, 0, 0.2), 0 4px 10px -2px rgba(0, 0, 0, 0.08)",
+                          maxHeight: "200px",
+                          overflowY: "auto",
+                          padding: "6px",
+                        }}
+                      >
+                        {SAMPLE_SATKER.map((satker, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setRegSatker(satker);
+                              setIsRegDropdownOpen(false);
+                            }}
+                            style={{
+                              padding: "8px 12px",
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: satker === regSatker ? 700 : 500,
+                              color: satker === regSatker ? "#166534" : "#1e293b",
+                              background: satker === regSatker ? "#dcfce7" : "transparent",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "8px",
+                              transition: "background 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (satker !== regSatker) e.currentTarget.style.background = "#f1f5f9";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (satker !== regSatker) e.currentTarget.style.background = "transparent";
+                            }}
+                          >
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {satker}
+                            </span>
+                            {satker === regSatker && <Check size={14} color="#16a34a" style={{ flexShrink: 0 }} />}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Jabatan & Peran */}
