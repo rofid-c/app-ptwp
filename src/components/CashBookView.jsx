@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Plus, ArrowDownLeft, ArrowUpRight, Filter, Calendar, Trash2 } from "lucide-react";
 
-export default function CashBookView({ cashbook = [], onAddEntry, onDeleteEntry, isAdmin = true }) {
+export default function CashBookView({ cashbook = [], onAddEntry, onDeleteEntry, isAdmin = true, currentUser }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterType, setFilterType] = useState("all");
   const [newEntry, setNewEntry] = useState({
@@ -81,7 +81,9 @@ export default function CashBookView({ cashbook = [], onAddEntry, onDeleteEntry,
             </div>
           </div>
           <div className="metric-value font-mono-num">{formatRupiah(balance)}</div>
-          <div className="metric-footer">Saldo aktif PTWP PA Gunung Sugih</div>
+          <div className="metric-footer">
+            Saldo aktif PTWP {currentUser?.satker ? currentUser.satker.replace("Pengadilan Agama", "PA").replace("Pengadilan Tinggi Agama", "PTA") : "PA Gunung Sugih"}
+          </div>
         </div>
       </div>
 
@@ -181,28 +183,28 @@ export default function CashBookView({ cashbook = [], onAddEntry, onDeleteEntry,
                     </td>
                     {isAdmin && (
                       <td className="text-center">
-                        {item.source !== "rekap_iuran" ? (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteEntry && onDeleteEntry(item.id)}
-                            title="Hapus transaksi kas"
-                            style={{
-                              border: "none",
-                              background: "transparent",
-                              cursor: "pointer",
-                              color: "#dc2626",
-                              padding: "4px",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              borderRadius: "4px",
-                            }}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>-</span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => onDeleteEntry && onDeleteEntry(item.id, item)}
+                          title={
+                            item.source === "rekap_iuran"
+                              ? "Hapus penerimaan iuran & kosongkan rekap periode ini"
+                              : "Hapus transaksi kas"
+                          }
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            color: "#dc2626",
+                            padding: "4px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </td>
                     )}
                   </tr>

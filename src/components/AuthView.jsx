@@ -11,6 +11,9 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
+  Mail,
+  Send,
   Sparkles,
   CheckCircle2,
   Landmark,
@@ -21,6 +24,7 @@ import {
   ChevronDown,
   Check,
 } from "lucide-react";
+import { verifyCredentials } from "@/services/storageService";
 
 export const SAMPLE_SATKER = [
   "Pengadilan Agama Gunung Sugih",
@@ -43,12 +47,11 @@ export const SAMPLE_SATKER = [
 export default function AuthView({
   onLoginSuccess,
   onBypassToDashboard,
-  defaultMode = "login", // "login" | "register"
+  defaultMode = "login", // "login" | "request_account"
 }) {
-  const [mode, setMode] = useState(defaultMode); // "login" | "register"
+  const [mode, setMode] = useState(defaultMode === "register" ? "request_account" : defaultMode);
   const [level, setLevel] = useState("cabang"); // "cabang" | "pusat"
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -56,29 +59,28 @@ export default function AuthView({
   const [loginSatker, setLoginSatker] = useState("Pengadilan Agama Gunung Sugih");
   const [rememberMe, setRememberMe] = useState(true);
 
-  // Register form state
-  const [regName, setRegName] = useState("");
-  const [regNip, setRegNip] = useState("");
-  const [regPhone, setRegPhone] = useState("");
-  const [regSatker, setRegSatker] = useState("Pengadilan Agama Gunung Sugih");
-  const [regTitle, setRegTitle] = useState("Hakim");
-  const [regRole, setRegRole] = useState("bendahara");
-  const [regPassword, setRegPassword] = useState("");
-  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  // Formulir Pengajuan Akun state (Gambar 2 - Hubungi Administrasi)
+  const [reqName, setReqName] = useState("");
+  const [reqEmail, setReqEmail] = useState("");
+  const [reqSatker, setReqSatker] = useState("Pengadilan Agama Gunung Sugih");
+  const [reqPhone, setReqPhone] = useState("");
+  const [reqTitle, setReqTitle] = useState("Hakim");
+  const [reqNote, setReqNote] = useState("");
+  const [reqSubmitted, setReqSubmitted] = useState(false);
 
   // Custom Dropdown states
   const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
-  const [isRegDropdownOpen, setIsRegDropdownOpen] = useState(false);
+  const [isReqDropdownOpen, setIsReqDropdownOpen] = useState(false);
   const loginDropdownRef = useRef(null);
-  const regDropdownRef = useRef(null);
+  const reqDropdownRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (loginDropdownRef.current && !loginDropdownRef.current.contains(e.target)) {
         setIsLoginDropdownOpen(false);
       }
-      if (regDropdownRef.current && !regDropdownRef.current.contains(e.target)) {
-        setIsRegDropdownOpen(false);
+      if (reqDropdownRef.current && !reqDropdownRef.current.contains(e.target)) {
+        setIsReqDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -89,6 +91,47 @@ export default function AuthView({
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  const handleRequestAccountSubmit = (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+
+    if (!reqName.trim()) {
+      setErrorMsg("Mohon masukkan nama lengkap Anda.");
+      return;
+    }
+    if (!reqEmail.trim()) {
+      setErrorMsg("Mohon masukkan email kantor atau email yang disetujui.");
+      return;
+    }
+    if (!reqPhone.trim()) {
+      setErrorMsg("Mohon masukkan nomor WhatsApp atau kontak aktif Anda.");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        const existingReqs = JSON.parse(localStorage.getItem("ptwp_account_requests") || "[]");
+        const newReq = {
+          id: `REQ-${Date.now()}`,
+          name: reqName.trim(),
+          email: reqEmail.trim(),
+          satker: reqSatker,
+          phone: reqPhone.trim(),
+          title: reqTitle,
+          note: reqNote.trim(),
+          createdAt: new Date().toISOString(),
+          status: "pending",
+        };
+        existingReqs.unshift(newReq);
+        localStorage.setItem("ptwp_account_requests", JSON.stringify(existingReqs));
+      } catch (err) {
+        console.error("Failed to save account request:", err);
+      }
+    }
+
+    setReqSubmitted(true);
+  };
+
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -98,56 +141,25 @@ export default function AuthView({
       return;
     }
 
-    const userData = {
-      name: loginIdentifier.toLowerCase().includes("wulan")
-        ? "Wulan Febrianti, A.Md"
-        : loginIdentifier.toLowerCase().includes("pusat")
-        ? "Pengurus Pusat Mahkamah Agung"
-        : loginIdentifier,
-      username: loginIdentifier.trim(),
-      phone: loginIdentifier.startsWith("08") ? loginIdentifier : "08123456789",
-      role: level === "pusat" ? "pusat" : loginIdentifier.toLowerCase().includes("anggota") ? "anggota" : "bendahara",
-      roleLabel: level === "pusat" ? "Pengurus Pusat PTWP" : "Bendahara Cabang",
-      satker: level === "pusat" ? "Mahkamah Agung RI" : loginSatker,
-      level: level,
-    };
+    if (!loginPassword.trim()) {
+      setErrorMsg("Mohon masukkan kata sandi (password).");
+      return;
+    }
 
-    setSuccessMsg("Berhasil masuk! Mengarahkan ke dashboard...");
+    // Validasi Kredensial & RBAC Satuan Kerja
+    const verification = verifyCredentials(loginSatker, loginIdentifier, loginPassword);
+    if (!verification.success) {
+      setErrorMsg(verification.error);
+      return;
+    }
+
+    const userData = verification.user;
+    setSuccessMsg(`Berhasil masuk ke ${userData.satker}! Mengarahkan ke dashboard...`);
     setTimeout(() => {
       onLoginSuccess && onLoginSuccess(userData);
     }, 400);
   };
 
-  const handleRegisterSubmit = (e) => {
-    e.preventDefault();
-    setErrorMsg("");
-
-    if (!regName.trim() || !regPhone.trim()) {
-      setErrorMsg("Nama lengkap dan Nomor WhatsApp wajib diisi.");
-      return;
-    }
-
-    if (regPassword && regPassword !== regConfirmPassword) {
-      setErrorMsg("Konfirmasi password tidak cocok dengan password.");
-      return;
-    }
-
-    const userData = {
-      name: regName.trim(),
-      username: regNip.trim() || regName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
-      phone: regPhone.trim(),
-      title: regTitle,
-      role: regRole,
-      roleLabel: regRole === "bendahara" ? "Bendahara Cabang" : regRole === "ketua" ? "Ketua Cabang" : "Pegawai / Anggota",
-      satker: regSatker,
-      level: "cabang",
-    };
-
-    setSuccessMsg("Pendaftaran berhasil! Akun Anda siap digunakan.");
-    setTimeout(() => {
-      onLoginSuccess && onLoginSuccess(userData);
-    }, 450);
-  };
 
   const handleQuickLogin = (roleType) => {
     let mockUser;
@@ -302,60 +314,69 @@ export default function AuthView({
             position: "relative",
           }}
         >
-            {/* Tab Switcher Masuk vs Daftar */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                background: "#f1f5f9",
-                borderRadius: "14px",
-                padding: "4px",
-                marginBottom: "20px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("login");
-                  setErrorMsg("");
-                }}
-                style={{
-                  padding: "9px 0",
-                  borderRadius: "10px",
-                  border: "none",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  background: mode === "login" ? "#ffffff" : "transparent",
-                  color: mode === "login" ? "#0f5132" : "#64748b",
-                  boxShadow: mode === "login" ? "0 2px 6px rgba(0, 0, 0, 0.08)" : "none",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Masuk ke Akun
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("register");
-                  setErrorMsg("");
-                }}
-                style={{
-                  padding: "9px 0",
-                  borderRadius: "10px",
-                  border: "none",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  background: mode === "register" ? "#ffffff" : "transparent",
-                  color: mode === "register" ? "#0f5132" : "#64748b",
-                  boxShadow: mode === "register" ? "0 2px 6px rgba(0, 0, 0, 0.08)" : "none",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Daftar Akun Baru
-              </button>
-            </div>
+            {/* Header Login vs Formulir Pengajuan Akun */}
+            {mode === "login" ? (
+              <div style={{ marginBottom: "22px", textAlign: "center" }}>
+                <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0" }}>
+                  Masuk ke Akun
+                </h2>
+                <p style={{ fontSize: "12.5px", color: "#64748b", margin: 0 }}>
+                  Silakan masukkan kredensial akun PTWP Anda
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("login");
+                      setErrorMsg("");
+                      setSuccessMsg("");
+                      setReqSubmitted(false);
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "#f1f5f9",
+                      border: "none",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#475569",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Kembali ke Login</span>
+                  </button>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color: "#15803d",
+                      background: "#dcfce7",
+                      padding: "4px 9px",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    Verifikasi Admin
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: "18px" }}>
+                  <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0" }}>
+                    Formulir Pengajuan Akun
+                  </h2>
+                  <p style={{ fontSize: "12px", color: "#64748b", margin: 0, lineHeight: 1.45 }}>
+                    Lengkapi data di bawah ini. Administrator akan memverifikasi dan menerbitkan akun Anda.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Alert Messages */}
             {errorMsg && (
@@ -626,283 +647,360 @@ export default function AuthView({
                   <ArrowRight size={16} />
                 </button>
 
+                {/* Hubungi Administrasi Prompt */}
+                <div
+                  style={{
+                    marginTop: "16px",
+                    paddingTop: "14px",
+                    borderTop: "1px solid #f1f5f9",
+                    textAlign: "center",
+                    fontSize: "13px",
+                    color: "#64748b",
+                  }}
+                >
+                  Belum memiliki akun?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("request_account");
+                      setErrorMsg("");
+                      setSuccessMsg("");
+                      setReqSubmitted(false);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#0f5132",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      fontSize: "13px",
+                      padding: 0,
+                    }}
+                  >
+                    Hubungi Administrasi
+                  </button>
+                </div>
               </form>
+            ) : reqSubmitted ? (
+              /* Tampilan Konfirmasi Sukses Pengajuan Akun */
+              <div style={{ textAlign: "center", padding: "12px 4px" }}>
+                <div
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "50%",
+                    background: "#dcfce7",
+                    color: "#16a34a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 16px auto",
+                    boxShadow: "0 6px 16px rgba(22, 163, 74, 0.2)",
+                  }}
+                >
+                  <CheckCircle2 size={30} />
+                </div>
+
+                <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", marginBottom: "8px" }}>
+                  Pengajuan Berhasil Dikirim!
+                </h3>
+
+                <p style={{ fontSize: "13px", color: "#475569", lineHeight: 1.5, marginBottom: "18px" }}>
+                  Data permohonan akun atas nama <strong>{reqName}</strong> telah diterima untuk diverifikasi oleh Administrator Satker <strong>{reqSatker}</strong>.
+                </p>
+
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    padding: "12px 14px",
+                    marginBottom: "20px",
+                    textAlign: "left",
+                    fontSize: "12px",
+                    color: "#334155",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                  }}
+                >
+                  <div><strong>Nama:</strong> {reqName}</div>
+                  <div><strong>Email:</strong> {reqEmail}</div>
+                  <div><strong>Satker:</strong> {reqSatker}</div>
+                  <div><strong>Jabatan:</strong> {reqTitle}</div>
+                  <div><strong>No. WA:</strong> {reqPhone}</div>
+                  {reqNote && <div><strong>Catatan:</strong> {reqNote}</div>}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <a
+                    href={`https://wa.me/6281234567890?text=${encodeURIComponent(
+                      `Halo Administrator PTWP, saya telah mengisi formulir pengajuan akun baru:\n\n• Nama: ${reqName}\n• Email: ${reqEmail}\n• Satker: ${reqSatker}\n• No WA: ${reqPhone}\n• Jabatan: ${reqTitle}\n\nMohon diverifikasi dan diaktifkan. Terima kasih.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      width: "100%",
+                      padding: "11px",
+                      borderRadius: "12px",
+                      background: "#16a34a",
+                      color: "#ffffff",
+                      fontWeight: 700,
+                      fontSize: "13px",
+                      textDecoration: "none",
+                      boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
+                    }}
+                  >
+                    <Phone size={15} />
+                    <span>Konfirmasi Cepat via WhatsApp</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("login");
+                      setReqSubmitted(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      background: "#ffffff",
+                      color: "#334155",
+                      fontWeight: 600,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Kembali ke Halaman Login
+                  </button>
+                </div>
+              </div>
             ) : (
               /* ========================================================
-                 FORMULIR 2: REGISTRASI AKUN BARU
+                 FORMULIR PENGAJUAN AKUN (SESUAI GAMBAR 2)
                  ======================================================== */
-              <form onSubmit={handleRegisterSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {/* Nama Lengkap */}
+              <form onSubmit={handleRequestAccountSubmit} style={{ display: "flex", flexDirection: "column", gap: "13px" }}>
+                {/* Nama lengkap */}
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                    Nama Lengkap & Gelar
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Nama lengkap <span style={{ color: "#dc2626" }}>*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Wulan Febrianti, A.Md"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Masukkan nama lengkap"
+                    value={reqName}
+                    onChange={(e) => setReqName(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "8px 12px",
+                      padding: "10px 14px",
                       borderRadius: "10px",
                       border: "1.5px solid #cbd5e1",
                       fontSize: "13px",
                       background: "#f8fafc",
                       outline: "none",
+                      boxSizing: "border-box",
                     }}
                     required
                   />
                 </div>
 
-                {/* Baris NIP & No WA */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                      NIP (Nomor Induk)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="1995..."
-                      value={regNip}
-                      onChange={(e) => setRegNip(e.target.value)}
+                {/* Email kantor atau email yang disetujui */}
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Email kantor atau email yang disetujui <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="nama@instansi.go.id"
+                    value={reqEmail}
+                    onChange={(e) => setReqEmail(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "13px",
+                      background: "#f8fafc",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                    required
+                  />
+                </div>
+
+                {/* Satuan kerja */}
+                <div style={{ position: "relative" }} ref={reqDropdownRef}>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Satuan kerja <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsReqDropdownOpen((prev) => !prev)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "8px",
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: `1.5px solid ${isReqDropdownOpen ? "#16a34a" : "#cbd5e1"}`,
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      color: "#0f172a",
+                      background: "#f8fafc",
+                      outline: "none",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      boxSizing: "border-box",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {reqSatker}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      color="#64748b"
                       style={{
-                        width: "100%",
-                        padding: "8px 12px",
-                        borderRadius: "10px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "13px",
-                        background: "#f8fafc",
-                        outline: "none",
+                        flexShrink: 0,
+                        transform: isReqDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.2s ease",
                       }}
                     />
-                  </div>
+                  </button>
 
+                  {isReqDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 4px)",
+                        left: 0,
+                        right: 0,
+                        zIndex: 50,
+                        background: "#ffffff",
+                        borderRadius: "12px",
+                        border: "1px solid #cbd5e1",
+                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2)",
+                        maxHeight: "190px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      {SAMPLE_SATKER.map((satker) => (
+                        <div
+                          key={satker}
+                          onClick={() => {
+                            setReqSatker(satker);
+                            setIsReqDropdownOpen(false);
+                          }}
+                          style={{
+                            padding: "9px 14px",
+                            fontSize: "12.5px",
+                            fontWeight: reqSatker === satker ? 700 : 500,
+                            color: reqSatker === satker ? "#0f5132" : "#334155",
+                            background: reqSatker === satker ? "#f0fdf4" : "transparent",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            borderBottom: "1px solid #f1f5f9",
+                          }}
+                        >
+                          <span>{satker}</span>
+                          {reqSatker === satker && <Check size={14} color="#0f5132" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Nomor WhatsApp & Jabatan */}
+                <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "10px" }}>
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                      No. WhatsApp
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                      No. WhatsApp <span style={{ color: "#dc2626" }}>*</span>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       placeholder="08123456789"
-                      value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
+                      value={reqPhone}
+                      onChange={(e) => setReqPhone(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "8px 12px",
+                        padding: "10px 12px",
                         borderRadius: "10px",
                         border: "1.5px solid #cbd5e1",
                         fontSize: "13px",
                         background: "#f8fafc",
                         outline: "none",
+                        boxSizing: "border-box",
                       }}
                       required
                     />
                   </div>
-                </div>
 
-                {/* Pilihan Satker */}
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                    Satuan Kerja Pengadilan
-                  </label>
-                  <div style={{ position: "relative" }} ref={regDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsRegDropdownOpen((prev) => !prev)}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "8px",
-                        padding: "8px 12px",
-                        borderRadius: "10px",
-                        border: `1.5px solid ${isRegDropdownOpen ? "#16a34a" : "#cbd5e1"}`,
-                        fontSize: "12.5px",
-                        fontWeight: 600,
-                        color: "#0f172a",
-                        background: "#f8fafc",
-                        outline: "none",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        transition: "all 0.15s ease",
-                        boxShadow: isRegDropdownOpen ? "0 0 0 3px rgba(22, 163, 74, 0.15)" : "none",
-                      }}
-                    >
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {regSatker}
-                      </span>
-                      <ChevronDown
-                        size={15}
-                        color="#64748b"
-                        style={{
-                          flexShrink: 0,
-                          transform: isRegDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
-                          transition: "transform 0.2s ease",
-                        }}
-                      />
-                    </button>
-
-                    {isRegDropdownOpen && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "calc(100% + 4px)",
-                          left: 0,
-                          right: 0,
-                          zIndex: 60,
-                          background: "#ffffff",
-                          borderRadius: "12px",
-                          border: "1.5px solid #cbd5e1",
-                          boxShadow: "0 14px 30px -4px rgba(0, 0, 0, 0.2), 0 4px 10px -2px rgba(0, 0, 0, 0.08)",
-                          maxHeight: "200px",
-                          overflowY: "auto",
-                          padding: "6px",
-                        }}
-                      >
-                        {SAMPLE_SATKER.map((satker, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => {
-                              setRegSatker(satker);
-                              setIsRegDropdownOpen(false);
-                            }}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: "8px",
-                              fontSize: "12px",
-                              fontWeight: satker === regSatker ? 700 : 500,
-                              color: satker === regSatker ? "#166534" : "#1e293b",
-                              background: satker === regSatker ? "#dcfce7" : "transparent",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "8px",
-                              transition: "background 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (satker !== regSatker) e.currentTarget.style.background = "#f1f5f9";
-                            }}
-                            onMouseLeave={(e) => {
-                              if (satker !== regSatker) e.currentTarget.style.background = "transparent";
-                            }}
-                          >
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {satker}
-                            </span>
-                            {satker === regSatker && <Check size={14} color="#16a34a" style={{ flexShrink: 0 }} />}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Jabatan & Peran */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
                       Jabatan
                     </label>
                     <select
-                      value={regTitle}
-                      onChange={(e) => setRegTitle(e.target.value)}
+                      value={reqTitle}
+                      onChange={(e) => setReqTitle(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "8px 10px",
+                        padding: "10px 8px",
                         borderRadius: "10px",
                         border: "1.5px solid #cbd5e1",
-                        fontSize: "12.5px",
+                        fontSize: "13px",
                         background: "#f8fafc",
                         outline: "none",
+                        cursor: "pointer",
+                        boxSizing: "border-box",
                       }}
                     >
                       <option value="Hakim">Hakim</option>
                       <option value="Panitera">Panitera</option>
-                      <option value="Panmud">Panmud</option>
                       <option value="Sekretaris">Sekretaris</option>
-                      <option value="Kasub">Kasubag</option>
-                      <option value="PP">Panitera Pengganti</option>
-                      <option value="JS">Jurusita</option>
-                      <option value="Staf">Staf / Pelaksana</option>
+                      <option value="Kasubag">Kasubag</option>
+                      <option value="Panitera Pengganti">Panitera Pengganti</option>
+                      <option value="Jurusita">Jurusita</option>
+                      <option value="Staf Pelaksana">Staf Pelaksana</option>
                       <option value="PPNPN">PPNPN</option>
                     </select>
                   </div>
-
-                  <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                      Peran Akun
-                    </label>
-                    <select
-                      value={regRole}
-                      onChange={(e) => setRegRole(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: "10px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "12.5px",
-                        background: "#f8fafc",
-                        outline: "none",
-                      }}
-                    >
-                      <option value="bendahara">Bendahara Cabang</option>
-                      <option value="ketua">Ketua / Pengurus</option>
-                      <option value="anggota">Anggota Pegawai</option>
-                    </select>
-                  </div>
                 </div>
 
-                {/* Baris Password & Konfirmasi */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 12px",
-                        borderRadius: "10px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "13px",
-                        background: "#f8fafc",
-                        outline: "none",
-                      }}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
-                      Ulangi Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={regConfirmPassword}
-                      onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 12px",
-                        borderRadius: "10px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "13px",
-                        background: "#f8fafc",
-                        outline: "none",
-                      }}
-                      required
-                    />
-                  </div>
+                {/* Catatan Pengajuan (Opsional) */}
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Catatan Pengajuan (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Keperluan akun / pegawai baru / mutasi..."
+                    value={reqNote}
+                    onChange={(e) => setReqNote(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "13px",
+                      background: "#f8fafc",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
                 </div>
 
-                {/* Tombol Submit Registrasi */}
+                {/* Submit Button */}
                 <button
                   type="submit"
                   style={{
@@ -911,20 +1009,21 @@ export default function AuthView({
                     justifyContent: "center",
                     gap: "8px",
                     width: "100%",
-                    padding: "11px",
+                    padding: "12px",
                     marginTop: "6px",
                     borderRadius: "12px",
                     border: "none",
                     background: "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
                     color: "#ffffff",
-                    fontSize: "13.5px",
+                    fontSize: "14px",
                     fontWeight: 700,
                     cursor: "pointer",
                     boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  <UserCheck size={16} />
-                  <span>Daftar Akun Anggota</span>
+                  <Send size={15} />
+                  <span>Kirim Pengajuan ke Administrator</span>
                 </button>
               </form>
             )}

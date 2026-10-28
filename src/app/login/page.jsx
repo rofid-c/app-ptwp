@@ -9,7 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handleLoginSuccess = (user) => {
-    loginUser(user.username, "");
+    loginUser(user, "", user.satker);
     router.push("/");
   };
 

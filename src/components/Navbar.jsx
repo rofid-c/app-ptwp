@@ -105,7 +105,15 @@ export default function Navbar({
           <div className="stitch-user-text">
             <span className="stitch-user-name-label">{currentUser?.name || "Tamu / Anggota"}</span>
             <span className="stitch-user-role-label">
-              {currentUser?.role === "bendahara" ? "Bendahara" : currentUser?.role === "pimpinan" ? "Ketua" : "Pegawai"}
+              {currentUser?.role === "super_admin"
+                ? "Super Administrator"
+                : currentUser?.role === "pusat"
+                ? "Pengurus Pusat"
+                : currentUser?.role === "bendahara"
+                ? "Bendahara"
+                : currentUser?.role === "pimpinan"
+                ? "Ketua"
+                : "Pegawai"}
             </span>
           </div>
           <div className="stitch-user-avatar-circle">

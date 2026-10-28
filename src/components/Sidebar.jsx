@@ -20,21 +20,31 @@ export default function Sidebar({
   onOpenProfile,
   totalMembersCount = 0,
 }) {
+  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
   const navItems = [
+    ...(isSuper
+      ? [
+          {
+            id: "admin",
+            label: "Portal Admin",
+            icon: ShieldCheck,
+          },
+        ]
+      : []),
     {
       id: "dashboard",
-      label: "Dashboard",
+      label: isSuper ? "Dashboard Cabang" : "Dashboard",
       icon: LayoutDashboard,
     },
     {
       id: "dues",
-      label: "Rekap Iuran",
+      label: isSuper ? "Rekap Iuran Cabang" : "Rekap Iuran",
       icon: FileSpreadsheet,
       badge: totalMembersCount > 0 ? `${totalMembersCount}` : null,
     },
     {
       id: "cashbook",
-      label: "Buku Kas",
+      label: isSuper ? "Buku Kas Cabang" : "Buku Kas",
       icon: Wallet,
     },
   ];
@@ -51,8 +61,14 @@ export default function Sidebar({
         <div className="stitch-brand-header">
           <div className="stitch-brand-badge">P</div>
           <div className="stitch-brand-info">
-            <span className="brand-title">PTWP CABANG</span>
-            <span className="brand-subtitle">PA Gunung Sugih</span>
+            <span className="brand-title">{isSuper ? "PTWP PUSAT" : "PTWP CABANG"}</span>
+            <span className="brand-subtitle">
+              {isSuper
+                ? "Super Administrator"
+                : currentUser?.satker
+                ? currentUser.satker.replace("Pengadilan Agama", "PA").replace("Pengadilan Tinggi Agama", "PTA")
+                : "PA Gunung Sugih"}
+            </span>
           </div>
         </div>
 
@@ -87,19 +103,6 @@ export default function Sidebar({
             <Settings className="icon" size={19} />
             <span>Pengaturan</span>
           </button>
-
-          <button
-            type="button"
-            className="stitch-nav-item"
-            onClick={() => {
-              if (setMobileOpen) setMobileOpen(false);
-              if (onOpenAuth) onOpenAuth();
-            }}
-            style={{ marginTop: "4px" }}
-          >
-            <ShieldCheck className="icon" size={19} />
-            <span>Login & Registrasi</span>
-          </button>
         </nav>
       </div>
 
@@ -123,7 +126,15 @@ export default function Sidebar({
           <div className="stitch-user-meta">
             <div className="stitch-user-name">{currentUser?.name || "Masuk Akun"}</div>
             <div className="stitch-user-role">
-              {currentUser?.role === "bendahara" ? "Bendahara" : currentUser?.role === "pimpinan" ? "Ketua" : "Pegawai"}
+              {currentUser?.role === "super_admin"
+                ? "Super Administrator"
+                : currentUser?.role === "pusat"
+                ? "Pengurus Pusat"
+                : currentUser?.role === "bendahara"
+                ? "Bendahara"
+                : currentUser?.role === "pimpinan"
+                ? "Ketua"
+                : "Pegawai"}
             </div>
           </div>
           <ShieldCheck size={16} color="#eab308" />
