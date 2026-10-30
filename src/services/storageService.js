@@ -45,18 +45,81 @@ function setLocalData(key, value) {
 // 1. ANGGOTA & IURAN SERVICE
 // ==========================================
 
+
+/**
+ * Membersihkan data anggota dari baris tanda tangan / footer Excel yang tidak sengaja terimpor
+ * (seperti 'Bendahara Kantor' atau 'Wulan Febrianti, A.Md' dengan iuran 0 di bawah tabel)
+ */
+export function filterRealMembers(members = []) {
+  if (!Array.isArray(members)) return [];
+  const seenNames = new Set();
+
+  return members
+    .filter((m) => {
+      if (!m || !m.name) return false;
+      const nameUpper = String(m.name || "").trim().toUpperCase();
+
+      // 1. Filter nama-nama non-anggota (tanda tangan & jabatan footer)
+      if (
+        nameUpper.includes("BENDAHARA") ||
+        nameUpper.includes("MENGETAHUI") ||
+        nameUpper.includes("GUNUNG SUGIH") ||
+        nameUpper.includes("TOTAL") ||
+        nameUpper.includes("JUMLAH") ||
+        nameUpper.startsWith("NIP") ||
+        nameUpper === "DTO"
+      ) {
+        return false;
+      }
+
+      const total =
+        Number(m.pusat || 0) +
+        Number(m.daerah || 0) +
+        Number(m.cabang || 0) +
+        Number(m.tournamen || 0);
+
+      // 2. Filter baris tanda tangan duplikat bernilai 0 (seperti Wulan Febrianti di baris tanda tangan bawah)
+      const normName = nameUpper.replace(/[^A-Z]/g, "");
+      if (seenNames.has(normName) && total === 0) {
+        return false;
+      }
+
+      // 3. Jika total iuran adalah 0 dan ada nama Wulan Febrianti / Al Fitri (pejabat penandatangan)
+      if (total === 0 && (nameUpper.includes("WULAN FEBRIANTI") || nameUpper.includes("AL FITRI"))) {
+        const hasRealEmployee = members.some((other) => {
+          const otherUpper = String(other.name || "").toUpperCase();
+          const otherTotal =
+            Number(other.pusat || 0) +
+            Number(other.daerah || 0) +
+            Number(other.cabang || 0) +
+            Number(other.tournamen || 0);
+          return otherUpper.includes("WULAN FEBRIANTI") && otherTotal > 0;
+        });
+        if (hasRealEmployee) return false;
+      }
+
+      seenNames.add(normName);
+      return true;
+    })
+    .map((m, idx) => ({ ...m, no: idx + 1 }));
+}
+
 export async function fetchMembersByPeriod(period = "September 2026") {
   if (API_CONFIG.USE_REMOTE_API) {
     const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues?period=${encodeURIComponent(period)}`);
     if (!res.ok) throw new Error("Gagal mengambil data iuran dari API server.");
     const json = await res.json();
-    return json.data || [];
+    return filterRealMembers(json.data || []);
   }
 
-  // Client-side LocalStorage: data awal dikosongkan sesuai permintaan
+  // Client-side LocalStorage: bersihkan fake signature rows jika pernah terimpor
   const key = `${STORAGE_KEYS.MEMBERS_PREFIX}${period}`;
   const data = getLocalData(key, []);
-  return data;
+  const cleaned = filterRealMembers(data);
+  if (isClient() && Array.isArray(data) && cleaned.length !== data.length) {
+    setLocalData(key, cleaned);
+  }
+  return cleaned;
 }
 
 export function loadSampleTemplateData(period = "September 2026") {
@@ -76,19 +139,30 @@ export function clearPeriodData(period) {
     }
   }
 
-  // Bersihkan juga dari ptwp_cashbook jika ada catatan kas terkait periode ini
+  // Bersihkan juga dari ptwp_cashbook seluruh catatan kas & belanja terkait periode ini
   const raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
   const cleanCash = (Array.isArray(raw) ? raw : []).filter((item) => {
     const desc = item?.description || "";
     const itemPeriod = item?.period || "";
     const isThisPeriod =
       item.id === `dues_${period}` ||
-      itemPeriod === period ||
+      item.id === `saldo_awal_${period}` ||
+      String(item.id || "").includes(period) ||
+      itemPeriod.toLowerCase() === period.toLowerCase() ||
       desc.includes(period) ||
       (item.source === "rekap_iuran" && (!itemPeriod || itemPeriod === period));
     return !isThisPeriod;
   });
   setLocalData(STORAGE_KEYS.CASHBOOK, cleanCash);
+
+  // Sync hapus periode ini ke MySQL
+  if (isClient()) {
+    try {
+      fetch(`/api/cashbook?period=${encodeURIComponent(period)}`, {
+        method: "DELETE",
+      }).catch((e) => console.warn("Sync delete period to MySQL failed:", e));
+    } catch (e) {}
+  }
 
   return [];
 }
@@ -104,40 +178,42 @@ export function clearAllPeriodsData() {
           localStorage.setItem(k, JSON.stringify([]));
         }
       });
+      // Kosongkan seluruh transaksi kas di localStorage
+      localStorage.setItem(STORAGE_KEYS.CASHBOOK, JSON.stringify([]));
     } catch (e) {
       console.error("Error clearing all periods dues in localStorage", e);
     }
   }
 
-  // Bersihkan seluruh transaksi kas berbasis rekap iuran di Buku Kas
-  const raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
-  const cleanCash = (Array.isArray(raw) ? raw : []).filter((item) => {
-    const desc = item?.description || "";
-    return !(
-      item?.source === "rekap_iuran" ||
-      String(item?.id || "").startsWith("dues_") ||
-      desc.includes("Penerimaan Iuran PTWP Periode")
-    );
-  });
-  setLocalData(STORAGE_KEYS.CASHBOOK, cleanCash);
+  // Bersihkan seluruh transaksi kas
+  setLocalData(STORAGE_KEYS.CASHBOOK, []);
+
+  // Sync kosongkan seluruh kas ke MySQL
+  if (isClient()) {
+    try {
+      fetch("/api/cashbook?clearAll=true", {
+        method: "DELETE",
+      }).catch((e) => console.warn("Sync clear all cashbook to MySQL failed:", e));
+    } catch (e) {}
+  }
 
   return [];
 }
 
-
 export async function saveMembersByPeriod(period, members) {
+  const cleaned = filterRealMembers(members);
   if (API_CONFIG.USE_REMOTE_API) {
     const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ period, members }),
+      body: JSON.stringify({ period, members: cleaned }),
     });
     if (!res.ok) throw new Error("Gagal menyimpan data iuran ke API server.");
     return await res.json();
   }
 
   const key = `${STORAGE_KEYS.MEMBERS_PREFIX}${period}`;
-  setLocalData(key, members);
+  setLocalData(key, cleaned);
 
   // Pastikan periode tercatat di daftar periode yang tersedia
   const availablePeriods = getAvailablePeriods();
@@ -160,8 +236,9 @@ export async function saveMultiplePeriodsData(periodsData = []) {
     const { period, members } = item;
     if (!period || !Array.isArray(members)) return;
 
+    const cleaned = filterRealMembers(members);
     const key = `${STORAGE_KEYS.MEMBERS_PREFIX}${period}`;
-    setLocalData(key, members);
+    setLocalData(key, cleaned);
 
     if (!updatedAvailable.includes(period)) {
       updatedAvailable.push(period);
@@ -272,7 +349,8 @@ export function getRealDuesCashEntries() {
 
   periods.forEach((p) => {
     const key = `${STORAGE_KEYS.MEMBERS_PREFIX}${p}`;
-    const members = getLocalData(key, []);
+    const rawMembers = getLocalData(key, []);
+    const members = filterRealMembers(rawMembers);
     if (!Array.isArray(members) || members.length === 0) return;
 
     // Hitung seluruh anggota yang sudah lunas
@@ -326,83 +404,125 @@ export async function fetchCashBook() {
     return await res.json();
   }
 
-  // 1. Ambil transaksi kas manual dari localStorage
-  const raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
+  let raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
 
-  // 2. Bersihkan seluruh data dummy mock bawaan dan ghost dues entries yang mungkin pernah tersimpan
-  const cleanManual = (Array.isArray(raw) ? raw : []).filter((item) => {
-    const desc = item?.description || "";
-    const isFake =
-      desc.includes("Dunlop") ||
-      desc.includes("Outdoor Pemda") ||
-      desc.includes("Air Mineral") ||
-      desc.includes("Sisa Saldo Kas Bulan Agustus");
-
-    // Penerimaan iuran rekap TIDAK BOLEH tersimpan di CASHBOOK manual
-    // Penerimaan iuran dihitung 100% dinamis dari modul Rekap Iuran via getRealDuesCashEntries
-    const isDuesInManual =
-      item?.source === "rekap_iuran" ||
-      String(item?.id || "").startsWith("dues_") ||
-      desc.includes("Penerimaan Iuran PTWP Periode");
-
-    return !isFake && !isDuesInManual;
-  });
-
-  if (Array.isArray(raw) && raw.length !== cleanManual.length) {
-    setLocalData(STORAGE_KEYS.CASHBOOK, cleanManual);
+  // Jika di browser dan localStorage kosong, coba tarik dari database MySQL
+  if (isClient() && (!Array.isArray(raw) || raw.length === 0)) {
+    try {
+      const res = await fetch("/api/cashbook");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          raw = json.data;
+          setLocalData(STORAGE_KEYS.CASHBOOK, raw);
+        }
+      }
+    } catch (e) {}
   }
 
-  // 3. Baca penerimaan iuran riil dinamis dari modul Rekap Iuran
   const duesEntries = getRealDuesCashEntries();
+  const duesPeriods = new Set(duesEntries.map((d) => d.period));
 
-  // 4. Gabungkan iuran riil + transaksi manual yang dicatat bendahara
+  const cleanManual = (Array.isArray(raw) ? raw : []).filter((item) => {
+    // Jangan duplikasi jika duesEntries sudah memiliki data iuran dari anggota periode bersangkutan
+    if (item?.source === "rekap_iuran" && duesPeriods.has(item?.period)) {
+      return false;
+    }
+    return true;
+  });
+
   const combined = [...duesEntries, ...cleanManual];
-
-  // Urutkan tanggal terbaru ke paling awal
   combined.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
   return combined;
 }
 
 export async function addCashBookEntry(entry) {
   const raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
-  const cleanManual = (Array.isArray(raw) ? raw : []).filter((item) => {
-    const desc = item?.description || "";
-    const isFake =
-      desc.includes("Dunlop") ||
-      desc.includes("Outdoor Pemda") ||
-      desc.includes("Air Mineral") ||
-      desc.includes("Sisa Saldo Kas Bulan Agustus");
-    const isDues =
-      item?.source === "rekap_iuran" ||
-      String(item?.id || "").startsWith("dues_") ||
-      desc.includes("Penerimaan Iuran PTWP Periode");
-    return !isFake && !isDues;
-  });
-
-  const nextId = cleanManual.length > 0 ? Math.max(...cleanManual.map((c) => Number(c.id) || 0)) + 1 : 1;
+  const nextId = raw.length > 0 ? Math.max(...raw.map((c) => Number(c.id) || 0), 0) + 1 : 1;
   const newEntry = {
     ...entry,
-    id: nextId,
+    id: entry.id || nextId,
     date: entry.date || new Date().toISOString().split("T")[0],
-    source: "manual",
+    source: entry.source || "manual",
   };
-  const updated = [newEntry, ...cleanManual];
+  const updated = [newEntry, ...(Array.isArray(raw) ? raw : [])];
   setLocalData(STORAGE_KEYS.CASHBOOK, updated);
+
+  if (isClient()) {
+    try {
+      fetch("/api/cashbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEntry),
+      }).catch((e) => console.warn("Sync to DB failed:", e));
+    } catch (e) {}
+  }
+
+  return fetchCashBook();
+}
+
+export async function addCashBookEntriesBatch(newEntries = []) {
+  if (!Array.isArray(newEntries) || newEntries.length === 0) return fetchCashBook();
+
+  const raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
+  let maxId = raw.length > 0 ? Math.max(...raw.map((c) => Number(c.id) || 0), 0) : 0;
+
+  const preparedEntries = newEntries.map((entry) => {
+    maxId++;
+    return {
+      ...entry,
+      id: entry.id || `CB-${Date.now()}-${maxId}`,
+      date: entry.date || new Date().toISOString().split("T")[0],
+      source: entry.source || "manual",
+    };
+  });
+
+  // Deduplikasi berdasarkan id agar tidak dobel saat re-import
+  const existingMap = new Map();
+  if (Array.isArray(raw)) {
+    raw.forEach((item) => {
+      if (item && item.id) existingMap.set(String(item.id), item);
+    });
+  }
+  preparedEntries.forEach((item) => {
+    existingMap.set(String(item.id), item);
+  });
+  const updated = Array.from(existingMap.values());
+  setLocalData(STORAGE_KEYS.CASHBOOK, updated);
+
+  if (isClient()) {
+    try {
+      await fetch("/api/cashbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(preparedEntries),
+      });
+    } catch (e) {
+      console.warn("Sync batch to DB failed:", e);
+    }
+  }
+
   return fetchCashBook();
 }
 
 export async function deleteCashBookEntry(id) {
-  // Jika yang dihapus adalah penerimaan iuran rekap (id: dues_${period})
   if (String(id).startsWith("dues_")) {
     const targetPeriod = String(id).replace("dues_", "");
     clearPeriodData(targetPeriod);
-    return fetchCashBook();
   }
 
   const raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
   const updated = (Array.isArray(raw) ? raw : []).filter((c) => String(c.id) !== String(id));
   setLocalData(STORAGE_KEYS.CASHBOOK, updated);
+
+  if (isClient()) {
+    try {
+      fetch(`/api/cashbook?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }).catch((e) => console.warn("Sync delete to DB failed:", e));
+    } catch (e) {}
+  }
+
   return fetchCashBook();
 }
 
@@ -431,24 +551,24 @@ export function saveSettings(newSettings) {
 
 export const INITIAL_USERS = [
   {
-    username: "bendahara",
-    phone: "08123456789",
-    password: "123",
-    name: "Wulan Febrianti, A.Md",
-    role: "bendahara",
-    roleLabel: "Bendahara Cabang PA Gunung Sugih",
-    title: "Bendahara",
+    username: "user test",
+    phone: "08111222333",
+    password: "admin123",
+    name: "user test",
+    role: "pegawai",
+    roleLabel: "Pegawai PA Gunung Sugih",
+    title: "Pegawai",
     satker: "Pengadilan Agama Gunung Sugih",
     level: "cabang",
   },
   {
-    username: "user test",
-    phone: "08111222333",
-    password: "admin123",
-    name: "User Test PA Gunung Sugih",
+    username: "bendahara",
+    phone: "08123456789",
+    password: "123",
+    name: "Bendahara PA Gunung Sugih",
     role: "bendahara",
     roleLabel: "Bendahara Cabang PA Gunung Sugih",
-    title: "Bendahara Pengeluaran",
+    title: "Bendahara",
     satker: "Pengadilan Agama Gunung Sugih",
     level: "cabang",
   },
@@ -515,7 +635,12 @@ export function getRegisteredUsers() {
 }
 
 export function getCurrentUser() {
-  return getLocalData(STORAGE_KEYS.AUTH_USER, INITIAL_USERS[0]);
+  const user = getLocalData(STORAGE_KEYS.AUTH_USER, INITIAL_USERS[0]);
+  if (user && user.name && user.name.includes("Wulan Febrianti")) {
+    setLocalData(STORAGE_KEYS.AUTH_USER, INITIAL_USERS[0]);
+    return INITIAL_USERS[0];
+  }
+  return user || INITIAL_USERS[0];
 }
 
 /**
@@ -532,6 +657,7 @@ export function verifyCredentials(selectedSatker, identifier, password) {
     (u) =>
       String(u.username || "").toLowerCase() === cleanId ||
       String(u.phone || "") === cleanId ||
+      String(u.email || "").toLowerCase() === cleanId ||
       String(u.name || "").toLowerCase() === cleanId
   );
 
@@ -666,9 +792,12 @@ export function approveAccountRequest(requestId, initialPassword = "123") {
     ? req.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_")
     : req.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
 
+  // Utamakan kata sandi yang telah ditentukan sendiri oleh pemohon
+  const userPassword = (req.password && String(req.password).trim()) ? String(req.password).trim() : initialPassword;
+
   const newUser = {
     username: generatedUsername,
-    password: initialPassword,
+    password: userPassword,
     name: req.name,
     phone: req.phone || "",
     email: req.email || "",

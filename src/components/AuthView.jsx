@@ -66,6 +66,10 @@ export default function AuthView({
   const [reqPhone, setReqPhone] = useState("");
   const [reqTitle, setReqTitle] = useState("Hakim");
   const [reqNote, setReqNote] = useState("");
+  const [reqPassword, setReqPassword] = useState("");
+  const [reqConfirmPassword, setReqConfirmPassword] = useState("");
+  const [showReqPassword, setShowReqPassword] = useState(false);
+  const [showReqConfirmPassword, setShowReqConfirmPassword] = useState(false);
   const [reqSubmitted, setReqSubmitted] = useState(false);
 
   // Custom Dropdown states
@@ -91,7 +95,7 @@ export default function AuthView({
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const handleRequestAccountSubmit = (e) => {
+  const handleRequestAccountSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
@@ -107,6 +111,37 @@ export default function AuthView({
       setErrorMsg("Mohon masukkan nomor WhatsApp atau kontak aktif Anda.");
       return;
     }
+    if (!reqPassword.trim()) {
+      setErrorMsg("Mohon tentukan kata sandi (password) untuk akun Anda.");
+      return;
+    }
+    if (reqPassword.trim().length < 4) {
+      setErrorMsg("Kata sandi minimal 4 karakter.");
+      return;
+    }
+    if (reqPassword !== reqConfirmPassword) {
+      setErrorMsg("Konfirmasi kata sandi tidak cocok. Mohon ketik ulang dengan benar.");
+      return;
+    }
+
+    // Simpan ke MySQL via API
+    try {
+      await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: reqName.trim(),
+          email: reqEmail.trim(),
+          satker: reqSatker,
+          phone: reqPhone.trim(),
+          title: reqTitle,
+          password: reqPassword.trim(),
+          note: reqNote.trim(),
+        }),
+      });
+    } catch (err) {
+      console.error("API submit request error:", err);
+    }
 
     if (typeof window !== "undefined") {
       try {
@@ -118,6 +153,7 @@ export default function AuthView({
           satker: reqSatker,
           phone: reqPhone.trim(),
           title: reqTitle,
+          password: reqPassword.trim(),
           note: reqNote.trim(),
           createdAt: new Date().toISOString(),
           status: "pending",
@@ -132,7 +168,7 @@ export default function AuthView({
     setReqSubmitted(true);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
@@ -146,7 +182,35 @@ export default function AuthView({
       return;
     }
 
-    // Validasi Kredensial & RBAC Satuan Kerja
+    // 1. Coba verifikasi via MySQL Database API
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          satker: loginSatker,
+          identifier: loginIdentifier,
+          password: loginPassword,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.user) {
+          setSuccessMsg(`Berhasil masuk ke ${json.user.satker}! Mengarahkan ke dashboard...`);
+          setTimeout(() => {
+            onLoginSuccess && onLoginSuccess(json.user);
+          }, 400);
+          return;
+        } else if (json.error) {
+          setErrorMsg(json.error);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Database API unavailable, using offline fallback.", err);
+    }
+
+    // 2. Fallback Validasi Kredensial & RBAC (Offline LocalStorage)
     const verification = verifyCredentials(loginSatker, loginIdentifier, loginPassword);
     if (!verification.success) {
       setErrorMsg(verification.error);
@@ -730,6 +794,7 @@ export default function AuthView({
                   <div><strong>Satker:</strong> {reqSatker}</div>
                   <div><strong>Jabatan:</strong> {reqTitle}</div>
                   <div><strong>No. WA:</strong> {reqPhone}</div>
+                  <div><strong>Kata Sandi:</strong> •••••••• <span style={{ color: "#16a34a", fontSize: "11px", fontWeight: 600 }}>(Telah diatur sendiri)</span></div>
                   {reqNote && <div><strong>Catatan:</strong> {reqNote}</div>}
                 </div>
 
@@ -765,6 +830,8 @@ export default function AuthView({
                     onClick={() => {
                       setMode("login");
                       setReqSubmitted(false);
+                      setReqPassword("");
+                      setReqConfirmPassword("");
                     }}
                     style={{
                       width: "100%",
@@ -975,6 +1042,113 @@ export default function AuthView({
                       <option value="PPNPN">PPNPN</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Buat Kata Sandi Akun & Konfirmasi Kata Sandi */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                      Buat Kata Sandi <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        border: "1.5px solid #cbd5e1",
+                        borderRadius: "10px",
+                        padding: "9px 12px",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <Lock size={15} color="#64748b" style={{ flexShrink: 0 }} />
+                      <input
+                        type={showReqPassword ? "text" : "password"}
+                        placeholder="Min. 4 karakter"
+                        value={reqPassword}
+                        onChange={(e) => setReqPassword(e.target.value)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          outline: "none",
+                          width: "100%",
+                          fontSize: "13px",
+                          color: "#0f172a",
+                        }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowReqPassword(!showReqPassword)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "#94a3b8",
+                          padding: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {showReqPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                      Ulangi Kata Sandi <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        border: "1.5px solid #cbd5e1",
+                        borderRadius: "10px",
+                        padding: "9px 12px",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <Lock size={15} color="#64748b" style={{ flexShrink: 0 }} />
+                      <input
+                        type={showReqConfirmPassword ? "text" : "password"}
+                        placeholder="Ulangi sandi"
+                        value={reqConfirmPassword}
+                        onChange={(e) => setReqConfirmPassword(e.target.value)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          outline: "none",
+                          width: "100%",
+                          fontSize: "13px",
+                          color: "#0f172a",
+                        }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowReqConfirmPassword(!showReqConfirmPassword)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "#94a3b8",
+                          padding: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {showReqConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: "11px", color: "#64748b", marginTop: "-4px", lineHeight: "1.4" }}>
+                  🔒 <em>Kata sandi ini Anda buat sendiri untuk login setelah disetujui.</em>
                 </div>
 
                 {/* Catatan Pengajuan (Opsional) */}

@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Lock,
 } from "lucide-react";
 import {
   getAccountRequests,
@@ -28,7 +29,7 @@ import {
 } from "@/services/storageService";
 import { SAMPLE_SATKER } from "@/components/AuthView";
 
-export default function AdminView({ currentUser, onNavigateToBranch }) {
+export default function AdminView({ currentUser }) {
   const [activeSubTab, setActiveSubTab] = useState("requests");
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
@@ -50,8 +51,29 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
     title: "Pegawai",
   });
 
-  const loadData = () => {
-    if (typeof window !== "undefined") {
+  const loadData = async () => {
+    let loadedFromApi = false;
+    try {
+      const [resReq, resUsers] = await Promise.all([
+        fetch("/api/requests"),
+        fetch("/api/users"),
+      ]);
+      if (resReq.ok && resUsers.ok) {
+        const jsonReq = await resReq.json();
+        const jsonUsers = await resUsers.json();
+        if (jsonReq.success && Array.isArray(jsonReq.data)) {
+          setRequests(jsonReq.data);
+        }
+        if (jsonUsers.success && Array.isArray(jsonUsers.data)) {
+          setUsers(jsonUsers.data);
+        }
+        loadedFromApi = true;
+      }
+    } catch (err) {
+      console.warn("API load failed, using local storage fallback", err);
+    }
+
+    if (!loadedFromApi && typeof window !== "undefined") {
       setRequests(getAccountRequests());
       setUsers(getRegisteredUsers());
     }
@@ -65,9 +87,38 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
-  const handleApprove = (req) => {
-    const tempPassword = "123";
-    const result = approveAccountRequest(req.id, tempPassword);
+
+  const handleApprove = async (req) => {
+    const passwordToUse = (req.password && String(req.password).trim()) ? String(req.password).trim() : "123";
+    try {
+      const res = await fetch("/api/requests", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: req.id, action: "approve" }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          await loadData();
+          setApprovedModalData({
+            name: req.name,
+            username: json.user?.username || req.name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+            password: json.user?.password || passwordToUse,
+            satker: req.satker,
+            phone: req.phone,
+            email: req.email,
+            isSelfPassword: Boolean(req.password),
+          });
+          showToast(`Akses berhasil diizinkan untuk ${req.name}!`, "success");
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("API approve failed, falling back to local storage", e);
+    }
+
+    // Fallback Offline
+    const result = approveAccountRequest(req.id, passwordToUse);
     if (result.success) {
       loadData();
       setApprovedModalData({
@@ -77,6 +128,7 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
         satker: req.satker,
         phone: req.phone,
         email: req.email,
+        isSelfPassword: Boolean(req.password),
       });
       showToast(`Akses berhasil diizinkan untuk ${req.name}!`, "success");
     } else {
@@ -84,28 +136,44 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
     }
   };
 
-  const handleReject = (id, name) => {
+  const handleReject = async (id, name) => {
     if (confirm(`Yakin ingin menolak permohonan akun untuk "${name}"?`)) {
+      try {
+        await fetch("/api/requests", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, action: "reject" }),
+        });
+      } catch (e) {}
+
       rejectAccountRequest(id);
       loadData();
       showToast(`Permohonan ${name} ditolak.`, "info");
     }
   };
 
-  const handleDeleteRequest = (id) => {
+  const handleDeleteRequest = async (id) => {
     if (confirm("Hapus catatan permohonan ini dari daftar?")) {
+      try {
+        await fetch(`/api/requests?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      } catch (e) {}
+
       deleteAccountRequest(id);
       loadData();
       showToast("Data permohonan berhasil dihapus.", "info");
     }
   };
 
-  const handleRevokeUser = (username, name) => {
+  const handleRevokeUser = async (username, name) => {
     if (username.toLowerCase() === "aku admin") {
       alert("Akun Super Administrator tidak dapat dihapus!");
       return;
     }
     if (confirm(`PENTING: Apakah Anda yakin ingin MENCABUT HAK AKSES akun "${name}" (${username})? Pengguna ini tidak akan bisa login lagi.`)) {
+      try {
+        await fetch(`/api/users?username=${encodeURIComponent(username)}`, { method: "DELETE" });
+      } catch (e) {}
+
       const result = deleteRegisteredUser(username);
       if (result.success) {
         loadData();
@@ -116,12 +184,20 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
     }
   };
 
-  const handleAddDirectUserSubmit = (e) => {
+  const handleAddDirectUserSubmit = async (e) => {
     e.preventDefault();
     if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim()) {
       showToast("Nama, Username, dan Password wajib diisi.", "error");
       return;
     }
+
+    try {
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
+    } catch (e) {}
 
     const res = addDirectUser(newUser);
     if (res.success) {
@@ -261,52 +337,27 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          {onNavigateToBranch && (
-            <button
-              type="button"
-              onClick={() => onNavigateToBranch("dashboard")}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-                color: "#ffffff",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-                padding: "9px 16px",
-                borderRadius: "10px",
-                fontSize: "12.5px",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-              }}
-            >
-              <span>🏛️ Buka Tampilan PA Cabang</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={loadData}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "rgba(255, 255, 255, 0.15)",
-              color: "#ffffff",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-              padding: "9px 16px",
-              borderRadius: "10px",
-              fontSize: "12.5px",
-              fontWeight: 700,
-              cursor: "pointer",
-              backdropFilter: "blur(4px)",
-            }}
-          >
-            <RefreshCw size={15} />
-            <span>Segarkan Data</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={loadData}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "rgba(255, 255, 255, 0.15)",
+            color: "#ffffff",
+            border: "1px solid rgba(255, 255, 255, 0.25)",
+            padding: "9px 16px",
+            borderRadius: "10px",
+            fontSize: "12.5px",
+            fontWeight: 700,
+            cursor: "pointer",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <RefreshCw size={15} />
+          <span>Segarkan Data</span>
+        </button>
       </div>
 
       {/* STATS SUMMARY CARDS */}
@@ -425,52 +476,6 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
             </div>
           </div>
         </div>
-
-        {onNavigateToBranch && (
-          <div
-            onClick={() => onNavigateToBranch("dashboard")}
-            style={{
-              background: "linear-gradient(135deg, rgba(22, 163, 74, 0.08) 0%, rgba(15, 81, 50, 0.12) 100%)",
-              border: "1.5px solid rgba(22, 163, 74, 0.3)",
-              borderRadius: "14px",
-              padding: "18px 20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-              cursor: "pointer",
-              transition: "transform 0.15s ease",
-            }}
-            title="Buka Tampilan Dashboard & Rekap Iuran PA Cabang"
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              <div
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "10px",
-                  background: "#16a34a",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "20px",
-                }}
-              >
-                🏛️
-              </div>
-              <div>
-                <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 600 }}>
-                  Akses Modul Cabang
-                </div>
-                <div style={{ fontSize: "15px", fontWeight: 800, color: "#0f5132" }}>
-                  Tampilan PA Cabang
-                </div>
-              </div>
-            </div>
-            <span style={{ fontSize: "12px", fontWeight: 800, color: "#16a34a" }}>Buka →</span>
-          </div>
-        )}
       </div>
       {/* NAVIGATION TABS ADMIN */}
       <div
@@ -752,6 +757,24 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
+                              <span
+                                style={{
+                                  fontSize: "10.5px",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  background: req.password ? "#dcfce7" : "#f1f5f9",
+                                  color: req.password ? "#15803d" : "#64748b",
+                                  fontWeight: 600,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px",
+                                }}
+                              >
+                                <Lock size={10} />
+                                {req.password ? "Password Diatur Mandiri" : "Password Default"}
+                              </span>
                             </div>
                           </td>
 
@@ -1352,8 +1375,17 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
                 <strong style={{ fontFamily: "monospace", color: "#0f5132" }}>{approvedModalData.username}</strong>
               </div>
               <div>
-                <span style={{ color: "#64748b" }}>Password Awal:</span>{" "}
+                <span style={{ color: "#64748b" }}>Password:</span>{" "}
                 <strong style={{ fontFamily: "monospace", color: "#0f5132" }}>{approvedModalData.password}</strong>
+                {approvedModalData.isSelfPassword ? (
+                  <span style={{ marginLeft: "8px", fontSize: "11px", color: "#16a34a", fontWeight: 700 }}>
+                    ✓ (Diatur sendiri oleh pemohon)
+                  </span>
+                ) : (
+                  <span style={{ marginLeft: "8px", fontSize: "11px", color: "#64748b" }}>
+                    (Password default)
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1361,7 +1393,9 @@ export default function AdminView({ currentUser, onNavigateToBranch }) {
               {approvedModalData.phone && (
                 <a
                   href={`https://wa.me/${String(approvedModalData.phone).replace(/^0/, "62")}?text=${encodeURIComponent(
-                    `Assalamu'alaikum Wr. Wb. Yth. ${approvedModalData.name},\n\nAkun Anda untuk sistem PTWP telah DISETUJUI & AKTIF.\n\nBerikut kredensial login Anda:\n• Satker: ${approvedModalData.satker}\n• Username: ${approvedModalData.username}\n• Password: ${approvedModalData.password}\n\nSilakan login pada aplikasi PTWP. Terima kasih.`
+                    approvedModalData.isSelfPassword
+                      ? `Assalamu'alaikum Wr. Wb. Yth. ${approvedModalData.name},\n\nAkun Anda untuk sistem PTWP telah DISETUJUI & AKTIF.\n\nBerikut kredensial login Anda:\n• Satker: ${approvedModalData.satker}\n• Username: ${approvedModalData.username}\n• Password: (Gunakan password yang Anda buat sendiri saat mendaftar)\n\nSilakan login pada aplikasi PTWP. Terima kasih.`
+                      : `Assalamu'alaikum Wr. Wb. Yth. ${approvedModalData.name},\n\nAkun Anda untuk sistem PTWP telah DISETUJUI & AKTIF.\n\nBerikut kredensial login Anda:\n• Satker: ${approvedModalData.satker}\n• Username: ${approvedModalData.username}\n• Password: ${approvedModalData.password}\n\nSilakan login pada aplikasi PTWP. Terima kasih.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

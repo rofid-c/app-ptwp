@@ -323,6 +323,200 @@ export async function exportDuesToExcel({
   return true;
 }
 
+/**
+ * Export data realisasi pengeluaran / belanja iuran ke file Excel (.xlsx)
+ */
+export async function exportExpensesToExcel({
+  expenses = [],
+  period = "September 2026",
+  city = "Gunung Sugih",
+  treasurerName = "Wulan Febrianti, A.Md",
+  treasurerTitle = "Bendahara Kantor",
+  institution = "PENGADILAN AGAMA GUNUNG SUGIH",
+  effectiveUangMasuk = 0,
+  totalPeriodExpenses = 0,
+  netBalance = 0,
+}) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "PTWP-Hub PA Gunung Sugih";
+  workbook.lastModifiedBy = "Bendahara PTWP";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const worksheet = workbook.addWorksheet("Belanja " + period.replace(/[\/\\]/g, "-"), {
+    pageSetup: {
+      paperSize: 9,
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+    },
+    views: [{ showGridLines: true }],
+  });
+
+  worksheet.columns = [
+    { key: "no", width: 6 },
+    { key: "uraian", width: 38 },
+    { key: "category", width: 24 },
+    { key: "date", width: 14 },
+    { key: "amount", width: 18 },
+    { key: "ket", width: 28 },
+  ];
+
+  worksheet.mergeCells("A1:F1");
+  const titleCell = worksheet.getCell("A1");
+  titleCell.value = "REALISASI BELANJA DAN PENGELUARAN IURAN PTWP";
+  titleCell.font = { name: "Arial", size: 12, bold: true, color: { argb: "FF991B1B" } };
+  titleCell.alignment = { vertical: "middle", horizontal: "center" };
+  worksheet.getRow(1).height = 22;
+
+  worksheet.mergeCells("A2:F2");
+  const subTitleCell = worksheet.getCell("A2");
+  subTitleCell.value = "CABANG " + institution.toUpperCase();
+  subTitleCell.font = { name: "Arial", size: 11, bold: true, color: { argb: "FF334155" } };
+  subTitleCell.alignment = { vertical: "middle", horizontal: "center" };
+  worksheet.getRow(2).height = 20;
+
+  worksheet.getCell("A4").value = "Bulan :  " + period;
+  worksheet.getCell("A4").font = { name: "Arial", size: 10, bold: true };
+  worksheet.getCell("A4").alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.getRow(4).height = 18;
+
+  const headerRow = worksheet.getRow(6);
+  headerRow.values = ["NO", "URAIAN PENGELUARAN", "KATEGORI", "TANGGAL", "PENGELUARAN (RP)", "KETERANGAN / CATATAN"];
+  headerRow.height = 24;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: "Arial", size: 9, bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF991B1B" } };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  });
+
+  let currentRowIndex = 7;
+  const startDataRow = currentRowIndex;
+
+  expenses.forEach((item, index) => {
+    const row = worksheet.getRow(currentRowIndex);
+    row.height = 20;
+    row.getCell(1).value = index + 1;
+    row.getCell(2).value = item.uraian || item.description || "-";
+    row.getCell(3).value = item.category || "Operasional";
+    row.getCell(4).value = item.date || "-";
+    row.getCell(5).value = Number(item.amount || 0);
+    row.getCell(6).value = item.ket || "-";
+
+    row.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+    row.getCell(2).alignment = { vertical: "middle", horizontal: "left" };
+    row.getCell(3).alignment = { vertical: "middle", horizontal: "left" };
+    row.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
+    row.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+    row.getCell(5).numFmt = "#,##0";
+    row.getCell(6).alignment = { vertical: "middle", horizontal: "left" };
+
+    for (let c = 1; c <= 6; c++) {
+      const cell = row.getCell(c);
+      cell.font = { name: "Arial", size: 9 };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD1D5DB" } },
+        left: { style: "thin", color: { argb: "FFD1D5DB" } },
+        bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+        right: { style: "thin", color: { argb: "FFD1D5DB" } },
+      };
+      if (index % 2 === 1) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      }
+    }
+    currentRowIndex++;
+  });
+
+  const lastDataRow = Math.max(startDataRow, currentRowIndex - 1);
+
+  const totalRow = worksheet.getRow(currentRowIndex);
+  totalRow.height = 22;
+  worksheet.mergeCells("A" + currentRowIndex + ":D" + currentRowIndex);
+  totalRow.getCell(1).value = "TOTAL PENGELUARAN BULAN INI";
+  totalRow.getCell(1).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF991B1B" } };
+  totalRow.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+
+  if (expenses.length > 0) {
+    totalRow.getCell(5).value = { formula: "SUM(E" + startDataRow + ":E" + lastDataRow + ")" };
+  } else {
+    totalRow.getCell(5).value = 0;
+  }
+  totalRow.getCell(5).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF991B1B" } };
+  totalRow.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+  totalRow.getCell(5).numFmt = "#,##0";
+
+  for (let c = 1; c <= 6; c++) {
+    const cell = totalRow.getCell(c);
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "double", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  }
+
+  currentRowIndex++;
+
+  const netRow = worksheet.getRow(currentRowIndex);
+  netRow.height = 22;
+  worksheet.mergeCells("A" + currentRowIndex + ":D" + currentRowIndex);
+  netRow.getCell(1).value = "SISA SALDO BERSIH PERIODE " + period.toUpperCase() + " (IURAN MASUK - BELANJA)";
+  netRow.getCell(1).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF0F5132" } };
+  netRow.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+
+  netRow.getCell(5).value = Number(netBalance || 0);
+  netRow.getCell(5).font = { name: "Arial", size: 9, bold: true, color: { argb: netBalance >= 0 ? "FF0F5132" : "FFEA580C" } };
+  netRow.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+  netRow.getCell(5).numFmt = "#,##0";
+
+  for (let c = 1; c <= 6; c++) {
+    const cell = netRow.getCell(c);
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "medium", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  }
+
+  const sigRowStart = currentRowIndex + 3;
+  worksheet.getCell("E" + sigRowStart).value = city + ", " + new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  worksheet.getCell("E" + sigRowStart).font = { name: "Arial", size: 9 };
+  worksheet.getCell("E" + sigRowStart).alignment = { vertical: "middle", horizontal: "center" };
+
+  worksheet.getCell("E" + (sigRowStart + 1)).value = treasurerTitle;
+  worksheet.getCell("E" + (sigRowStart + 1)).font = { name: "Arial", size: 9 };
+  worksheet.getCell("E" + (sigRowStart + 1)).alignment = { vertical: "middle", horizontal: "center" };
+
+  worksheet.getCell("E" + (sigRowStart + 5)).value = treasurerName;
+  worksheet.getCell("E" + (sigRowStart + 5)).font = { name: "Arial", size: 9, bold: true, underline: true };
+  worksheet.getCell("E" + (sigRowStart + 5)).alignment = { vertical: "middle", horizontal: "center" };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const sanitizedPeriod = period.replace(/[^a-zA-Z0-9]/g, "_");
+  link.download = "REALISASI_BELANJA_PTWP_" + sanitizedPeriod + ".xlsx";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+  return true;
+}
+
+
 export const MONTH_NAMES_ID = [
   "Januari",
   "Februari",
@@ -493,21 +687,65 @@ function parseSheetRows(rows) {
     if (!row || !Array.isArray(row)) continue;
 
     const rawName = String(row[colIdx.name] || "").trim();
+    const rawNameUpper = rawName.toUpperCase();
     const firstCol = String(row[0] || "").trim().toUpperCase();
+    const rowFullText = row.map((c) => String(c || "").trim()).join(" ").toUpperCase();
 
+    // 1. Baris TOTAL / JUMLAH adalah batas akhir tabel anggota!
+    // Setelah baris total, seluruh baris di bawahnya adalah tanda tangan & footer
     if (
       firstCol.includes("TOTAL") ||
-      rawName.toUpperCase().includes("TOTAL") ||
-      firstCol.includes("GUNUNG SUGIH") ||
+      firstCol.includes("JUMLAH") ||
+      rawNameUpper.includes("TOTAL") ||
+      rawNameUpper.includes("JUMLAH") ||
+      rowFullText.startsWith("TOTAL") ||
+      rowFullText.startsWith("JUMLAH") ||
+      rowFullText.includes("TOTAL IURAN") ||
+      rowFullText.includes("JUMLAH TOTAL")
+    ) {
+      break;
+    }
+
+    // 2. Filter blok tanda tangan pejabat, bendahara, kota, atau NIP
+    if (
       firstCol.includes("BENDAHARA") ||
       firstCol.includes("MENGETAHUI") ||
-      firstCol.includes("NIP")
+      firstCol.includes("GUNUNG SUGIH") ||
+      firstCol.includes("NIP") ||
+      rawNameUpper.includes("BENDAHARA") ||
+      rawNameUpper.includes("MENGETAHUI") ||
+      rawNameUpper.includes("GUNUNG SUGIH") ||
+      rawNameUpper.includes("KETUA CABANG") ||
+      rawNameUpper.includes("PENGADILAN AGAMA") ||
+      rawNameUpper.includes("NIP.") ||
+      rawNameUpper === "DTO" ||
+      rowFullText.includes("BENDAHARA KANTOR") ||
+      rowFullText.includes("KETUA CABANG PTWP") ||
+      rowFullText.includes("MENGETAHUI,")
     ) {
       continue;
     }
 
     if (!rawName || rawName === "2" || /^\d+$/.test(rawName)) {
       continue;
+    }
+
+    const p = cleanNum(row[colIdx.pusat]);
+    const d = cleanNum(row[colIdx.daerah]);
+    const c = cleanNum(row[colIdx.cabang]);
+    const t = cleanNum(row[colIdx.tournamen]);
+    const totalDuesRow = p + d + c + t;
+
+    // 3. Filter baris tanda tangan kosong (total iuran 0 yang merupakan duplikat pejabat / tanpa nomor)
+    if (totalDuesRow === 0) {
+      const alreadyExists = parsedMembers.some(
+        (m) => m.name.toLowerCase().trim() === rawName.toLowerCase().trim()
+      );
+      if (alreadyExists) continue;
+
+      if (!row[0] || String(row[0]).trim() === "" || isNaN(Number(String(row[0]).trim()))) {
+        continue;
+      }
     }
 
     const title = String(row[colIdx.title] || "Staf").trim();
@@ -522,10 +760,10 @@ function parseSheetRows(rows) {
       name: rawName,
       title: title,
       category: category,
-      pusat: cleanNum(row[colIdx.pusat]),
-      daerah: cleanNum(row[colIdx.daerah]),
-      cabang: cleanNum(row[colIdx.cabang]),
-      tournamen: cleanNum(row[colIdx.tournamen]),
+      pusat: p,
+      daerah: d,
+      cabang: c,
+      tournamen: t,
       paid: true,
     });
 
@@ -538,6 +776,236 @@ function parseSheetRows(rows) {
 /**
  * Import file Excel (.xlsx atau .csv) dan parse SEMUA lembar (sheet) bulan yang ada di workbook secara otomatis
  */
+
+
+export function parseMatrixWorkbook(workbook, defaultYear = "2026") {
+  if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) return [];
+
+  const monthNamesMap = {
+    januari: "Januari", februari: "Februari", maret: "Maret", april: "April",
+    mei: "Mei", juni: "Juni", juli: "Juli", agustus: "Agustus",
+    september: "September", oktober: "Oktober", november: "November", desember: "Desember",
+    january: "Januari", february: "Februari", march: "Maret", august: "Agustus",
+    october: "Oktober", december: "Desember",
+  };
+
+  const monthOrder = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+
+  const monthRegex = /\b(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+
+  const cleanNum = (val) => {
+    if (typeof val === "number") return val;
+    if (!val) return 0;
+    const s = String(val).replace(/[^0-9,-]/g, "").replace(",", ".");
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : Math.round(n);
+  };
+
+  const sortedSheetNames = [...workbook.SheetNames].sort((a, b) => {
+    const aMatch = a.match(/\d+/);
+    const bMatch = b.match(/\d+/);
+    const aNum = aMatch ? parseInt(aMatch[0]) : 99;
+    const bNum = bMatch ? parseInt(bMatch[0]) : 99;
+    return aNum - bNum;
+  });
+
+  const allMonths = [];
+
+  for (const sheetName of sortedSheetNames) {
+    const ws = workbook.Sheets[sheetName];
+    if (!ws) continue;
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    if (!rows || rows.length < 5) continue;
+
+    // 1. Cari baris header tabel: Baris yang memiliki kolom "No" dan "URAIAN" (menghindari salah baca baris 0 judul)
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 12); i++) {
+      const row = rows[i] || [];
+      const c0 = String(row[0] || "").trim().toUpperCase();
+      const c1 = String(row[1] || "").trim().toUpperCase();
+      if (c0 === "NO" && (c1 === "URAIAN" || c1.includes("URAIAN"))) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+
+    if (headerRowIdx === -1) {
+      for (let i = 1; i < Math.min(rows.length, 12); i++) {
+        const row = rows[i] || [];
+        let monthCount = 0;
+        for (let c = 2; c < row.length; c++) {
+          if (monthRegex.test(String(row[c] || ""))) monthCount++;
+        }
+        if (monthCount >= 2) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+    }
+
+    if (headerRowIdx === -1) continue;
+
+    const headerRow = rows[headerRowIdx];
+    const subHeaderRow = rows[headerRowIdx + 1] || [];
+    const sheetMonths = [];
+
+    // Deteksi kolom bulan (misal kolom 2, 5, 8...)
+    for (let c = 2; c < headerRow.length; c++) {
+      const cellVal = String(headerRow[c] || "").trim();
+      if (!cellVal) continue;
+
+      const match = cellVal.match(monthRegex);
+      if (match) {
+        const mName = monthNamesMap[match[1].toLowerCase()] || match[1];
+        const yearMatch = cellVal.match(/\b(20\d\d)\b/);
+        const yr = yearMatch ? yearMatch[1] : defaultYear;
+        const period = `${mName} ${yr}`;
+
+        let colPemasukan = c;
+        let colPengeluaran = c + 1;
+        let colKet = c + 2;
+
+        const sub1 = String(subHeaderRow[c] || "").toLowerCase();
+        const sub2 = String(subHeaderRow[c + 1] || "").toLowerCase();
+        const sub3 = String(subHeaderRow[c + 2] || "").toLowerCase();
+        if (sub1.includes("pemasukan")) colPemasukan = c;
+        if (sub2.includes("pengeluaran")) colPengeluaran = c + 1;
+        if (sub3.includes("ket")) colKet = c + 2;
+
+        sheetMonths.push({
+          sheetName,
+          period,
+          monthName: mName,
+          year: yr,
+          label: cellVal,
+          selected: true,
+          colPemasukan,
+          colPengeluaran,
+          colKet,
+          saldoAwal: 0,
+          iuranMasuk: 0,
+          iuranKet: "",
+          expenses: [],
+          totalPengeluaran: 0,
+          saldoAkhir: 0,
+        });
+      }
+    }
+
+    if (sheetMonths.length === 0) continue;
+
+    // 2. Ekstraksi baris-baris data pengeluaran dan pemasukan
+    for (let r = headerRowIdx + 2; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || !Array.isArray(row)) continue;
+
+      const uraian = String(row[1] || "").trim();
+      if (!uraian) continue;
+
+      const uUpper = uraian.toUpperCase();
+      if (
+        uUpper.includes("BENDAHARA") ||
+        uUpper.includes("KETUA") ||
+        uUpper.includes("GUNUNG SUGIH") ||
+        uUpper.includes("MENGETAHUI") ||
+        uUpper === "DTO"
+      ) {
+        continue;
+      }
+
+      sheetMonths.forEach((sm) => {
+        const pem = cleanNum(row[sm.colPemasukan]);
+        const peng = cleanNum(row[sm.colPengeluaran]);
+        let rawKet = row[sm.colKet];
+        let ket = String(rawKet || "").trim();
+
+        const monthNum = (monthOrder.indexOf(sm.monthName) + 1).toString().padStart(2, "0");
+        let date = `${sm.year}-${monthNum}-20`;
+
+        // Deteksi serial tanggal Excel (misal 46057 -> 2026-02-04)
+        if (typeof rawKet === "number" && rawKet > 40000 && rawKet < 50000) {
+          const jsDate = new Date(Math.round((rawKet - 25569) * 86400 * 1000));
+          date = jsDate.toISOString().split("T")[0];
+          ket = "";
+        } else if (ket) {
+          const dmy = ket.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (dmy) {
+            date = `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+          }
+        }
+
+        if (uUpper.includes("SALDO AWAL")) {
+          sm.saldoAwal = pem;
+        } else if (uUpper.includes("IURAN PTWP PEGAWAI") || uUpper.includes("IURAN PEGAWAI")) {
+          sm.iuranMasuk = pem;
+          if (ket) sm.iuranKet = ket;
+        } else if (uUpper.includes("SALDO AKHIR")) {
+          sm.saldoAkhir = pem || peng;
+        } else if (uUpper.includes("JUMLAH SALDO PENGELUARAN")) {
+          sm.totalPengeluaran = peng;
+        } else if (peng > 0) {
+          let category = "Operasional Lapangan";
+          if (uUpper.includes("PUSAT")) category = "Setoran Wajib Pusat";
+          else if (uUpper.includes("DAERAH")) category = "Setoran Wajib Daerah";
+          else if (
+            uUpper.includes("MINERAL") ||
+            uUpper.includes("GORENGAN") ||
+            uUpper.includes("REBUSAN") ||
+            uUpper.includes("KONSUMSI")
+          )
+            category = "Konsumsi";
+          else if (uUpper.includes("LAPANGAN") || uUpper.includes("NET") || uUpper.includes("PERBAIKAN"))
+            category = "Pemeliharaan Lapangan";
+          else if (uUpper.includes("BOLA")) category = "Operasional Lapangan";
+          else if (uUpper.includes("HUT") || uUpper.includes("BANNER") || uUpper.includes("RAPAT"))
+            category = "Kegiatan & Turnamen";
+
+          sm.expenses.push({
+            id: `exp_${sm.period}_${r}_${Date.now()}`,
+            uraian,
+            description: uraian + (ket ? ` - ${ket}` : ""),
+            category,
+            amount: peng,
+            date,
+            ket,
+          });
+        }
+      });
+    }
+
+    sheetMonths.forEach((sm) => {
+      if (sm.totalPengeluaran === 0) {
+        sm.totalPengeluaran = sm.expenses.reduce((s, e) => s + e.amount, 0);
+      }
+      allMonths.push(sm);
+    });
+  }
+
+  allMonths.sort((a, b) => {
+    const idxA = monthOrder.indexOf(a.monthName);
+    const idxB = monthOrder.indexOf(b.monthName);
+    return (a.year - b.year) || (idxA - idxB);
+  });
+
+  return allMonths;
+}
+
+export function parseMatrixCashbook(rows = [], defaultYear = "2026") {
+  if (!rows || rows.length < 5) return null;
+  const dummyWb = {
+    SheetNames: ["Sheet1"],
+    Sheets: {
+      Sheet1: XLSX.utils.aoa_to_sheet(rows),
+    },
+  };
+  const res = parseMatrixWorkbook(dummyWb, defaultYear);
+  return res.length > 0 ? res : null;
+}
+
+
 export async function parseExcelFile(file, fallbackPeriod = "September 2026") {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -640,11 +1108,28 @@ export async function parseExcelFile(file, fallbackPeriod = "September 2026") {
           throw new Error("File kosong atau tidak terbaca.");
         }
 
+        // Cek apakah berkas merupakan Format Rekapitulasi Saldo Kas (Matriks Multi-Bulan PA Gunung Sugih)
+        const matrixResult = parseMatrixWorkbook(workbook, finalYear);
+        if (matrixResult && matrixResult.length > 0) {
+          const septMonth = matrixResult.find((m) => m.monthName.toLowerCase() === "september");
+          const defaultMonth = septMonth || matrixResult[matrixResult.length - 1];
+
+          resolve({
+            isMatrixCashbook: true,
+            isMultiSheet: false,
+            matrixMonths: matrixResult,
+            detectedYear: finalYear,
+            detectedPeriod: defaultMonth.period,
+            totalMonthsFound: matrixResult.length,
+          });
+          return;
+        }
+
         const detectedPeriod = detectPeriodFromContent(rows, file.name, firstSheetName) || fallbackPeriod;
         const parsedMembers = parseSheetRows(rows);
 
         if (parsedMembers.length === 0) {
-          throw new Error("Format tidak cocok: Kolom 'NAMA' atau 'JABATAN' tidak ditemukan di berkas.");
+          throw new Error("Format tidak cocok: Kolom 'NAMA' atau 'JABATAN' tidak ditemukan di berkas, dan bukan merupakan format Rekapitulasi Kas.");
         }
 
         resolve({

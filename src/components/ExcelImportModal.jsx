@@ -27,6 +27,8 @@ export default function ExcelImportModal({
   const [file, setFile] = useState(null);
   const [isMultiSheet, setIsMultiSheet] = useState(false);
   const [multiSheets, setMultiSheets] = useState([]);
+  const [isMatrixCashbook, setIsMatrixCashbook] = useState(false);
+  const [matrixMonths, setMatrixMonths] = useState([]);
   const [activePreviewIdx, setActivePreviewIdx] = useState(0);
   const [targetYear, setTargetYear] = useState("2026");
 
@@ -76,9 +78,13 @@ export default function ExcelImportModal({
       const detectedYr = result.detectedYear || (period.match(/\b(20\d{2})\b/) || [])[1] || "2026";
       setTargetYear(detectedYr);
 
-      if (result.isMultiSheet && result.sheets && result.sheets.length > 1) {
+      if (result.isMatrixCashbook && Array.isArray(result.matrixMonths) && result.matrixMonths.length > 0) {
+        setIsMatrixCashbook(true);
+        setIsMultiSheet(false);
+        setMatrixMonths(result.matrixMonths.map((m) => ({ ...m, selected: true })));
+      } else if (result.isMultiSheet && result.sheets && result.sheets.length > 1) {
+        setIsMatrixCashbook(false);
         setIsMultiSheet(true);
-        // Beri tanda terpilih (selected) ke semua lembar secara default
         const initialSheets = result.sheets.map((s) => ({
           ...s,
           selected: true,
@@ -86,11 +92,10 @@ export default function ExcelImportModal({
           period: `${s.monthName} ${detectedYr}`,
         }));
         setMultiSheets(initialSheets);
-
-        // Cari sheet default untuk preview (utamakan September jika ada)
         const septIdx = initialSheets.findIndex((s) => s.monthName.toLowerCase() === "september");
         setActivePreviewIdx(septIdx !== -1 ? septIdx : initialSheets.length - 1);
       } else {
+        setIsMatrixCashbook(false);
         setIsMultiSheet(false);
         setSingleData(result.members || []);
         const p = result.detectedPeriod || period;
@@ -132,6 +137,21 @@ export default function ExcelImportModal({
 
   // Terapkan Impor
   const handleApply = () => {
+    if (isMatrixCashbook) {
+      const selected = matrixMonths.filter((m) => m.selected);
+      if (selected.length === 0) {
+        alert("Pilih minimal 1 bulan untuk diimpor.");
+        return;
+      }
+      if (onImportSuccess) {
+        const sept = selected.find((m) => m.period.toLowerCase().includes("september"));
+        const target = sept ? sept.period : (selected.find((m) => m.period.toLowerCase() === period.toLowerCase())?.period || selected[selected.length - 1].period);
+        onImportSuccess({ type: "matrix_cashbook", months: selected }, target, true);
+        onClose();
+      }
+      return;
+    }
+
     if (isMultiSheet) {
       const selected = multiSheets.filter((s) => s.selected);
       if (selected.length === 0) {
@@ -162,6 +182,8 @@ export default function ExcelImportModal({
   const reset = () => {
     setFile(null);
     setIsMultiSheet(false);
+    setIsMatrixCashbook(false);
+    setMatrixMonths([]);
     setMultiSheets([]);
     setSingleData([]);
     setError(null);
@@ -170,6 +192,11 @@ export default function ExcelImportModal({
   const activeSheet = isMultiSheet ? multiSheets[activePreviewIdx] : null;
   const previewRows = isMultiSheet ? (activeSheet ? activeSheet.members : []) : singleData;
   const selectedCount = isMultiSheet ? multiSheets.filter((s) => s.selected).length : 1;
+  const selectedMatrixCount = isMatrixCashbook ? matrixMonths.filter((m) => m.selected).length : 0;
+
+  const handleSelectAllMatrix = (val) => {
+    setMatrixMonths((prev) => prev.map((m) => ({ ...m, selected: val })));
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -304,8 +331,121 @@ export default function ExcelImportModal({
                 </button>
               </div>
 
-              {/* TAMPILAN BERKAS MULTI-SHEET (BANYAK BULAN) */}
-              {isMultiSheet ? (
+              {/* TAMPILAN BERKAS REKAPITULASI KAS TRIWULAN (PA GUNUNG SUGIH) */}
+              {isMatrixCashbook ? (
+                <div>
+                  <div
+                    style={{
+                      background: "linear-gradient(90deg, #eff6ff 0%, #f0fdf4 100%)",
+                      border: "1.5px solid #93c5fd",
+                      borderRadius: "12px",
+                      padding: "14px 16px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <Layers size={22} color="#1d4ed8" />
+                      <div>
+                        <div style={{ fontSize: "14.5px", fontWeight: 800, color: "#1e3a8a" }}>
+                          📊 Terdeteksi: Berkas Laporan Rekap Saldo Kas Triwulan (PA Gunung Sugih)
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#475569" }}>
+                          Ditemukan {matrixMonths.length} periode bulan lengkap dengan Saldo Awal, Penerimaan Iuran, dan Rincian Pos Belanja Pengeluaran.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Selection Buttons untuk Matrix */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "10px", paddingTop: "8px", borderTop: "1px dashed #93c5fd" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#1e3a8a" }}>
+                        Centang bulan yang ingin diimpor ({selectedMatrixCount}/{matrixMonths.length} dipilih):
+                      </span>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          style={{ fontSize: "11px", padding: "2px 8px", height: "26px", borderColor: "#93c5fd", color: "#1d4ed8" }}
+                          onClick={() => handleSelectAllMatrix(true)}
+                        >
+                          Pilih Semua
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          style={{ fontSize: "11px", padding: "2px 8px", height: "26px", borderColor: "#93c5fd", color: "#1d4ed8" }}
+                          onClick={() => handleSelectAllMatrix(false)}
+                        >
+                          Batal Semua
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Daftar Bulan yang Ditemukan */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "360px", overflowY: "auto", paddingRight: "4px" }}>
+                    {matrixMonths.map((m, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          background: m.selected ? "#ffffff" : "#f8fafc",
+                          border: `1.5px solid ${m.selected ? "#16a34a" : "#cbd5e1"}`,
+                          borderRadius: "12px",
+                          padding: "14px 16px",
+                          boxShadow: m.selected ? "0 4px 12px rgba(22, 163, 74, 0.08)" : "none",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontWeight: 800, fontSize: "14px", color: "#0f172a" }}>
+                            <input
+                              type="checkbox"
+                              checked={m.selected}
+                              onChange={() => {
+                                setMatrixMonths((prev) =>
+                                  prev.map((item, i) => (i === idx ? { ...item, selected: !item.selected } : item))
+                                );
+                              }}
+                              style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                            />
+                            <span>{m.period}</span>
+                            <span style={{ fontSize: "11px", fontWeight: 600, color: "#64748b" }}>({m.label})</span>
+                          </label>
+
+                          <span style={{ fontSize: "11.5px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px", background: "#fee2e2", color: "#dc2626" }}>
+                            {m.expenses.length} Pos Belanja
+                          </span>
+                        </div>
+
+                        {/* Rincian Angka */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", background: "#f8fafc", padding: "10px 12px", borderRadius: "8px", fontSize: "12px" }}>
+                          <div>
+                            <span style={{ color: "#64748b", display: "block" }}>Saldo Awal:</span>
+                            <strong style={{ color: "#334155" }}>Rp {Number(m.saldoAwal || 0).toLocaleString("id-ID")}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: "#64748b", display: "block" }}>Iuran Masuk:</span>
+                            <strong style={{ color: "#16a34a" }}>+ Rp {Number(m.iuranMasuk || 0).toLocaleString("id-ID")}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: "#64748b", display: "block" }}>Total Belanja:</span>
+                            <strong style={{ color: "#dc2626" }}>- Rp {Number(m.totalPengeluaran || 0).toLocaleString("id-ID")}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: "#64748b", display: "block" }}>Saldo Akhir:</span>
+                            <strong style={{ color: "#0284c7" }}>Rp {Number(m.saldoAkhir || 0).toLocaleString("id-ID")}</strong>
+                          </div>
+                        </div>
+
+                        {/* List item belanja singkat */}
+                        {m.expenses.length > 0 && (
+                          <div style={{ marginTop: "8px", fontSize: "11px", color: "#64748b" }}>
+                            <strong>Rincian Belanja:</strong> {m.expenses.map((e) => `${e.uraian} (Rp ${Number(e.amount).toLocaleString("id-ID")})`).join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : isMultiSheet ? (
                 <div>
                   {/* Banner Multi-Sheet */}
                   <div
@@ -568,12 +708,19 @@ export default function ExcelImportModal({
             type="button"
             className="btn btn-primary"
             onClick={handleApply}
-            disabled={(!isMultiSheet && singleData.length === 0) || (isMultiSheet && selectedCount === 0) || loading}
+            disabled={
+              (isMatrixCashbook && selectedMatrixCount === 0) ||
+              (!isMatrixCashbook && !isMultiSheet && singleData.length === 0) ||
+              (isMultiSheet && selectedCount === 0) ||
+              loading
+            }
             style={{ fontWeight: 700 }}
           >
             <CheckCircle2 size={16} />
             <span>
-              {isMultiSheet
+              {isMatrixCashbook
+                ? `Terapkan ${selectedMatrixCount} Bulan Kas & Belanja`
+                : isMultiSheet
                 ? `Impor Semua ${selectedCount} Bulan Sekaligus`
                 : `Terapkan ke Periode ${singlePeriod}`}
             </span>

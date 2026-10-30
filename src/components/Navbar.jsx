@@ -26,6 +26,8 @@ export default function Navbar({
   onSearchChange,
   onOpenPeriodPicker,
 }) {
+  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
+
   return (
     <header className="stitch-topbar">
       <div className="stitch-topbar-left">
@@ -38,44 +40,59 @@ export default function Navbar({
           <Menu size={22} />
         </button>
 
-        {/* Pemilih Periode Bulan & Tahun */}
-        <button
-          type="button"
-          className="stitch-period-pill"
-          onClick={onOpenPeriodPicker}
-          title="Klik untuk memilih bulan & tahun iuran"
-          style={{ cursor: "pointer", border: "1px solid var(--border-light)", background: "var(--bg-app)" }}
-        >
-          <Calendar size={15} color="#0f5132" />
-          <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
-            {period}
-          </span>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "2px" }}>▾</span>
-        </button>
+        {!isSuper ? (
+          <>
+            {/* Pemilih Periode Bulan & Tahun */}
+            <button
+              type="button"
+              className="stitch-period-pill"
+              onClick={onOpenPeriodPicker}
+              title="Klik untuk memilih bulan & tahun iuran"
+              style={{ cursor: "pointer", border: "1px solid var(--border-light)", background: "var(--bg-app)" }}
+            >
+              <Calendar size={15} color="#0f5132" />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
+                {period}
+              </span>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "2px" }}>▾</span>
+            </button>
 
-        {/* Search Bar Topbar */}
-        <div className="stitch-search-pill">
-          <Search size={15} color="#64748b" />
-          <input
-            type="text"
-            placeholder="Cari anggota, transaksi..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-            className="stitch-search-input"
-          />
-        </div>
+            {/* Search Bar Topbar */}
+            <div className="stitch-search-pill">
+              <Search size={15} color="#64748b" />
+              <input
+                type="text"
+                placeholder="Cari anggota, transaksi..."
+                value={searchQuery}
+                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                className="stitch-search-input"
+              />
+            </div>
+          </>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "8px" }}>
+            <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-primary)" }}>
+              Portal Super Administrator
+            </span>
+            <span style={{ fontSize: "11px", color: "#0f5132", background: "rgba(15, 81, 50, 0.08)", padding: "2px 8px", borderRadius: "6px", fontWeight: 700, border: "1px solid rgba(15, 81, 50, 0.15)" }}>
+              PTWP Pusat
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="stitch-topbar-right">
-        {/* Tombol Cetak Dokumen Resmi */}
-        <button
-          type="button"
-          className="quick-icon-btn"
-          onClick={onPrint}
-          title="Cetak Laporan Resmi (PDF/Print)"
-        >
-          <Printer size={17} />
-        </button>
+        {/* Tombol Cetak Dokumen Resmi (Hanya untuk modul Cabang) */}
+        {!isSuper && (
+          <button
+            type="button"
+            className="quick-icon-btn"
+            onClick={onPrint}
+            title="Cetak Laporan Resmi (PDF/Print)"
+          >
+            <Printer size={17} />
+          </button>
+        )}
 
         {/* Toggle Dark / Light Theme */}
         <button

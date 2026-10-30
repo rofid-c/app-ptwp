@@ -38,30 +38,18 @@ export default function DuesMobileCards({
   return (
     <div className="mobile-cards-feed">
       {members.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)", background: "var(--bg-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-light)" }}>
-          <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "4px" }}>
-            Data Iuran Periode Ini Masih Kosong
-          </div>
-          <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "14px" }}>
-            Impor berkas Excel (.xlsx / .csv) atau tambahkan data anggota baru.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {onOpenImport && (
-              <button type="button" className="btn btn-primary" onClick={onOpenImport} style={{ justifyContent: "center" }}>
-                <span>Import Excel / CSV</span>
-              </button>
-            )}
-            {onOpenAdd && (
-              <button type="button" className="btn btn-outline" onClick={onOpenAdd} style={{ justifyContent: "center" }}>
-                <span>Tambah Anggota</span>
-              </button>
-            )}
-            {onLoadSample && (
-              <button type="button" className="btn btn-outline btn-sm" onClick={onLoadSample} style={{ justifyContent: "center" }}>
-                <span>Muat Template</span>
-              </button>
-            )}
-          </div>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "24px 16px",
+            color: "var(--text-muted, #64748b)",
+            fontSize: "13px",
+            background: "var(--bg-surface, #ffffff)",
+            borderRadius: "var(--radius-lg, 12px)",
+            border: "1px solid var(--border-light, #e2e8f0)",
+          }}
+        >
+          Belum ada data anggota pada periode ini.
         </div>
       ) : (
         members.map((member, index) => {

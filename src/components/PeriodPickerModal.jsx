@@ -10,6 +10,7 @@ export default function PeriodPickerModal({
   currentPeriod = "September 2026",
   onSelectPeriod,
   periodsWithData = [],
+  mode = "in", // "in" (Iuran Masuk) | "out" (Iuran Keluar / Realisasi Belanja)
 }) {
   // Parse periode aktif saat ini
   const parseYearFromPeriod = (periodStr) => {
@@ -28,6 +29,53 @@ export default function PeriodPickerModal({
   }, [isOpen, currentPeriod]);
 
   if (!isOpen) return null;
+
+  const isExpenseMode = mode === "out";
+
+  // Palette warna dinamis berdasarkan mode (Masuk = Hijau PTWP, Keluar = Merah Aksen Belanja)
+  const theme = isExpenseMode
+    ? {
+        primary: "#dc2626",
+        primaryHover: "#b91c1c",
+        iconBg: "#fee2e2",
+        iconColor: "#dc2626",
+        badgeBg: "#fef2f2",
+        badgeBorder: "#fca5a5",
+        badgeDot: "#dc2626",
+        badgeText: "#dc2626",
+        badgeLabel: "Ada Belanja",
+        activeBg: "#dc2626",
+        activeBorder: "#b91c1c",
+        activeText: "#ffffff",
+        activeDot: "#fef08a",
+        shadow: "rgba(220, 38, 38, 0.25)",
+        footerBadgeBg: "#fee2e2",
+        footerBadgeBorder: "#fecaca",
+        footerBadgeColor: "#dc2626",
+        title: "Pilih Periode Pengeluaran",
+        subtitle: "Tersedia seluruh bulan & tahun anggaran",
+      }
+    : {
+        primary: "#0f5132",
+        primaryHover: "#0b3d26",
+        iconBg: "#e8f5e9",
+        iconColor: "#0f5132",
+        badgeBg: "#f0fdf4",
+        badgeBorder: "#86efac",
+        badgeDot: "#16a34a",
+        badgeText: "#0f5132",
+        badgeLabel: "Ada Data",
+        activeBg: "#0f5132",
+        activeBorder: "#0f5132",
+        activeText: "#ffffff",
+        activeDot: "#fef08a",
+        shadow: "rgba(15, 81, 50, 0.25)",
+        footerBadgeBg: "#dcfce7",
+        footerBadgeBorder: "#bbf7d0",
+        footerBadgeColor: "#0f5132",
+        title: "Pilih Periode Iuran",
+        subtitle: "Tersedia seluruh bulan & tahun",
+      };
 
   const months = ALL_MONTHS || [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -89,22 +137,23 @@ export default function PeriodPickerModal({
                 width: "40px",
                 height: "40px",
                 borderRadius: "10px",
-                background: "#e8f5e9",
-                color: "#0f5132",
+                background: theme.iconBg,
+                color: theme.iconColor,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                transition: "all 200ms ease",
               }}
             >
               <Calendar size={20} strokeWidth={2.2} />
             </div>
             <div>
               <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--text-primary, #0f172a)", margin: 0, lineHeight: 1.2 }}>
-                Pilih Periode Iuran
+                {theme.title}
               </h3>
               <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-secondary, #64748b)", margin: "4px 0 0 0", lineHeight: 1 }}>
-                Tersedia seluruh bulan &amp; tahun
+                {theme.subtitle}
               </p>
             </div>
           </div>
@@ -155,7 +204,7 @@ export default function PeriodPickerModal({
               borderRadius: "8px",
               border: "1px solid var(--border-light, #e2e8f0)",
               background: "#ffffff",
-              color: selectedYear <= 2020 ? "#cbd5e1" : "#0f5132",
+              color: selectedYear <= 2020 ? "#cbd5e1" : theme.primary,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -178,7 +227,7 @@ export default function PeriodPickerModal({
                 border: "none",
                 fontSize: "17px",
                 fontWeight: 800,
-                color: "#0f5132",
+                color: theme.primary,
                 cursor: "pointer",
                 outline: "none",
                 padding: "2px 4px",
@@ -204,7 +253,7 @@ export default function PeriodPickerModal({
               borderRadius: "8px",
               border: "1px solid var(--border-light, #e2e8f0)",
               background: "#ffffff",
-              color: selectedYear >= 2035 ? "#cbd5e1" : "#0f5132",
+              color: selectedYear >= 2035 ? "#cbd5e1" : theme.primary,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -240,19 +289,19 @@ export default function PeriodPickerModal({
                   height: "58px",
                   borderRadius: "10px",
                   border: isSelected
-                    ? "2px solid #0f5132"
+                    ? `2px solid ${theme.activeBorder}`
                     : hasData
-                    ? "1.5px solid #86efac"
+                    ? `1.5px solid ${theme.badgeBorder}`
                     : "1px solid var(--border-light, #e2e8f0)",
                   background: isSelected
-                    ? "#0f5132"
+                    ? theme.activeBg
                     : hasData
-                    ? "#f0fdf4"
+                    ? theme.badgeBg
                     : "#ffffff",
                   color: isSelected
-                    ? "#ffffff"
+                    ? theme.activeText
                     : hasData
-                    ? "#0f5132"
+                    ? theme.badgeText
                     : "var(--text-primary, #0f172a)",
                   fontWeight: isSelected ? 800 : hasData ? 700 : 600,
                   fontSize: "13px",
@@ -264,7 +313,7 @@ export default function PeriodPickerModal({
                   padding: "6px 4px",
                   transition: "all 150ms ease",
                   boxShadow: isSelected
-                    ? "0 4px 12px rgba(15, 81, 50, 0.25)"
+                    ? `0 4px 12px ${theme.shadow}`
                     : "0 1px 2px rgba(0, 0, 0, 0.03)",
                 }}
               >
@@ -280,7 +329,7 @@ export default function PeriodPickerModal({
                     fontWeight: 700,
                     lineHeight: 1,
                     visibility: hasData ? "visible" : "hidden",
-                    color: isSelected ? "#fef08a" : "#16a34a",
+                    color: isSelected ? theme.activeDot : theme.badgeText,
                   }}
                 >
                   <span
@@ -288,12 +337,12 @@ export default function PeriodPickerModal({
                       width: "5px",
                       height: "5px",
                       borderRadius: "50%",
-                      background: isSelected ? "#fef08a" : "#16a34a",
+                      background: isSelected ? theme.activeDot : theme.badgeDot,
                       display: "inline-block",
                       marginRight: "4px",
                     }}
                   />
-                  Ada Data
+                  {theme.badgeLabel}
                 </span>
               </button>
             );
@@ -319,7 +368,7 @@ export default function PeriodPickerModal({
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               background: "#f1f5f9",
-              color: "#0f5132",
+              color: theme.primary,
               fontSize: "12px",
               fontWeight: 700,
               cursor: "pointer",
@@ -343,11 +392,11 @@ export default function PeriodPickerModal({
             <span
               style={{
                 fontWeight: 800,
-                color: "#0f5132",
-                background: "#dcfce7",
+                color: theme.footerBadgeColor,
+                background: theme.footerBadgeBg,
                 padding: "3px 9px",
                 borderRadius: "6px",
-                border: "1px solid #bbf7d0",
+                border: `1px solid ${theme.footerBadgeBorder}`,
               }}
             >
               {currentPeriod}

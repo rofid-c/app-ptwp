@@ -68,35 +68,16 @@ export default function DuesTable({
           <tbody>
             {members.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 10 : 9} style={{ textAlign: "center", padding: "48px 20px" }}>
-                  <div style={{ maxWidth: "380px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
-                    <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "var(--primary-50)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary-700)", fontSize: "22px" }}>
-                      📊
-                    </div>
-                    <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>
-                      Data Iuran Periode Ini Masih Kosong
-                    </div>
-                    <p style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
-                      Impor berkas Excel (.xlsx / .csv) atau tambahkan data anggota baru.
-                    </p>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px", flexWrap: "wrap", justifyContent: "center" }}>
-                      {onOpenImport && (
-                        <button type="button" className="btn btn-primary btn-sm" onClick={onOpenImport}>
-                          <span>Import Excel / CSV</span>
-                        </button>
-                      )}
-                      {onOpenAdd && (
-                        <button type="button" className="btn btn-outline btn-sm" onClick={onOpenAdd}>
-                          <span>Tambah Anggota</span>
-                        </button>
-                      )}
-                      {onLoadSample && (
-                        <button type="button" className="btn btn-outline btn-sm" onClick={onLoadSample} style={{ color: "var(--text-secondary)" }}>
-                          <span>Muat Template</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                <td
+                  colSpan={isAdmin ? 10 : 9}
+                  style={{
+                    textAlign: "center",
+                    padding: "36px 20px",
+                    color: "var(--text-muted, #64748b)",
+                    fontSize: "13px",
+                  }}
+                >
+                  Belum ada data anggota pada periode ini.
                 </td>
               </tr>
             ) : (

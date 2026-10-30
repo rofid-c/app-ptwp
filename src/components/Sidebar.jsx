@@ -21,33 +21,32 @@ export default function Sidebar({
   totalMembersCount = 0,
 }) {
   const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
-  const navItems = [
-    ...(isSuper
-      ? [
-          {
-            id: "admin",
-            label: "Portal Admin",
-            icon: ShieldCheck,
-          },
-        ]
-      : []),
-    {
-      id: "dashboard",
-      label: isSuper ? "Dashboard Cabang" : "Dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      id: "dues",
-      label: isSuper ? "Rekap Iuran Cabang" : "Rekap Iuran",
-      icon: FileSpreadsheet,
-      badge: totalMembersCount > 0 ? `${totalMembersCount}` : null,
-    },
-    {
-      id: "cashbook",
-      label: isSuper ? "Buku Kas Cabang" : "Buku Kas",
-      icon: Wallet,
-    },
-  ];
+  const navItems = isSuper
+    ? [
+        {
+          id: "admin",
+          label: "Portal Admin",
+          icon: ShieldCheck,
+        },
+      ]
+    : [
+        {
+          id: "dashboard",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          id: "dues",
+          label: "Rekap Iuran",
+          icon: FileSpreadsheet,
+          badge: totalMembersCount > 0 ? `${totalMembersCount}` : null,
+        },
+        {
+          id: "cashbook",
+          label: "Buku Kas",
+          icon: Wallet,
+        },
+      ];
 
   const handleSelectTab = (tabId) => {
     setActiveTab(tabId);

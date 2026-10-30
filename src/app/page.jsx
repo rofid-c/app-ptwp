@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { exportExpensesToExcel } from "@/services/excelService";
 import {
   FileSpreadsheet,
   UploadCloud,
@@ -32,10 +33,13 @@ import PeriodPickerModal from "@/components/PeriodPickerModal";
 import AuthView from "@/components/AuthView";
 import UserProfileModal from "@/components/UserProfileModal";
 import AdminView from "@/components/AdminView";
+import DuesExpenseView from "@/components/DuesExpenseView";
+import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 
 import {
   fetchMembersByPeriod,
   saveMembersByPeriod,
+  filterRealMembers,
   toggleMemberPaidStatus,
   addMember,
   updateSingleMember,
@@ -44,6 +48,7 @@ import {
   getPeriodsWithData,
   fetchCashBook,
   addCashBookEntry,
+  addCashBookEntriesBatch,
   deleteCashBookEntry,
   fetchSettings,
   saveSettings,
@@ -71,6 +76,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "dues" | "cashbook"
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [duesSubTab, setDuesSubTab] = useState("in"); // "in" | "out"
   const [theme, setTheme] = useState("light");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [enableWhatsApp, setEnableWhatsApp] = useState(false);
@@ -85,6 +91,9 @@ export default function HomePage() {
   const [isPeriodPickerOpen, setIsPeriodPickerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState("all");
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
 
   // Helper ganti periode aktif yang persisten across reload/restart
   const changePeriod = (newPeriod) => {
@@ -214,8 +223,106 @@ export default function HomePage() {
     }
   };
 
-  // Import Excel / CSV Success (Mendukung deteksi multi-bulan dan single-bulan dari berkas)
+  // Import Excel / CSV Success (Mendukung deteksi multi-bulan, single-bulan, dan matrix cashbook)
   const handleImportSuccess = async (importedData, targetPeriod, isMulti = false) => {
+    // 1. Format Rekapitulasi Kas Triwulan (PA Gunung Sugih - 12 Bulan)
+    if (importedData && importedData.type === "matrix_cashbook" && Array.isArray(importedData.months)) {
+      const satkerName = settings.institution || currentUser?.satker || "Pengadilan Agama Gunung Sugih";
+      const newCashEntries = [];
+      const newPeriods = [];
+
+      const monthNumMap = {
+        januari: "01", februari: "02", maret: "03", april: "04",
+        mei: "05", juni: "06", juli: "07", agustus: "08",
+        september: "09", oktober: "10", november: "11", desember: "12"
+      };
+
+      // Cek apakah ada saldo awal tahun di bulan pertama (misal Januari 2026)
+      const firstMonth = importedData.months[0];
+      if (firstMonth && Number(firstMonth.saldoAwal || 0) > 0) {
+        newCashEntries.push({
+          id: `saldo_awal_${firstMonth.period}`,
+          date: `${firstMonth.year || "2026"}-01-01`,
+          type: "in",
+          category: "Saldo Awal",
+          amount: Number(firstMonth.saldoAwal),
+          description: `Saldo Awal Kas PTWP Tahun ${firstMonth.year || "2026"}`,
+          source: "saldo_awal",
+          period: firstMonth.period,
+          satker: satkerName,
+        });
+      }
+
+      for (const m of importedData.months) {
+        newPeriods.push(m.period);
+        const mParts = m.period.split(" ");
+        const mLower = (mParts[0] || "").toLowerCase();
+        const mYear = mParts[1] || m.year || "2026";
+        const monthNum = monthNumMap[mLower] || "01";
+
+        // Kas Masuk dari iuran pegawai jika tercatat di berkas
+        if (Number(m.iuranMasuk || 0) > 0) {
+          newCashEntries.push({
+            id: `dues_${m.period}`,
+            date: `${mYear}-${monthNum}-28`,
+            type: "in",
+            category: "Iuran Anggota",
+            amount: Number(m.iuranMasuk),
+            description: `Penerimaan Iuran PTWP Periode ${m.period}` + (m.iuranKet ? ` (${m.iuranKet})` : ""),
+            source: "rekap_iuran",
+            period: m.period,
+            satker: satkerName,
+          });
+        }
+
+        // Pos pengeluaran / belanja
+        if (Array.isArray(m.expenses)) {
+          m.expenses.forEach((exp, idx) => {
+            const cleanUraian = (exp.uraian || "").replace(/[^a-zA-Z0-9]/g, "_").substring(0, 16);
+            newCashEntries.push({
+              id: exp.id || `exp_${m.period.replace(/\s+/g, '_')}_${idx}_${cleanUraian}`,
+              date: exp.date || `${mYear}-${monthNum}-20`,
+              type: "out",
+              category: exp.category || "Operasional Lapangan",
+              amount: Number(exp.amount || 0),
+              description: exp.uraian + (exp.ket ? ` - ${exp.ket}` : ""),
+              source: "rekap_keluar",
+              period: m.period,
+              satker: satkerName,
+            });
+          });
+        }
+      }
+
+      // Simpan semua transaksi sekaligus secara batch
+      await addCashBookEntriesBatch(newCashEntries);
+
+      // Perbarui daftar periode yang tersedia
+      const updatedAvailable = getAvailablePeriods();
+      newPeriods.forEach((p) => {
+        if (!updatedAvailable.includes(p)) updatedAvailable.push(p);
+      });
+      setAvailablePeriods(updatedAvailable);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("ptwp_available_periods", JSON.stringify(updatedAvailable));
+        } catch (e) {}
+      }
+
+      // Prioritaskan September jika ada di dalam bulan yang diimpor
+      const septPeriod = newPeriods.find((p) => p.toLowerCase().includes("september"));
+      const finalPeriod = septPeriod || targetPeriod || newPeriods[newPeriods.length - 1] || period;
+
+      changePeriod(finalPeriod);
+      setDuesSubTab("out"); // Arahkan langsung ke sub-tab belanja agar pengguna langsung melihat hasilnya
+      await reloadCashbook();
+
+      setTimeout(() => {
+        alert(`✅ Berhasil mengimpor ${importedData.months.length} bulan laporan kas PTWP!\n\n• Sebanyak ${newCashEntries.length} transaksi kas & belanja telah berhasil diterapkan ke sistem.\n• Periode aktif diarahkan ke ${finalPeriod}.`);
+      }, 200);
+      return;
+    }
+
     if (isMulti && Array.isArray(importedData)) {
       // Import banyak bulan sekaligus
       await saveMultiplePeriodsData(importedData);
@@ -235,7 +342,7 @@ export default function HomePage() {
 
       const currentMonthData = importedData.find((d) => d.period === finalPeriod);
       if (currentMonthData) {
-        setMembers(currentMonthData.members);
+        setMembers(filterRealMembers(currentMonthData.members));
       } else {
         const duesData = await fetchMembersByPeriod(finalPeriod);
         setMembers(duesData);
@@ -253,7 +360,7 @@ export default function HomePage() {
         }
         changePeriod(finalPeriod);
       }
-      setMembers(importedData);
+      setMembers(filterRealMembers(importedData));
       await reloadCashbook();
     }
   };
@@ -394,6 +501,50 @@ export default function HomePage() {
   const totalCashOut = cashbook.filter((c) => c.type === "out").reduce((sum, c) => sum + Number(c.amount || 0), 0);
   const currentBalance = totalCashIn - totalCashOut;
 
+  // Filter pengeluaran khusus periode aktif
+  // Daftar seluruh periode yang memiliki catatan pos pengeluaran/belanja
+  const getPeriodsWithExpenses = () => {
+    const expenseEntries = cashbook.filter((c) => c.type === "out");
+    const periodsSet = new Set();
+    const monthNames = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    expenseEntries.forEach((c) => {
+      if (c.period) {
+        periodsSet.add(c.period.trim());
+      } else if (c.date) {
+        const parts = c.date.split("-");
+        if (parts.length >= 2) {
+          const yr = parts[0];
+          const mIdx = parseInt(parts[1], 10) - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            periodsSet.add(`${monthNames[mIdx]} ${yr}`);
+          }
+        }
+      }
+    });
+    return Array.from(periodsSet);
+  };
+
+  // Filter pengeluaran khusus periode aktif
+  const currentPeriodExpenses = cashbook.filter((c) => {
+    if (c.type !== "out") return false;
+    if (c.period && c.period.toLowerCase() === period.toLowerCase()) return true;
+    if (c.date) {
+      const pLower = period.toLowerCase();
+      const monthNames = [
+        { name: "januari", num: "01" }, { name: "februari", num: "02" }, { name: "maret", num: "03" },
+        { name: "april", num: "04" }, { name: "mei", num: "05" }, { name: "juni", num: "06" },
+        { name: "juli", num: "07" }, { name: "agustus", num: "08" }, { name: "september", num: "09" },
+        { name: "oktober", num: "10" }, { name: "november", num: "11" }, { name: "desember", num: "12" }
+      ];
+      const found = monthNames.find((m) => pLower.includes(m.name));
+      if (found && c.date.includes(`-${found.num}-`)) return true;
+    }
+    return false;
+  });
+
   const hakimCount = members.filter((m) => m.category === "Hakim").length;
   const paniteraCount = members.filter((m) => m.category === "Kepaniteraan").length;
   const sekretariatCount = members.filter((m) => m.category === "Kesekretariatan").length;
@@ -407,11 +558,114 @@ export default function HomePage() {
     }).format(Number(val || 0));
   };
 
+  // Deteksi iuran masuk dari buku kas jika tabel anggota belum diisi
+  const duesInCashbookThisPeriod = cashbook
+    .filter((c) => c.type === "in" && (c.period?.toLowerCase() === period.toLowerCase() || (c.source === "rekap_iuran" && c.period === period)))
+    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const effectiveUangMasuk = totalCollected > 0 ? totalCollected : duesInCashbookThisPeriod;
+  const totalPeriodExpenses = currentPeriodExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const netBalance = effectiveUangMasuk - totalPeriodExpenses;
+
+  const baseExpenseCategories = [
+    "Setoran Wajib Pusat",
+    "Setoran Wajib Daerah",
+    "Operasional Lapangan",
+    "Konsumsi",
+    "Pemeliharaan Lapangan",
+    "Kegiatan & Turnamen",
+  ];
+
+  const dynamicExpenseCategories = Array.from(
+    new Set([
+      ...baseExpenseCategories,
+      ...currentPeriodExpenses.map((e) => e.category).filter(Boolean),
+    ])
+  );
+
+  const getExpenseCount = (cat) => {
+    if (cat === "all") return currentPeriodExpenses.length;
+    return currentPeriodExpenses.filter(
+      (e) => (e.category || "").toLowerCase() === cat.toLowerCase()
+    ).length;
+  };
+
+  const filteredExpenses = currentPeriodExpenses.filter((e) => {
+    const q = expenseSearchQuery.toLowerCase();
+    const matchQuery =
+      !q ||
+      (e.uraian || e.description || "").toLowerCase().includes(q) ||
+      (e.ket || "").toLowerCase().includes(q) ||
+      (e.category || "").toLowerCase().includes(q);
+    const matchCategory =
+      expenseCategoryFilter === "all" ||
+      (e.category || "").toLowerCase() === expenseCategoryFilter.toLowerCase();
+    return matchQuery && matchCategory;
+  });
+
+  const handleClearExpenses = async () => {
+    if (currentPeriodExpenses.length === 0) {
+      alert(`Belum ada data belanja pada periode ${period}.`);
+      return;
+    }
+    if (
+      confirm(
+        `Apakah Anda yakin ingin mengosongkan seluruh catatan belanja untuk periode "${period}"?\n\n` +
+        `• Sebanyak ${currentPeriodExpenses.length} pos belanja akan dihapus.\n` +
+        `• Saldo Kas PTWP akan disesuaikan kembali.`
+      )
+    ) {
+      for (const exp of currentPeriodExpenses) {
+        await deleteCashBookEntry(exp.id);
+      }
+      await reloadCashbook();
+    }
+  };
+
+  const handleClearAllExpenses = async () => {
+    const allExpenses = cashbook.filter((c) => c.type === "out");
+    if (allExpenses.length === 0) {
+      alert("Belum ada data belanja yang tersimpan.");
+      return;
+    }
+    if (
+      confirm(
+        `Apakah Anda yakin ingin mengosongkan SELURUH data belanja dari semua periode?\n\n` +
+        `• Sebanyak ${allExpenses.length} catatan belanja akan dihapus secara permanen.\n` +
+        `• Saldo Kas PTWP akan disesuaikan kembali.`
+      )
+    ) {
+      for (const exp of allExpenses) {
+        await deleteCashBookEntry(exp.id);
+      }
+      await reloadCashbook();
+    }
+  };
+
+  const handleExportExpenses = async () => {
+    if (currentPeriodExpenses.length === 0) {
+      alert(`Belum ada data belanja pada periode ${period} untuk diekspor.`);
+      return;
+    }
+    await exportExpensesToExcel({
+      expenses: currentPeriodExpenses,
+      period: period,
+      institution: settings.institution || "PENGADILAN AGAMA GUNUNG SUGIH",
+      city: settings.city || "Gunung Sugih",
+      treasurerName: settings.treasurerName || "Wulan Febrianti, A.Md",
+      treasurerTitle: settings.treasurerTitle || "Bendahara Kantor",
+      effectiveUangMasuk: effectiveUangMasuk,
+      totalPeriodExpenses: totalPeriodExpenses,
+      netBalance: netBalance,
+    });
+  };
+
   const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
 
   useEffect(() => {
     if (!isSuper && activeTab === "admin") {
       setActiveTab("dashboard");
+    } else if (isSuper && activeTab !== "admin") {
+      setActiveTab("admin");
     }
   }, [currentUser, activeTab, isSuper]);
 
@@ -509,16 +763,99 @@ export default function HomePage() {
               {/* Header Cetak Formal (Hanya tampil saat Print) */}
               <div style={{ display: "none" }} className="print-header">
                 <h2 style={{ textAlign: "center", fontSize: "14pt", fontWeight: "bold" }}>
-                  IURAN PTWP CABANG {settings.institution || "PENGADILAN AGAMA GUNUNG SUGIH"}
+                  {duesSubTab === "in" ? "IURAN" : "REALISASI BELANJA DAN PENGELUARAN IURAN"} PTWP CABANG {settings.institution || "PENGADILAN AGAMA GUNUNG SUGIH"}
                 </h2>
                 <p style={{ textAlign: "center", fontSize: "11pt", marginBottom: "15px" }}>
                   Bulan : {period}
                 </p>
               </div>
 
-              {/* 1. Control & Filter Toolbar Sesuai Google Stitch */}
+              {/* SUB-TAB NAVIGATOR: IURAN MASUK vs IURAN KELUAR */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  marginBottom: "16px",
+                  background: "var(--bg-card, #ffffff)",
+                  padding: "6px",
+                  borderRadius: "14px",
+                  border: "1px solid var(--border-light, #e2e8f0)",
+                  width: "fit-content",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setDuesSubTab("in")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    borderRadius: "10px",
+                    border: "none",
+                    background: duesSubTab === "in" ? "#146c43" : "transparent",
+                    color: duesSubTab === "in" ? "#ffffff" : "var(--text-muted, #64748b)",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <ArrowDownLeft size={16} />
+                  <span>Iuran Masuk (Penerimaan Anggota)</span>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "2px 7px",
+                      borderRadius: "99px",
+                      background: duesSubTab === "in" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.06)",
+                      color: duesSubTab === "in" ? "#ffffff" : "var(--text-muted, #64748b)",
+                    }}
+                  >
+                    {members.length} Pegawai
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDuesSubTab("out")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    borderRadius: "10px",
+                    border: "none",
+                    background: duesSubTab === "out" ? "#dc2626" : "transparent",
+                    color: duesSubTab === "out" ? "#ffffff" : "var(--text-muted, #64748b)",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <ArrowUpRight size={16} />
+                  <span>Iuran Keluar (Realisasi Belanja)</span>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "2px 7px",
+                      borderRadius: "99px",
+                      background: duesSubTab === "out" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.06)",
+                      color: duesSubTab === "out" ? "#ffffff" : "var(--text-muted, #64748b)",
+                    }}
+                  >
+                    {currentPeriodExpenses.length} Pos Belanja
+                  </span>
+                </button>
+              </div>
+
+              {/* 1. CONTROL & FILTER TOOLBAR (STRUKTUR SAMA PERSIS ANTARA MASUK & KELUAR) */}
               <div className="stitch-toolbar">
-                {/* Baris 1: Header Halaman (Kiri: Judul & Status Periode, Kanan: Search & Tambah Anggota) */}
+                {/* Baris 1: Header Halaman (Kiri: Judul & Status Periode, Kanan: Search & Tambah) */}
                 <div className="stitch-toolbar-top">
                   <div className="stitch-breadcrumb">
                     <span style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
@@ -530,9 +867,9 @@ export default function HomePage() {
                         fontWeight: 700,
                         padding: "3px 10px",
                         borderRadius: "99px",
-                        background: "rgba(15, 81, 50, 0.08)",
-                        color: "#0f5132",
-                        border: "1px solid rgba(15, 81, 50, 0.2)",
+                        background: duesSubTab === "in" ? "rgba(15, 81, 50, 0.08)" : "rgba(220, 38, 38, 0.08)",
+                        color: duesSubTab === "in" ? "#0f5132" : "#dc2626",
+                        border: `1px solid ${duesSubTab === "in" ? "rgba(15, 81, 50, 0.2)" : "rgba(220, 38, 38, 0.2)"}`,
                       }}
                     >
                       Periode {period}
@@ -548,7 +885,7 @@ export default function HomePage() {
                         border: "1px solid var(--border-light)",
                       }}
                     >
-                      {members.length} Anggota
+                      {duesSubTab === "in" ? `${members.length} Anggota` : `${currentPeriodExpenses.length} Pos Belanja`}
                     </span>
                   </div>
 
@@ -559,8 +896,11 @@ export default function HomePage() {
                       <input
                         type="text"
                         placeholder="Filter baris..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        value={duesSubTab === "in" ? searchQuery : expenseSearchQuery}
+                        onChange={(e) => {
+                          if (duesSubTab === "in") setSearchQuery(e.target.value);
+                          else setExpenseSearchQuery(e.target.value);
+                        }}
                       />
                     </div>
 
@@ -568,11 +908,15 @@ export default function HomePage() {
                       type="button"
                       className="stitch-btn-action stitch-btn-add"
                       onClick={() => {
-                        setEditingMember(null);
-                        setIsMemberFormOpen(true);
+                        if (duesSubTab === "in") {
+                          setEditingMember(null);
+                          setIsMemberFormOpen(true);
+                        } else {
+                          setIsAddExpenseOpen(true);
+                        }
                       }}
-                      title="Tambah Anggota Baru"
-                      style={{ height: "36px", padding: "0 14px" }}
+                      title={duesSubTab === "in" ? "Tambah Anggota Baru" : "Catat Belanja Baru"}
+                      style={{ height: "36px", padding: "0 14px", background: duesSubTab === "in" ? "#146c43" : "#dc2626" }}
                     >
                       <Plus size={16} />
                       <span>Tambah</span>
@@ -580,48 +924,73 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Baris 2: Kiri: Filter Kategori Anggota, Kanan: Pengelolaan Berkas & Data */}
+                {/* Baris 2: Kiri: Filter Kategori, Kanan: Pengelolaan Berkas & Data */}
                 <div className="stitch-toolbar-bottom">
                   {/* Category Filter Pills (Kiri Bawah) */}
-                  <div className="stitch-filter-pills-group">
-                    <button
-                      type="button"
-                      className={`stitch-filter-pill-btn ${categoryFilter === "all" ? "active" : ""}`}
-                      onClick={() => setCategoryFilter("all")}
-                    >
-                      Semua ({members.length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`stitch-filter-pill-btn ${categoryFilter === "Hakim" ? "active" : ""}`}
-                      onClick={() => setCategoryFilter("Hakim")}
-                    >
-                      Hakim ({hakimCount})
-                    </button>
-                    <button
-                      type="button"
-                      className={`stitch-filter-pill-btn ${categoryFilter === "Kepaniteraan" ? "active" : ""}`}
-                      onClick={() => setCategoryFilter("Kepaniteraan")}
-                    >
-                      Kepaniteraan ({paniteraCount})
-                    </button>
-                    <button
-                      type="button"
-                      className={`stitch-filter-pill-btn ${categoryFilter === "Kesekretariatan" ? "active" : ""}`}
-                      onClick={() => setCategoryFilter("Kesekretariatan")}
-                    >
-                      Kesekretariatan ({sekretariatCount})
-                    </button>
-                    <button
-                      type="button"
-                      className={`stitch-filter-pill-btn ${categoryFilter === "Staf" ? "active" : ""}`}
-                      onClick={() => setCategoryFilter("Staf")}
-                    >
-                      Staf ({stafCount})
-                    </button>
+                  <div className="stitch-filter-pills-group" style={{ overflowX: "auto" }}>
+                    {duesSubTab === "in" ? (
+                      <>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${categoryFilter === "all" ? "active" : ""}`}
+                          onClick={() => setCategoryFilter("all")}
+                        >
+                          Semua ({members.length})
+                        </button>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${categoryFilter === "Hakim" ? "active" : ""}`}
+                          onClick={() => setCategoryFilter("Hakim")}
+                        >
+                          Hakim ({hakimCount})
+                        </button>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${categoryFilter === "Kepaniteraan" ? "active" : ""}`}
+                          onClick={() => setCategoryFilter("Kepaniteraan")}
+                        >
+                          Kepaniteraan ({paniteraCount})
+                        </button>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${categoryFilter === "Kesekretariatan" ? "active" : ""}`}
+                          onClick={() => setCategoryFilter("Kesekretariatan")}
+                        >
+                          Kesekretariatan ({sekretariatCount})
+                        </button>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${categoryFilter === "Staf" ? "active" : ""}`}
+                          onClick={() => setCategoryFilter("Staf")}
+                        >
+                          Staf ({stafCount})
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${expenseCategoryFilter === "all" ? "active" : ""}`}
+                          onClick={() => setExpenseCategoryFilter("all")}
+                        >
+                          Semua ({currentPeriodExpenses.length})
+                        </button>
+                        {dynamicExpenseCategories.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            className={`stitch-filter-pill-btn ${expenseCategoryFilter.toLowerCase() === cat.toLowerCase() ? "active" : ""}`}
+                            onClick={() => setExpenseCategoryFilter(cat)}
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {cat} ({getExpenseCount(cat)})
+                          </button>
+                        ))}
+                      </>
+                    )}
                   </div>
 
-                  {/* Tombol Aksi Berkas & Data Lengkap (Kanan Bawah) */}
+                  {/* Tombol Aksi Berkas & Data Lengkap (Kanan Bawah) - IDENTIK DI DUA TAB */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       type="button"
@@ -636,7 +1005,13 @@ export default function HomePage() {
                     <button
                       type="button"
                       className="stitch-btn-action stitch-btn-export"
-                      onClick={() => setIsExportOpen(true)}
+                      onClick={() => {
+                        if (duesSubTab === "in") {
+                          setIsExportOpen(true);
+                        } else {
+                          handleExportExpenses();
+                        }
+                      }}
                       title="Export berkas berformat resmi pengadilan (.xlsx)"
                     >
                       <FileSpreadsheet size={15} />
@@ -656,8 +1031,8 @@ export default function HomePage() {
                     <button
                       type="button"
                       className="stitch-btn-action stitch-btn-clear"
-                      onClick={handleClearData}
-                      title={`Kosongkan data iuran periode ${period}`}
+                      onClick={duesSubTab === "in" ? handleClearData : handleClearExpenses}
+                      title={duesSubTab === "in" ? `Kosongkan data iuran periode ${period}` : `Kosongkan belanja periode ${period}`}
                     >
                       <Trash2 size={14} />
                       <span>Kosongkan</span>
@@ -666,45 +1041,67 @@ export default function HomePage() {
                     <button
                       type="button"
                       className="stitch-btn-action stitch-btn-reset"
-                      onClick={handleClearAllData}
-                      title="Kosongkan seluruh data rekap dari seluruh periode yang tersimpan"
+                      onClick={duesSubTab === "in" ? handleClearAllData : handleClearAllExpenses}
+                      title="Kosongkan seluruh data dari seluruh periode yang tersimpan"
                     >
                       <RotateCcw size={14} />
                       <span>Reset Semua</span>
-                      <span className="stitch-btn-badge">{getPeriodsWithData().length > 0 ? `${getPeriodsWithData().length} Bln` : "9 Bln"}</span>
+                      <span className="stitch-btn-badge">
+                        {duesSubTab === "in" ? (getPeriodsWithData().length > 0 ? `${getPeriodsWithData().length} Bln` : "9 Bln") : `${cashbook.filter(c => c.type === 'out').length} Pos`}
+                      </span>
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* 2. Key Metric Bar (Hanya Terkumpul & Saldo Kas PTWP) */}
-              <div className="stitch-dash-grid" style={{ marginBottom: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-                {/* Card 1: Terkumpul */}
+              {/* 2. 4 KEY METRIC CARDS: Uang Masuk - Total Saldo Kas - Uang Keluar - Saldo Bersih */}
+              <div
+                className="stitch-dash-grid"
+                style={{
+                  marginBottom: "16px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: "12px",
+                }}
+              >
+                {/* Card 1: Uang Masuk */}
                 <div className="stitch-card">
                   <div className="hairline-court" style={{ background: "#16a34a" }}></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                     <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Terkumpul
+                      Uang Masuk
                     </span>
-                    <CheckCircle2 size={16} color="#16a34a" />
+                    <ArrowDownLeft size={16} color="#16a34a" />
                   </div>
                   <div className="font-mono-num" style={{ fontSize: "19px", fontWeight: 700, color: "#0f5132" }}>
-                    {formatRupiah(totalCollected)}
+                    {formatRupiah(effectiveUangMasuk)}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
-                    <div style={{ flex: 1, height: "6px", background: "var(--border-light)", borderRadius: "99px", overflow: "hidden" }}>
-                      <div style={{ width: `${percentageCollected}%`, height: "100%", background: "#16a34a", borderRadius: "99px" }}></div>
-                    </div>
-                    <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#0f5132" }}>{percentageCollected}%</span>
+                    {totalTarget > 0 ? (
+                      <>
+                        <div style={{ flex: 1, height: "6px", background: "var(--border-light)", borderRadius: "99px", overflow: "hidden" }}>
+                          <div style={{ width: `${percentageCollected}%`, height: "100%", background: "#16a34a", borderRadius: "99px" }}></div>
+                        </div>
+                        <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#0f5132" }}>{percentageCollected}%</span>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>Penerimaan periode {period}</span>
+                    )}
                   </div>
+                  {unpaidMembers.length > 0 && (
+                    <div style={{ fontSize: "11px", color: "#d97706", fontWeight: 600, marginTop: "5px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span>⚠️ {unpaidMembers.length} belum bayar:</span>
+                      <strong style={{ color: "#b45309" }}>-{formatRupiah(totalUnpaid)}</strong>
+                    </div>
+                  )}
                 </div>
 
-                {/* Card 2: Saldo Kas PTWP */}
+                {/* Card 2: Total Saldo Kas */}
                 <div className="stitch-card">
                   <div className="hairline-gold"></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                     <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Saldo Kas PTWP
+                      Total Saldo Kas
                     </span>
                     <span style={{ color: "#eab308" }}>🏛️</span>
                   </div>
@@ -715,44 +1112,98 @@ export default function HomePage() {
                     <span style={{ color: "#0f5132", fontWeight: 600 }}>● Kas Operasional PTWP</span>
                   </div>
                 </div>
+
+                {/* Card 3: Uang Keluar */}
+                <div className="stitch-card">
+                  <div className="hairline-court" style={{ background: "#dc2626" }}></div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Uang Keluar
+                    </span>
+                    <ArrowUpRight size={16} color="#dc2626" />
+                  </div>
+                  <div className="font-mono-num" style={{ fontSize: "19px", fontWeight: 700, color: "#dc2626" }}>
+                    {formatRupiah(totalPeriodExpenses)}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
+                    <span>{currentPeriodExpenses.length} pos belanja & pengeluaran</span>
+                  </div>
+                </div>
+
+                {/* Card 4: Saldo Bersih */}
+                <div className="stitch-card">
+                  <div className="hairline-court" style={{ background: netBalance >= 0 ? "#0284c7" : "#ea580c" }}></div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Saldo Bersih
+                    </span>
+                    <Scale size={16} color={netBalance >= 0 ? "#0284c7" : "#ea580c"} />
+                  </div>
+                  <div
+                    className="font-mono-num"
+                    style={{
+                      fontSize: "19px",
+                      fontWeight: 700,
+                      color: netBalance >= 0 ? "#0284c7" : "#ea580c",
+                    }}
+                  >
+                    {formatRupiah(netBalance)}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
+                    <span style={{ color: netBalance >= 0 ? "#0284c7" : "#ea580c", fontWeight: 600 }}>
+                      ● {netBalance >= 0 ? "Surplus (Masuk > Keluar)" : "Defisit (Keluar > Masuk)"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
+              {/* 3. DATA TABLE VIEW: IURAN MASUK vs IURAN KELUAR */}
+              {duesSubTab === "in" ? (
+                <>
+                  <DuesTable
+                    members={filteredMembers}
+                    settings={settings}
+                    period={period}
+                    onToggleStatus={handleToggleStatus}
+                    onEditMember={handleEditClick}
+                    onDeleteMember={handleDeleteMember}
+                    isAdmin={isAdmin}
+                    onOpenImport={() => setIsImportOpen(true)}
+                    onOpenAdd={() => {
+                      setEditingMember(null);
+                      setIsMemberFormOpen(true);
+                    }}
+                    onLoadSample={handleLoadSample}
+                  />
 
-              {/* Tampilan Desktop: Tabel Lengkap 8 Kolom dengan Sticky Header */}
-              <DuesTable
-                members={filteredMembers}
-                settings={settings}
-                period={period}
-                onToggleStatus={handleToggleStatus}
-                onEditMember={handleEditClick}
-                onDeleteMember={handleDeleteMember}
-                isAdmin={isAdmin}
-                onOpenImport={() => setIsImportOpen(true)}
-                onOpenAdd={() => {
-                  setEditingMember(null);
-                  setIsMemberFormOpen(true);
-                }}
-                onLoadSample={handleLoadSample}
-              />
-
-              {/* Tampilan HP: Mobile Adaptive Card View */}
-              <DuesMobileCards
-                members={filteredMembers}
-                period={period}
-                settings={settings}
-                onToggleStatus={handleToggleStatus}
-                onEditMember={handleEditClick}
-                onDeleteMember={handleDeleteMember}
-                isAdmin={isAdmin}
-                enableWhatsAppReminder={enableWhatsApp}
-                onOpenImport={() => setIsImportOpen(true)}
-                onOpenAdd={() => {
-                  setEditingMember(null);
-                  setIsMemberFormOpen(true);
-                }}
-                onLoadSample={handleLoadSample}
-              />
-
+                  <DuesMobileCards
+                    members={filteredMembers}
+                    period={period}
+                    settings={settings}
+                    onToggleStatus={handleToggleStatus}
+                    onEditMember={handleEditClick}
+                    onDeleteMember={handleDeleteMember}
+                    isAdmin={isAdmin}
+                    enableWhatsAppReminder={enableWhatsApp}
+                    onOpenImport={() => setIsImportOpen(true)}
+                    onOpenAdd={() => {
+                      setEditingMember(null);
+                      setIsMemberFormOpen(true);
+                    }}
+                  />
+                </>
+              ) : (
+                <DuesExpenseView
+                  period={period}
+                  expenses={filteredExpenses}
+                  onDeleteExpense={handleDeleteCashEntry}
+                  isAdmin={isAdmin}
+                  formatRupiah={formatRupiah}
+                  isAddModalOpen={isAddExpenseOpen}
+                  setIsAddModalOpen={setIsAddExpenseOpen}
+                  onAddExpense={handleAddCashEntry}
+                />
+              )}
             </div>
           )}
 
@@ -769,10 +1220,7 @@ export default function HomePage() {
 
           {/* TAB 3: PORTAL SUPER ADMINISTRATOR */}
           {activeTab === "admin" && isSuper && (
-            <AdminView
-              currentUser={currentUser}
-              onNavigateToBranch={(tab = "dashboard") => setActiveTab(tab)}
-            />
+            <AdminView currentUser={currentUser} />
           )}
         </main>
       </div>
@@ -848,13 +1296,14 @@ export default function HomePage() {
         isOpen={isPeriodPickerOpen}
         onClose={() => setIsPeriodPickerOpen(false)}
         currentPeriod={period}
+        mode={duesSubTab}
+        periodsWithData={duesSubTab === "in" ? getPeriodsWithData() : getPeriodsWithExpenses()}
         onSelectPeriod={(newPeriod) => {
           changePeriod(newPeriod);
           if (!availablePeriods.includes(newPeriod)) {
             setAvailablePeriods((prev) => [newPeriod, ...prev]);
           }
         }}
-        periodsWithData={getPeriodsWithData()}
       />
     </div>
   );
