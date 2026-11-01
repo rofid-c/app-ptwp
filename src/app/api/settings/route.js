@@ -12,7 +12,21 @@ export async function GET(request) {
     if (rows && rows.length > 0) {
       return NextResponse.json({ success: true, data: rows[0] });
     }
-    return NextResponse.json({ success: true, data: null });
+    return NextResponse.json({
+      success: true,
+      data: {
+        satker,
+        institution: satker.toUpperCase(),
+        branch: `CABANG ${satker.toUpperCase()}`,
+        treasurer_name: "",
+        treasurer_nip: "",
+        chairperson_name: "",
+        chairperson_nip: "",
+        bank_name: "Bank Syariah Indonesia (BSI)",
+        bank_account: "",
+        bank_holder: `PTWP Cabang ${satker}`,
+      },
+    });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

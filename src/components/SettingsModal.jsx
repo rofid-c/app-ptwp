@@ -8,16 +8,20 @@ export default function SettingsModal({
   isOpen,
   onClose,
   settings = {},
+  currentUser,
   onSaveSettings,
   enableWhatsApp,
   onToggleWhatsApp,
 }) {
+  const currentSatker = currentUser?.satker || settings.satker || "Pengadilan Agama Gunung Sugih";
+  const defaultCity = currentSatker.replace("Pengadilan Agama ", "").replace("Pengadilan Tinggi Agama ", "").trim();
+
   const [formData, setFormData] = useState({
-    institution: settings.institution || "PENGADILAN AGAMA GUNUNG SUGIH",
-    city: settings.city || "Gunung Sugih",
-    treasurerName: settings.treasurerName || "Wulan Febrianti, A.Md",
-    treasurerTitle: settings.treasurerTitle || "Bendahara Kantor",
-    chairmanName: settings.chairmanName || "Dr. H. Al Fitri",
+    institution: settings.institution || currentSatker.toUpperCase(),
+    city: settings.city || defaultCity,
+    treasurerName: settings.treasurerName || "",
+    treasurerTitle: settings.treasurerTitle || "Bendahara Cabang",
+    chairmanName: settings.chairmanName || "",
     chairmanTitle: settings.chairmanTitle || "Ketua Cabang PTWP",
   });
 
@@ -27,15 +31,15 @@ export default function SettingsModal({
   useEffect(() => {
     if (settings && isOpen) {
       setFormData({
-        institution: settings.institution || "PENGADILAN AGAMA GUNUNG SUGIH",
-        city: settings.city || "Gunung Sugih",
-        treasurerName: settings.treasurerName || "Wulan Febrianti, A.Md",
-        treasurerTitle: settings.treasurerTitle || "Bendahara Kantor",
-        chairmanName: settings.chairmanName || "Dr. H. Al Fitri",
+        institution: settings.institution || currentSatker.toUpperCase(),
+        city: settings.city || defaultCity,
+        treasurerName: settings.treasurerName || "",
+        treasurerTitle: settings.treasurerTitle || "Bendahara Cabang",
+        chairmanName: settings.chairmanName || "",
         chairmanTitle: settings.chairmanTitle || "Ketua Cabang PTWP",
       });
     }
-  }, [settings, isOpen]);
+  }, [settings, isOpen, currentSatker, defaultCity]);
 
   if (!isOpen) return null;
 

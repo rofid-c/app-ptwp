@@ -76,9 +76,10 @@ CREATE TABLE `account_requests` (
 
 -- 4. TABEL ANGGOTA PTWP (MEMBERS)
 -- Data anggota diisi melalui fitur Import Excel oleh bendahara masing-masing cabang
+-- Menggunakan Composite Primary Key (satker, id) untuk multi-tenant satker yang terisolasi
 DROP TABLE IF EXISTS `members`;
 CREATE TABLE `members` (
-  `id` VARCHAR(100) PRIMARY KEY,
+  `id` VARCHAR(100) NOT NULL,
   `satker` VARCHAR(255) NOT NULL,
   `nip` VARCHAR(50) DEFAULT '',
   `name` VARCHAR(255) NOT NULL,
@@ -89,7 +90,8 @@ CREATE TABLE `members` (
   `cabang` DECIMAL(15,2) DEFAULT 0,
   `tournamen` DECIMAL(15,2) DEFAULT 0,
   `phone` VARCHAR(50) DEFAULT '',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`satker`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. TABEL STATUS PEMBAYARAN IURAN PER PERIODE (DUES_RECORDS)
@@ -108,9 +110,10 @@ CREATE TABLE `dues_records` (
 
 -- 6. TABEL BUKU KAS (CASHBOOK)
 -- Catatan mutasi kas masuk/keluar yang dicatat oleh bendahara
+-- Menggunakan Composite Primary Key (satker, id) agar ID mutasi tidak bentrok antar cabang
 DROP TABLE IF EXISTS `cashbook`;
 CREATE TABLE `cashbook` (
-  `id` VARCHAR(100) PRIMARY KEY,
+  `id` VARCHAR(100) NOT NULL,
   `satker` VARCHAR(255) NOT NULL,
   `date` VARCHAR(50) NOT NULL,
   `type` ENUM('in', 'out') NOT NULL,
@@ -119,7 +122,8 @@ CREATE TABLE `cashbook` (
   `description` TEXT NOT NULL,
   `source` VARCHAR(50) DEFAULT 'manual',
   `period` VARCHAR(50) DEFAULT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`satker`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. TABEL PENGATURAN (SETTINGS)

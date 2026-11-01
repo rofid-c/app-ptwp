@@ -21,6 +21,20 @@
   --accent-gold-light: #fef08a;
   --accent-amber: #f59e0b;
 
+  /* Financial Colors */
+  --money-in: #15803d;
+  --money-in-bg: #dcfce7;
+  --money-in-border: #86efac;
+  --money-out: #dc2626;
+  --money-out-bg: #fee2e2;
+  --money-out-border: #fca5a5;
+  --money-balance: #0284c7;
+  --money-balance-bg: #e0f2fe;
+  --money-balance-border: #bae6fd;
+  --money-gold: #ca8a04;
+  --money-gold-bg: #fef9c3;
+  --money-gold-border: #fde047;
+
   /* Status Colors */
   --status-success: #16a34a;
   --status-success-bg: #dcfce7;
@@ -32,8 +46,8 @@
   --status-danger-bg: #fee2e2;
 
   /* Neutrals & Surfaces (Light Theme) */
-  --bg-app: #f4f7f5;
-  --bg-surface: #ffffff;
+  --bg-app: #eaedf2;              /* Abu-abu lembut / putih agak gelap, nyaman di mata */
+  --bg-surface: #ffffff;          /* Kartu putih bersih yang kontras */
   --bg-surface-elevated: #ffffff;
   --bg-sidebar: #0a3826;
   --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
@@ -47,13 +61,13 @@
   --text-muted: #64748b;
   --text-light: #94a3b8;
 
-  --border-light: #e2e8f0;
-  --border-subtle: #edf2f7;
+  --border-light: #d8e1ea;
+  --border-subtle: #e2e8f0;
   --border-focus: #0f5132;
 
   /* Elevation Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 0 20px rgba(15, 81, 50, 0.2);
@@ -70,18 +84,73 @@
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ==========================================================================
+   CIRCULAR VIEW TRANSITION (GELAP/TERANG MELUAS DARI TITIK KLIK PERSIS GAMBAR 1)
+   ========================================================================== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
 [data-theme="dark"] {
-  --bg-app: #061510;
-  --bg-surface: #0a2118;
-  --bg-surface-elevated: #0f2c20;
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --border-light: #163d2e;
-  --border-subtle: #113124;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  /* Premium Dark Mode - Deep Slate & Obsidian (Sangat Nyaman di Mata) */
+  --bg-app: #0b0f19;              /* Deep neutral slate canvas */
+  --bg-surface: #131b2e;          /* Clean elevated card surface */
+  --bg-surface-elevated: #1a253c; /* Sub-surfaces, tooltips, chips */
+  --bg-sidebar: #061c14;          /* Deep emerald court sidebar */
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --bg-sidebar-active: rgba(34, 197, 94, 0.16);
+
+  --text-primary: #f8fafc;        /* Slate-50: Crisp readable white */
+  --text-secondary: #cbd5e1;      /* Slate-300: Soft gray-white */
+  --text-muted: #8292ab;          /* Soft slate: Gentle labels */
+  --text-light: #64748b;          /* Faint helpers */
+
+  --border-light: #202c44;        /* Crisp, distinct card borders */
+  --border-subtle: #172134;       /* Subtle row dividers */
+  --border-focus: #22c55e;        /* Clean emerald focus ring */
+
+  /* High-contrast, eye-friendly financial metric colors */
+  --money-in: #34d399;            /* Bright mint green */
+  --money-in-bg: rgba(52, 211, 153, 0.15);
+  --money-in-border: rgba(52, 211, 153, 0.35);
+
+  --money-out: #f87171;           /* Bright coral red */
+  --money-out-bg: rgba(248, 113, 113, 0.15);
+  --money-out-border: rgba(248, 113, 113, 0.35);
+
+  --money-balance: #38bdf8;       /* Bright sky blue */
+  --money-balance-bg: rgba(56, 189, 248, 0.15);
+  --money-balance-border: rgba(56, 189, 248, 0.35);
+
+  --money-gold: #facc15;          /* Bright warm gold */
+  --money-gold-bg: rgba(250, 204, 21, 0.15);
+  --money-gold-border: rgba(250, 204, 21, 0.35);
+
+  --status-success: #34d399;
+  --status-success-bg: rgba(52, 211, 153, 0.16);
+  --status-success-border: rgba(52, 211, 153, 0.35);
+
+  --status-warning: #fbbf24;
+  --status-warning-bg: rgba(251, 191, 36, 0.16);
+  --status-warning-border: rgba(251, 191, 36, 0.35);
+
+  --status-danger: #f87171;
+  --status-danger-bg: rgba(248, 113, 113, 0.16);
+  --status-danger-border: rgba(248, 113, 113, 0.35);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -281,11 +350,11 @@ body {
 /* Main Content Area */
 .main-wrapper {
   flex: 1;
-  margin-left: 270px;
+  margin-left: 84px;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  width: calc(100% - 270px);
+  width: calc(100% - 84px);
 }
 
 /* Topbar */
@@ -354,9 +423,9 @@ body {
 }
 
 .theme-toggle-btn, .quick-icon-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   border: 1px solid var(--border-light);
   background: var(--bg-surface);
   color: var(--text-secondary);
@@ -368,9 +437,10 @@ body {
 }
 
 .theme-toggle-btn:hover, .quick-icon-btn:hover {
-  background: var(--bg-app);
-  color: var(--primary-700);
-  border-color: var(--primary-500);
+  background: rgba(15, 81, 50, 0.08);
+  color: #0f5132;
+  border-color: rgba(15, 81, 50, 0.4);
+  transform: scale(1.05);
 }
 
 /* Content Body */
@@ -379,6 +449,36 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* ==========================================================================
+   PAGE TRANSITION: LEMBUT, HALUS, TIDAK PUSING (0.5 DETIK)
+   Efek fade-in dengan blur sangat tipis, nyaman & tidak membuat pusing
+   ========================================================================== */
+@keyframes pageFadeBlurIn {
+  0% {
+    opacity: 0;
+    filter: blur(2px);
+    -webkit-filter: blur(2px);
+    transform: translateY(2px);
+  }
+  50% {
+    opacity: 0.5;
+    filter: blur(1px);
+    -webkit-filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+    -webkit-filter: blur(0px);
+    transform: translateY(0);
+  }
+}
+
+.page-transition-blur {
+  animation: pageFadeBlurIn 0.3 s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  -webkit-animation: pageFadeBlurIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: opacity, filter, transform;
 }
 
 /* ==========================================================================
@@ -1246,125 +1346,460 @@ body {
 }
 
 /* ==========================================================================
-   GOOGLE STITCH EXECUTIVE DASHBOARD & SIDEBAR DESIGN
+   GOOGLE STITCH EXECUTIVE FLOATING CAPSULE DOCK & NAVIGATION
    ========================================================================== */
 
-.stitch-sidebar {
-  width: 260px;
-  background: #0f5132;
-  color: #ffffff;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+/* Desktop Floating Vertical Dock */
+.stitch-desktop-dock {
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
+  width: 84px;
   z-index: 50;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
-  transition: transform var(--transition-normal);
-}
-
-.flex-col-container {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  pointer-events: none;
 }
 
-.stitch-brand-header {
-  height: 64px;
-  padding: 0 18px;
+/* TOP: Logo Circle & Theme Pill */
+.dock-top-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.dock-brand-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #0b3b2b;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.stitch-brand-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: #eab308;
-  color: #062319;
-  font-weight: 800;
-  font-size: 18px;
+.dock-brand-circle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45);
+}
+
+.dock-brand-letter {
+  line-height: 1;
+}
+
+/* Mini Theme Switcher Pill (Sun / Moon) */
+.dock-theme-pill {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .dock-theme-pill {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.dock-theme-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dock-theme-btn:hover {
+  color: var(--text-primary);
+}
+
+.dock-theme-btn.active {
+  background: #fde047;
+  color: #854d0e;
+  box-shadow: 0 2px 10px rgba(234, 179, 8, 0.5);
+  transform: scale(1.08);
+}
+
+[data-theme="dark"] .dock-theme-btn.active {
+  background: #1e293b;
+  color: #38bdf8;
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.45);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  transform: scale(1.08);
+}
+
+/* CENTER: Floating White Capsule Dock ("Tabel Tabung Putih") */
+.dock-center-group {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.dock-capsule-tube {
+  position: relative;
+  background: #ffffff;
+  border-radius: 36px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 56px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.09), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .dock-capsule-tube {
+  background: #141f33;
+  border: 1px solid #23314d;
+  box-shadow: 0 14px 34px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* Moving Sliding Green Active Indicator (Meluncur Halus, Tidak Teleport Kaku) */
+.dock-tube-slider {
+  position: absolute;
+  top: 8px;
+  left: 6px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #0f5132;
+  box-shadow: 0 4px 14px rgba(15, 81, 50, 0.38);
+  pointer-events: none;
+  z-index: 1;
+  transition: transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1);
+  will-change: transform;
+}
+
+[data-theme="dark"] .dock-tube-slider {
+  background: #22c55e;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.45);
+}
+
+.dock-tube-item {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  position: relative;
+  z-index: 2;
+  transition: color 0.25s ease, transform 0.2s ease;
+}
+
+.dock-tube-item:hover {
+  background: transparent !important;
+  color: #0f5132;
+  transform: scale(1.08);
+}
+
+.dock-tube-item.active {
+  background: transparent !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none;
+}
+
+[data-theme="dark"] .dock-tube-item {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .dock-tube-item:hover {
+  background: transparent !important;
+  color: #4ade80;
+}
+
+[data-theme="dark"] .dock-tube-item.active {
+  background: transparent !important;
+  color: #042114 !important;
+  box-shadow: none !important;
+}
+
+.dock-badge-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  height: 17px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 99px;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.35);
 }
 
-.stitch-brand-info {
+.dock-tube-divider {
+  width: 26px;
+  height: 1px;
+  background: var(--border-light);
+  margin: 2px 0;
+}
+
+/* BOTTOM: User Avatar Pill */
+.dock-bottom-group {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
 }
 
-.stitch-brand-info .brand-title {
-  font-size: 13.5px;
-  font-weight: 700;
+.dock-user-avatar-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.18s ease;
+  border-radius: 50%;
+}
+
+.dock-user-avatar-btn:hover {
+  transform: scale(1.08);
+}
+
+.dock-avatar-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #0f5132;
   color: #ffffff;
-  letter-spacing: -0.2px;
-  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.stitch-brand-info .brand-subtitle {
+[data-theme="dark"] .dock-avatar-circle {
+  background: #166534;
+  border-color: #1e293b;
+}
+
+.dock-online-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="dark"] .dock-online-dot {
+  border-color: #1e293b;
+}
+
+.dock-version-pill {
   font-size: 10px;
-  color: #84c39b;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  line-height: 1.2;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0.75;
+  letter-spacing: 0.5px;
 }
 
-.stitch-sidebar-nav {
+/* SLEEK DOCK TOOLTIP */
+.dock-tooltip {
+  position: absolute;
+  left: 56px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-6px);
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 1000;
+}
+
+.dock-tooltip::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 4px 4px 4px 0;
+  border-style: solid;
+  border-color: transparent #0f172a transparent transparent;
+}
+
+.dock-tube-item:hover .dock-tooltip,
+.dock-brand-circle:hover .dock-tooltip,
+.dock-user-avatar-btn:hover .dock-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ==========================================================================
+   MOBILE DRAWER NAVIGATION
+   ========================================================================== */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.mobile-drawer-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-drawer-sheet {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 280px;
+  background: #0f5132;
+  color: #ffffff;
+  z-index: 70;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px 12px;
+  justify-content: space-between;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
 }
 
-.stitch-nav-item {
+.mobile-drawer-sheet.open {
+  transform: translateX(0);
+}
+
+.mobile-drawer-header {
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0b3b2b;
+}
+
+.mobile-drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-drawer-close {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.mobile-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-drawer-nav {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-nav-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
+  padding: 10px 14px;
   border-radius: 8px;
   color: #91bfa9;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   background: transparent;
   border: none;
   cursor: pointer;
   text-align: left;
-  transition: all 150ms ease;
   width: 100%;
+  transition: all 0.15s ease;
 }
 
-.stitch-nav-item:hover {
+.mobile-nav-link:hover {
   background: #134e4a;
   color: #ffffff;
 }
 
-.stitch-nav-item.active {
+.mobile-nav-link.active {
   background: #0b3b2b;
   color: #ffffff;
   font-weight: 600;
 }
 
-.stitch-nav-item .icon {
-  width: 19px;
-  height: 19px;
-  flex-shrink: 0;
-}
-
-.stitch-nav-badge {
+.mobile-nav-badge {
   margin-left: auto;
   font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
-.stitch-sidebar-footer {
+.mobile-drawer-footer {
   margin-top: auto;
   background: #0b3b2b;
   display: flex;
@@ -1373,216 +1808,344 @@ body {
   padding: 12px 14px;
 }
 
-.stitch-user-card {
+/* TOPBAR SATKER HEADER */
+.topbar-brand-display {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-  transition: background 150ms ease;
+  flex-direction: column;
+  line-height: 1.15;
+  padding-left: 2px;
 }
 
-.stitch-user-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.stitch-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #0f5132;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.stitch-user-meta {
-  flex: 1;
-  overflow: hidden;
-}
-
-.stitch-user-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stitch-user-role {
-  font-size: 10.5px;
-  color: #eab308;
-}
-
-.stitch-sys-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 6px;
-  font-size: 11px;
-  color: #91bfa9;
-}
-
-.stitch-dot-gold {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #eab308;
-}
-
-.stitch-sys-title {
-  margin-left: 6px;
-  flex: 1;
-  font-size: 11px;
-}
-
-.stitch-sys-badge {
+.topbar-brand-org {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
+  color: #0f5132;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
-  color: #91bfa9;
 }
 
-/* Topbar Stitch */
+[data-theme="dark"] .topbar-brand-org {
+  color: #34d399;
+}
+
+.topbar-brand-satker {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+/* ==========================================================================
+   TOPBAR FLOATING ISLANDS (Tabel Kotak Putih Terputus / 3 Pulau Terpisah)
+   ========================================================================== */
 .stitch-topbar {
-  height: 64px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-light);
-  display: flex;
+  max-width: 1400px;
+  width: 100%;
+  margin: 16px auto 0 auto;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 28px;
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-[data-theme="dark"] .stitch-topbar {
-  background: rgba(10, 33, 24, 0.94);
-  border-bottom-color: #163d2e;
-}
-
-.stitch-topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stitch-period-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-app);
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-light);
-}
-
-.stitch-period-select {
   background: transparent;
   border: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  outline: none;
-  cursor: pointer;
+  box-shadow: none;
+  position: sticky;
+  top: 14px;
+  z-index: 30;
+  pointer-events: none;
 }
 
-.stitch-search-pill {
+/* 1. PULAU KIRI: Kalender Periode */
+.top-island-left {
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--bg-app);
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-light);
-  width: 250px;
+  pointer-events: auto;
 }
 
-.stitch-search-input {
-  background: transparent;
-  border: none;
-  font-size: 13px;
-  color: var(--text-primary);
-  outline: none;
-  width: 100%;
-}
-
-.stitch-topbar-right {
+.island-calendar-btn {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 8px 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.stitch-sync-badge {
+[data-theme="dark"] .island-calendar-btn {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.4);
+}
+
+.island-calendar-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px -2px rgba(0, 0, 0, 0.1);
+  border-color: rgba(15, 81, 50, 0.35);
+}
+
+.calendar-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calendar-caret {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.island-admin-badge {
+  background: #ffffff;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f5132;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .island-admin-badge {
+  background: #141f33;
+  border-color: #23314d;
+  color: #34d399;
+}
+
+/* 2. PULAU TENGAH: Search - Cetak PDF - Pengaturan */
+.top-island-center {
+  justify-self: center;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 5px 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #dcfce7;
-  color: #0f5132;
-  padding: 5px 12px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 700;
+  pointer-events: auto;
+  transition: all 0.2s ease;
 }
 
-[data-theme="dark"] .stitch-sync-badge {
-  background: rgba(22, 163, 74, 0.2);
-  color: #86efac;
+[data-theme="dark"] .top-island-center {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.4);
 }
 
-.stitch-topbar-divider {
-  width: 1px;
-  height: 22px;
-  background: var(--border-light);
-}
-
-.stitch-user-btn {
+.island-search-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 4px 10px;
+}
+
+.island-search-icon {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.island-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-primary);
+  width: 175px;
+  transition: width 0.2s ease;
+}
+
+.island-search-input:focus {
+  width: 215px;
+}
+
+.island-search-input::placeholder {
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+
+.island-inner-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-light);
+  margin: 0 2px;
+}
+
+.island-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px 6px;
-}
-
-.stitch-user-text {
-  display: flex;
-  flex-direction: column;
-  text-align: right;
-}
-
-.stitch-user-name-label {
+  color: #475569;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.2;
+  transition: all 0.16s ease;
+  white-space: nowrap;
 }
 
-.stitch-user-role-label {
-  font-size: 10.5px;
-  color: var(--text-muted);
-  line-height: 1.2;
+[data-theme="dark"] .island-tool-btn {
+  color: #cbd5e1;
 }
 
-.stitch-user-avatar-circle {
-  width: 32px;
-  height: 32px;
+.island-tool-btn:hover {
+  background: rgba(15, 81, 50, 0.08);
+  color: #0f5132;
+  transform: scale(1.03);
+}
+
+[data-theme="dark"] .island-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #4ade80;
+}
+
+.island-tool-btn .tool-text {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* 3. PULAU KANAN: Jam Digital & Mode Toggle */
+.top-island-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.island-clock-badge {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 7px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+}
+
+[data-theme="dark"] .island-clock-badge {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.4);
+}
+
+.clock-digits {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.time-text {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f5132;
+  letter-spacing: 0.5px;
+}
+
+[data-theme="dark"] .time-text {
+  color: #34d399;
+}
+
+.tz-text {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+/* Kapsul Theme Switcher Sun/Moon persis Gambar 3 */
+.island-theme-pill {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 9999px;
+  padding: 3px 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .island-theme-pill {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.island-theme-toggle-btn {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: #003820;
-  color: #ffffff;
+  border: none;
+  background: transparent;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #94a3b8;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.island-theme-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.island-theme-toggle-btn.active {
+  background: #fde047;
+  color: #854d0e;
+  box-shadow: 0 2px 10px rgba(234, 179, 8, 0.5);
+  transform: scale(1.08);
+}
+
+[data-theme="dark"] .island-theme-toggle-btn.active {
+  background: #1e293b;
+  color: #38bdf8;
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.45);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  transform: scale(1.08);
+}
+
+.island-theme-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+[data-theme="dark"] .island-theme-btn {
+  background: #141f33;
+  border-color: #23314d;
+  color: #38bdf8;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+}
+
+.island-theme-btn:hover {
+  transform: scale(1.08);
+  color: #0f5132;
+  border-color: rgba(15, 81, 50, 0.3);
+}
+
+[data-theme="dark"] .island-theme-btn:hover {
+  color: #4ade80;
 }
 
 /* Dashboard Stitch */
@@ -1665,6 +2228,22 @@ body {
   margin-bottom: 20px;
 }
 
+/* ==========================================================================
+   ANIMASI TREND CHART MUNCUL PERLAHAN DARI KIRI (DURASI 1.8 DETIK)
+   ========================================================================== */
+@keyframes chartRevealLeftToRight {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+.chart-reveal-from-left {
+  animation: chartRevealLeftToRight 1.8s cubic-bezier(0.25, 0.7, 0.1, 1) forwards;
+}
+
 .stitch-two-col {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1703,17 +2282,40 @@ body {
 }
 
 @media (max-width: 768px) {
-  .stitch-sidebar {
-    transform: translateX(-100%);
+  .stitch-desktop-dock {
+    display: none !important;
   }
 
-  .stitch-sidebar.mobile-open {
-    transform: translateX(0);
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .topbar-brand-display {
+    display: none !important;
+  }
+
+  .stitch-topbar {
+    margin: 8px 16px 0 16px;
+    padding: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .top-island-center {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    padding: 4px 8px;
+  }
+
+  .island-search-input {
+    width: 110px;
   }
 
   .main-wrapper {
-    margin-left: 0;
-    width: 100%;
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 
   .stitch-dash-grid {
@@ -1725,6 +2327,203 @@ body {
   }
 }
 
+@media (min-width: 769px) {
+  .mobile-menu-btn {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   REKAP IURAN 3-PART SUBTABS BAR (Kiri: Masuk, Tengah: Actions, Kanan: Keluar)
+   ========================================================================== */
+.rekap-subtabs-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.rekap-subtabs-bar > button:first-child {
+  justify-self: start;
+}
+
+.rekap-center-actions-pill {
+  justify-self: center;
+}
+
+.rekap-subtabs-bar > button:last-child {
+  justify-self: end;
+}
+
+.rekap-subtab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .rekap-subtab-pill {
+  background: #141f33;
+  border-color: #23314d;
+  color: #94a3b8;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+}
+
+.rekap-subtab-pill:hover {
+  transform: scale(1.02);
+  color: var(--text-primary);
+  border-color: rgba(15, 81, 50, 0.3);
+}
+
+.rekap-subtab-pill.active-in {
+  background: #146c43;
+  color: #ffffff;
+  border: 1px solid #146c43;
+  box-shadow: 0 4px 14px rgba(20, 108, 67, 0.35);
+}
+
+.rekap-subtab-pill.active-in .rekap-subtab-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.rekap-subtab-pill.active-out {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
+.rekap-subtab-pill.active-out .rekap-subtab-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.rekap-subtab-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--bg-surface-elevated, #f1f5f9);
+  color: var(--text-muted);
+}
+
+/* Kapsul Tengah: Import, Export, Cetak, Hapus, Reset */
+.rekap-center-actions-pill {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .rekap-center-actions-pill {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+}
+
+.rekap-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .rekap-action-btn {
+  color: #cbd5e1;
+}
+
+.rekap-action-btn:hover {
+  transform: scale(1.04);
+}
+
+.rekap-action-import:hover {
+  background: rgba(15, 81, 50, 0.08);
+  color: #0f5132;
+}
+
+.rekap-action-export:hover {
+  background: rgba(234, 179, 8, 0.12);
+  color: #b45309;
+}
+
+.rekap-action-print:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.rekap-action-delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.rekap-action-reset:hover {
+  background: rgba(148, 163, 184, 0.15);
+  color: #475569;
+}
+
+.rekap-action-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-light);
+  margin: 0 2px;
+}
+
+.rekap-action-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .rekap-action-badge {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 900px) {
+  .rekap-subtabs-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rekap-subtab-pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rekap-center-actions-pill {
+    width: 100%;
+    justify-content: center;
+    overflow-x: auto;
+  }
+}
+
 /* ==========================================================================
    GOOGLE STITCH REKAP IURAN TOOLBAR & TABLE DESIGN
    ========================================================================== */
@@ -1732,13 +2531,13 @@ body {
 .stitch-toolbar {
   background: var(--bg-surface);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 16px 20px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 14px;
   margin-bottom: 16px;
+  transition: all 0.2s ease;
 }
 
 .stitch-toolbar-top {
@@ -1747,6 +2546,201 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* Input Pencarian Khusus Menu Rekap Iuran */
+.rekap-search-pill-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 9999px;
+  padding: 0 12px;
+  height: 36px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .rekap-search-pill-box {
+  background: #141f33;
+  border-color: #23314d;
+}
+
+.rekap-search-pill-box:focus-within {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.rekap-search-pill-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rekap-search-pill-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-primary);
+  width: 155px;
+  transition: width 0.2s ease;
+}
+
+.rekap-search-pill-input:focus {
+  width: 195px;
+}
+
+.rekap-search-pill-input::placeholder {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.rekap-search-pill-clear {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rekap-search-pill-clear:hover {
+  color: var(--text-primary);
+}
+
+/* Tombol Toggle Filter di Kanan Atas Toolbar */
+.rekap-filter-toggle-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .rekap-filter-toggle-btn {
+  background: #141f33;
+  border-color: #23314d;
+  color: #e2e8f0;
+}
+
+.rekap-filter-toggle-btn:hover {
+  border-color: rgba(20, 108, 67, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.rekap-filter-toggle-btn.active {
+  background: rgba(20, 108, 67, 0.08);
+  border-color: rgba(20, 108, 67, 0.35);
+  color: #146c43;
+}
+
+[data-theme="dark"] .rekap-filter-toggle-btn.active {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+.rekap-filter-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: inline-block;
+}
+
+/* Filter Kategori Collapsible & Tabung Putih di Tengah */
+.rekap-filter-collapsible {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.22s ease,
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              margin-top 0.25s ease;
+  max-height: 90px;
+  opacity: 1;
+  transform: translateY(0);
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+.rekap-filter-collapsible.collapsed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-12px);
+  margin-top: 0;
+  pointer-events: none;
+}
+
+.rekap-filter-tube {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 4px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+[data-theme="dark"] .rekap-filter-tube {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+}
+
+.rekap-filter-tube .stitch-filter-pill-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all 0.16s ease;
+}
+
+.rekap-filter-tube .stitch-filter-pill-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .rekap-filter-tube .stitch-filter-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.rekap-filter-tube .stitch-filter-pill-btn.active {
+  background: #146c43;
+  color: #ffffff;
+  border-color: #146c43;
+  box-shadow: 0 2px 8px rgba(20, 108, 67, 0.35);
+}
+
+[data-theme="dark"] .rekap-filter-tube .stitch-filter-pill-btn.active {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.4);
 }
 
 .stitch-toolbar-bottom {
@@ -2055,3 +3049,133 @@ body {
 }
 
 
+
+
+/* ==========================================================================
+   ENHANCED DARK MODE COMPONENT REFINEMENTS
+   ========================================================================== */
+
+[data-theme="dark"] .topbar {
+  background: rgba(19, 27, 46, 0.92);
+  border-bottom-color: var(--border-light);
+}
+
+[data-theme="dark"] .stitch-topbar {
+  background: rgba(19, 27, 46, 0.92);
+  border-bottom-color: var(--border-light);
+}
+
+[data-theme="dark"] .period-select,
+[data-theme="dark"] .search-bar,
+[data-theme="dark"] .stitch-quick-search-box {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .stitch-filter-pill-btn {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .stitch-filter-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .stitch-filter-pill-btn.active {
+  background: #146c43;
+  border-color: #22c55e;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .stitch-table th,
+[data-theme="dark"] .data-table th {
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border-bottom-color: var(--border-light);
+}
+
+[data-theme="dark"] .stitch-table td,
+[data-theme="dark"] .data-table td {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .stitch-table-row:hover,
+[data-theme="dark"] .data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+[data-theme="dark"] .stitch-status-pill.lunas {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+[data-theme="dark"] .stitch-status-pill.belum {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+/* Category Badges for Expenses */
+.badge-cat-setoran {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  display: inline-block;
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  transition: all 150ms ease;
+}
+
+[data-theme="dark"] .badge-cat-setoran {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.38);
+}
+
+.badge-cat-operasional {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  display: inline-block;
+  background: rgba(234, 88, 12, 0.1);
+  color: #c2410c;
+  border: 1px solid rgba(234, 88, 12, 0.25);
+  transition: all 150ms ease;
+}
+
+[data-theme="dark"] .badge-cat-operasional {
+  background: rgba(251, 146, 60, 0.16);
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.38);
+}
+
+/* Table Footer Total Expense Row */
+.expense-table-total-row {
+  background: rgba(220, 38, 38, 0.04);
+  border-top: 2px solid #fecaca;
+}
+
+[data-theme="dark"] .expense-table-total-row {
+  background: rgba(248, 113, 113, 0.08);
+  border-top: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+[data-theme="dark"] .stitch-btn-import,
+[data-theme="dark"] .stitch-btn-print {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .stitch-btn-import:hover,
+[data-theme="dark"] .stitch-btn-print:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

@@ -101,7 +101,20 @@ export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get("memberId");
-    const satker = searchParams.get("satker");
+    const period = searchParams.get("period");
+    const clearAll = searchParams.get("clearAll");
+    const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
+
+    if (clearAll === "true") {
+      await query("DELETE FROM dues_records WHERE satker = ?", [satker]);
+      await query("DELETE FROM members WHERE satker = ?", [satker]);
+      return NextResponse.json({ success: true, message: `Seluruh data iuran ${satker} berhasil dikosongkan.` });
+    }
+
+    if (period) {
+      await query("DELETE FROM dues_records WHERE satker = ? AND period = ?", [satker, period]);
+      return NextResponse.json({ success: true, message: `Data iuran periode ${period} berhasil dikosongkan.` });
+    }
 
     if (!memberId) return NextResponse.json({ success: false, error: "memberId wajib diisi." });
 

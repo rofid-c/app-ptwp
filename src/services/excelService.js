@@ -628,6 +628,33 @@ export function detectYearFromContent(rows = [], fileName = "", sheetName = "") 
   return null;
 }
 
+export function findStackedMonthSections(rows = []) {
+  const sections = [];
+  const monthNamesMap = {
+    januari: "Januari", februari: "Februari", maret: "Maret", april: "April",
+    mei: "Mei", juni: "Juni", juli: "Juli", agustus: "Agustus",
+    september: "September", oktober: "Oktober", november: "November", desember: "Desember",
+  };
+  const regex = /(?:Bulan\s*:\s*)\s*([a-zA-Z]+)(?:\s+(\d{4}))?/i;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowStr = Array.isArray(row) ? row.join(" ") : String(row || "");
+    const match = rowStr.match(regex);
+    if (match) {
+      const rawMonth = match[1].toLowerCase().trim();
+      if (monthNamesMap[rawMonth]) {
+        sections.push({
+          rowIdx: i,
+          monthName: monthNamesMap[rawMonth],
+          year: match[2] || "2026",
+        });
+      }
+    }
+  }
+  return sections;
+}
+
 function parseSheetRows(rows) {
   if (!rows || rows.length < 3) return [];
 
@@ -1123,6 +1150,52 @@ export async function parseExcelFile(file, fallbackPeriod = "September 2026") {
             totalMonthsFound: matrixResult.length,
           });
           return;
+        }
+
+        // Cek apakah lembar tunggal / CSV ini berisi banyak bulan bertingkat (Stacked Multi-Month seperti CSV 9 Bulan)
+        const stackedSections = findStackedMonthSections(rows);
+        if (stackedSections.length > 1) {
+          const monthOrder = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+          ];
+          const validStackedSheets = [];
+          for (let sIdx = 0; sIdx < stackedSections.length; sIdx++) {
+            const sec = stackedSections[sIdx];
+            const startRow = sec.rowIdx;
+            const endRow = sIdx + 1 < stackedSections.length ? stackedSections[sIdx + 1].rowIdx : rows.length;
+            const sliceRows = rows.slice(startRow, endRow);
+            const parsed = parseSheetRows(sliceRows);
+            if (parsed.length > 0) {
+              const mIdx = monthOrder.indexOf(sec.monthName);
+              const secYear = sec.year || finalYear;
+              validStackedSheets.push({
+                sheetName: `${sec.monthName} ${secYear}`,
+                monthName: sec.monthName,
+                monthIndex: mIdx !== -1 ? mIdx : 99,
+                year: secYear,
+                period: `${sec.monthName} ${secYear}`,
+                members: parsed,
+                count: parsed.length,
+              });
+            }
+          }
+
+          if (validStackedSheets.length > 1) {
+            validStackedSheets.sort((a, b) => a.monthIndex - b.monthIndex);
+            const septSheet = validStackedSheets.find((s) => s.monthName.toLowerCase() === "september");
+            const defaultSheet = septSheet || validStackedSheets[validStackedSheets.length - 1];
+
+            resolve({
+              isMultiSheet: true,
+              sheets: validStackedSheets,
+              detectedYear: finalYear,
+              detectedPeriod: defaultSheet.period,
+              members: defaultSheet.members,
+              totalSheetsFound: validStackedSheets.length,
+            });
+            return;
+          }
         }
 
         const detectedPeriod = detectPeriodFromContent(rows, file.name, firstSheetName) || fallbackPeriod;

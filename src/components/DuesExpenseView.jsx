@@ -102,18 +102,7 @@ export default function DuesExpenseView({
                       </td>
 
                       <td>
-                        <span
-                          style={{
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            padding: "3px 9px",
-                            borderRadius: "6px",
-                            background: isSetoran ? "rgba(2, 132, 199, 0.1)" : "rgba(234, 88, 12, 0.1)",
-                            color: isSetoran ? "#0284c7" : "#c2410c",
-                            border: `1px solid ${isSetoran ? "rgba(2, 132, 199, 0.2)" : "rgba(234, 88, 12, 0.2)"}`,
-                            display: "inline-block",
-                          }}
-                        >
+                        <span className={isSetoran ? "badge-cat-setoran" : "badge-cat-operasional"}>
                           {exp.category || "Operasional"}
                         </span>
                       </td>
@@ -127,7 +116,7 @@ export default function DuesExpenseView({
                         style={{
                           textAlign: "right",
                           fontWeight: 700,
-                          color: "#dc2626",
+                          color: "var(--money-out)",
                           fontSize: "13.5px",
                         }}
                       >
@@ -165,7 +154,7 @@ export default function DuesExpenseView({
 
             {expenses.length > 0 && (
               <tfoot>
-                <tr style={{ background: "rgba(220, 38, 38, 0.04)", borderTop: "2px solid #fecaca" }}>
+                <tr className="expense-table-total-row">
                   <td colSpan={4} style={{ padding: "14px 16px", fontWeight: 800, color: "var(--text-primary)" }}>
                     JUMLAH TOTAL PENGELUARAN BULAN INI:
                   </td>
@@ -176,7 +165,7 @@ export default function DuesExpenseView({
                       textAlign: "right",
                       fontWeight: 900,
                       fontSize: "14px",
-                      color: "#dc2626",
+                      color: "var(--money-out)",
                     }}
                   >
                     {formatRupiah(totalPeriodExpenses)}

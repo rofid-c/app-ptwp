@@ -35,12 +35,20 @@ export async function POST(request) {
         item.period || null,
       ]);
 
-      await query(
-        `INSERT INTO cashbook (id, satker, date, type, category, amount, description, source, period)
-         VALUES ?
-         ON DUPLICATE KEY UPDATE date=VALUES(date), type=VALUES(type), category=VALUES(category), amount=VALUES(amount), description=VALUES(description), source=VALUES(source), period=VALUES(period)`,
-        [values]
-      );
+      // Batch insert dengan chunking aman (50 rows per query) untuk menghindari limit placeholder MySQL
+      const chunkSize = 50;
+      for (let i = 0; i < values.length; i += chunkSize) {
+        const chunk = values.slice(i, i + chunkSize);
+        const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+        const flatValues = chunk.flat();
+
+        await query(
+          `INSERT INTO cashbook (id, satker, date, type, category, amount, description, source, period)
+           VALUES ${placeholders}
+           ON DUPLICATE KEY UPDATE date=VALUES(date), type=VALUES(type), category=VALUES(category), amount=VALUES(amount), description=VALUES(description), source=VALUES(source), period=VALUES(period)`,
+          flatValues
+        );
+      }
 
       return NextResponse.json({ success: true, count: body.length });
     }
@@ -67,24 +75,26 @@ export async function DELETE(request) {
     const id = searchParams.get("id");
     const period = searchParams.get("period");
     const clearAll = searchParams.get("clearAll");
+    const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
 
     if (clearAll === "true") {
-      await query("DELETE FROM cashbook");
-      return NextResponse.json({ success: true, message: "Seluruh data buku kas berhasil dikosongkan." });
+      await query("DELETE FROM cashbook WHERE satker = ?", [satker]);
+      return NextResponse.json({ success: true, message: `Seluruh data buku kas ${satker} berhasil dikosongkan.` });
     }
 
     if (period) {
-      await query("DELETE FROM cashbook WHERE period = ? OR description LIKE ? OR id LIKE ?", [
+      await query("DELETE FROM cashbook WHERE satker = ? AND (period = ? OR description LIKE ? OR id LIKE ?)", [
+        satker,
         period,
         `%${period}%`,
         `%${period}%`,
       ]);
-      return NextResponse.json({ success: true, message: `Data kas periode ${period} berhasil dikosongkan.` });
+      return NextResponse.json({ success: true, message: `Data kas periode ${period} (${satker}) berhasil dikosongkan.` });
     }
 
     if (!id) return NextResponse.json({ success: false, error: "ID mutasi kas wajib diisi." });
 
-    await query("DELETE FROM cashbook WHERE id = ?", [id]);
+    await query("DELETE FROM cashbook WHERE id = ? AND satker = ?", [id, satker]);
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

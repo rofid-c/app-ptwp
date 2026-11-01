@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Menu,
   Sun,
@@ -8,7 +8,8 @@ import {
   Printer,
   Calendar,
   Search,
-  User,
+  Settings,
+  Clock,
 } from "lucide-react";
 
 export default function Navbar({
@@ -25,118 +26,147 @@ export default function Navbar({
   searchQuery = "",
   onSearchChange,
   onOpenPeriodPicker,
+  onOpenSettings,
+  showSearch = false,
+  searchPlaceholder = "Cari nama, jabatan...",
 }) {
-  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
+  const isSuper =
+    currentUser?.role === "super_admin" ||
+    currentUser?.username?.toLowerCase() === "aku admin";
+
+  const [timeStr, setTimeStr] = useState("");
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      setTimeStr(
+        now.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+      );
+    };
+
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <header className="stitch-topbar">
-      <div className="stitch-topbar-left">
+    <header className="stitch-topbar" aria-label="Bilah Atas Navigasi">
+      {/* =====================================================================
+          1. PULAU KIRI: Kalender Periode (Terputus / Terpisah)
+          ===================================================================== */}
+      <div className="top-island-left">
         <button
           type="button"
           className="mobile-menu-btn"
           onClick={onToggleMobileMenu}
           title="Buka Menu"
+          aria-label="Buka Menu"
         >
-          <Menu size={22} />
+          <Menu size={20} />
         </button>
 
         {!isSuper ? (
-          <>
-            {/* Pemilih Periode Bulan & Tahun */}
-            <button
-              type="button"
-              className="stitch-period-pill"
-              onClick={onOpenPeriodPicker}
-              title="Klik untuk memilih bulan & tahun iuran"
-              style={{ cursor: "pointer", border: "1px solid var(--border-light)", background: "var(--bg-app)" }}
-            >
-              <Calendar size={15} color="#0f5132" />
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
-                {period}
-              </span>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "2px" }}>▾</span>
-            </button>
-
-            {/* Search Bar Topbar */}
-            <div className="stitch-search-pill">
-              <Search size={15} color="#64748b" />
-              <input
-                type="text"
-                placeholder="Cari anggota, transaksi..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-                className="stitch-search-input"
-              />
-            </div>
-          </>
+          <button
+            type="button"
+            className="island-calendar-btn"
+            onClick={onOpenPeriodPicker}
+            title="Klik untuk memilih bulan & tahun iuran"
+          >
+            <Calendar size={15} color="#0f5132" />
+            <span className="calendar-label">{period}</span>
+            <span className="calendar-caret">▾</span>
+          </button>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "8px" }}>
-            <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-primary)" }}>
-              Portal Super Administrator
-            </span>
-            <span style={{ fontSize: "11px", color: "#0f5132", background: "rgba(15, 81, 50, 0.08)", padding: "2px 8px", borderRadius: "6px", fontWeight: 700, border: "1px solid rgba(15, 81, 50, 0.15)" }}>
-              PTWP Pusat
-            </span>
+          <div className="island-admin-badge">
+            <span>Portal Super Admin</span>
           </div>
         )}
       </div>
 
-      <div className="stitch-topbar-right">
-        {/* Tombol Cetak Dokumen Resmi (Hanya untuk modul Cabang) */}
+      {/* =====================================================================
+          2. PULAU TENGAH: Search (Khusus Menu Rekap Iuran) - Cetak PDF - Pengaturan
+          ===================================================================== */}
+      <div className="top-island-center">
+        {/* Search Input Box (Hanya Tampil Saat di Menu Rekap Iuran Sesuai Permintaan) */}
+        {showSearch && (
+          <>
+            <div className="island-search-group">
+              <Search size={15} className="island-search-icon" />
+              <input
+                type="text"
+                placeholder={searchPlaceholder}
+                value={searchQuery}
+                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                className="island-search-input"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange && onSearchChange("")}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: "15px",
+                    lineHeight: 1,
+                    padding: "0 2px",
+                  }}
+                  title="Hapus pencarian"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="island-inner-divider" />
+          </>
+        )}
+
+        {/* Cetak PDF Button */}
         {!isSuper && (
           <button
             type="button"
-            className="quick-icon-btn"
+            className="island-tool-btn"
             onClick={onPrint}
             title="Cetak Laporan Resmi (PDF/Print)"
           >
-            <Printer size={17} />
+            <Printer size={15} />
+            <span className="tool-text">Cetak PDF</span>
           </button>
         )}
 
-        {/* Toggle Dark / Light Theme */}
+        {!isSuper && <div className="island-inner-divider" />}
+
+        {/* Pengaturan Button */}
         <button
           type="button"
-          className="theme-toggle-btn"
-          onClick={onToggleTheme}
-          title={theme === "dark" ? "Mode Terang" : "Mode Gelap"}
-        >
-          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
-
-        <div className="stitch-topbar-divider"></div>
-
-        {/* User Profile Pill */}
-        <button
-          type="button"
-          className="stitch-user-btn"
+          className="island-tool-btn"
           onClick={() => {
-            if (currentUser && onOpenProfile) {
-              onOpenProfile();
-            } else if (onOpenAuth) {
-              onOpenAuth();
-            }
+            if (onOpenSettings) onOpenSettings();
           }}
-          title={currentUser ? "Klik untuk melihat profil akun" : "Klik untuk masuk akun"}
+          title="Pengaturan Satker & Pejabat"
         >
-          <div className="stitch-user-text">
-            <span className="stitch-user-name-label">{currentUser?.name || "Tamu / Anggota"}</span>
-            <span className="stitch-user-role-label">
-              {currentUser?.role === "super_admin"
-                ? "Super Administrator"
-                : currentUser?.role === "pusat"
-                ? "Pengurus Pusat"
-                : currentUser?.role === "bendahara"
-                ? "Bendahara"
-                : currentUser?.role === "pimpinan"
-                ? "Ketua"
-                : "Pegawai"}
-            </span>
-          </div>
-          <div className="stitch-user-avatar-circle">
-            <User size={15} />
-          </div>
+          <Settings size={15} />
+          <span className="tool-text">Pengaturan</span>
         </button>
+      </div>
+
+      {/* =====================================================================
+          3. PULAU KANAN: Jam Digital Saja (Mode Tema dipusatkan di Sidebar)
+          ===================================================================== */}
+      <div className="top-island-right">
+        <div className="island-clock-badge" title="Waktu Sistem Saat Ini">
+          <Clock size={15} color="#0f5132" />
+          <div className="clock-digits">
+            <span className="time-text font-mono-num">{timeStr || "12:00:00"}</span>
+            <span className="tz-text">WIB</span>
+          </div>
+        </div>
       </div>
     </header>
   );

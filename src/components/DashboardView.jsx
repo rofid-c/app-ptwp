@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { fetchMembersByPeriod } from "@/services/storageService";
 import {
   Calendar,
   CheckCircle2,
@@ -45,11 +46,46 @@ function getSmoothPath(points) {
   return d;
 }
 
+// Hook animasi angka (Count-Up dari 0 ke target nominal real dengan durasi 1.8 detik)
+function useCountUp(target, duration = 1800) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    let animationFrameId;
+    const startValue = 0;
+    const endValue = Number(target || 0);
+
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      // Easing curve: easeOutExpo (alami, halus, melambat di ujung)
+      const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setCount(Math.round(startValue + (endValue - startValue) * easeOut));
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setCount(endValue);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [target, duration]);
+
+  return count;
+}
+
 export default function DashboardView({
   members = [],
   cashbook = [],
   period = "September 2026",
   settings = {},
+  currentUser,
   onOpenDues,
   onOpenAddCash,
   onOpenExport,
@@ -106,6 +142,12 @@ export default function DashboardView({
   const hasCashbook = Array.isArray(cashbook) && cashbook.length > 0;
   const hasRightColumn = hasCashbook;
 
+  // Animasi Count-Up dari 0 ke nominal real (Durasi 1.8 detik)
+  const animatedCollected = useCountUp(totalCollected, 1800);
+  const animatedCashOut = useCountUp(totalCashOut, 1800);
+  const animatedBalance = useCountUp(currentBalance, 1800);
+  const animatedPercent = useCountUp(percentageCollected, 1800);
+
   // State untuk Kartu Analitik Kas Bulanan
   const ALL_MONTHS = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -120,6 +162,21 @@ export default function DashboardView({
 
   const [selectedPointIdx, setSelectedPointIdx] = useState(activeMonthIdx !== -1 ? activeMonthIdx : 8);
   const [hoveredPointIdx, setHoveredPointIdx] = useState(null);
+  const [visibleLines, setVisibleLines] = useState({
+    balance: true,
+    inflows: true,
+    outflows: true,
+  });
+
+  const toggleLine = (key) => {
+    setVisibleLines((prev) => {
+      const activeCount = Object.values(prev).filter(Boolean).length;
+      if (activeCount === 1 && prev[key]) {
+        return prev;
+      }
+      return { ...prev, [key]: !prev[key] };
+    });
+  };
 
   useEffect(() => {
     if (activeMonthIdx !== -1) {
@@ -149,12 +206,12 @@ export default function DashboardView({
     const monthPrefix = `${targetYear}-${monthNum}`;
 
     const monthEntries = (cashbook || []).filter((item) => {
+      const itemPeriod = (item?.period || "").toLowerCase();
       const itemDate = item?.date || "";
-      const itemPeriod = item?.period || "";
-      return (
-        itemDate.startsWith(monthPrefix) ||
-        (itemPeriod.toLowerCase().includes(mName.toLowerCase()) && itemPeriod.includes(targetYear))
-      );
+      if (itemPeriod) {
+        return itemPeriod.includes(mName.toLowerCase()) && itemPeriod.includes(targetYear);
+      }
+      return itemDate.startsWith(monthPrefix);
     });
 
     let mIn = monthEntries
@@ -168,7 +225,6 @@ export default function DashboardView({
     // Jika bulan aktif adalah periode saat ini dan belum ada di cashbook, masukkan data penerimaan iuran riil
     if (mIdx === activeMonthIdx) {
       if (mIn === 0 && totalCollected > 0) mIn = totalCollected;
-      if (mOut === 0 && totalCashOut > 0) mOut = totalCashOut;
     }
 
     cumulativeBal += (mIn - mOut);
@@ -204,36 +260,67 @@ export default function DashboardView({
     realMonthlyData.length - 1
   );
   const activePointData = realMonthlyData[activeIdx] || realMonthlyData[0];
+  const animatedChartBalance = useCountUp(activePointData?.balance, 1800);
 
   // Sinkronisasi dinamis: Donut card mengikuti bulan yang sedang disorot/dipilih pada grafik tren
   const inspectedPeriod = activePointData?.periodTitle || period;
   const isCurrentActivePeriod = inspectedPeriod === period;
 
-  let inspectedMembers = members;
-  if (!isCurrentActivePeriod) {
-    let loaded = null;
+  const [cachedPeriodMembers, setCachedPeriodMembers] = useState({});
+
+  useEffect(() => {
+    if (!inspectedPeriod || inspectedPeriod === period) return;
+    if (cachedPeriodMembers[inspectedPeriod]) return;
+
+    let isMounted = true;
+    const targetSatker = currentUser?.satker || "Pengadilan Agama Gunung Sugih";
+    fetchMembersByPeriod(inspectedPeriod, targetSatker)
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setCachedPeriodMembers((prev) => ({
+            ...prev,
+            [inspectedPeriod]: data,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn(`[DashboardView] Error fetching members for ${inspectedPeriod}:`, err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [inspectedPeriod, period, currentUser?.satker, cachedPeriodMembers]);
+
+  let inspectedMembers = isCurrentActivePeriod
+    ? members
+    : cachedPeriodMembers[inspectedPeriod];
+
+  if (!inspectedMembers) {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(`ptwp_members_${inspectedPeriod}`);
+        const targetSatker = currentUser?.satker || "Pengadilan Agama Gunung Sugih";
+        const slug = targetSatker.toLowerCase().replace(/[^a-z0-9]/g, "_");
+        const raw =
+          localStorage.getItem(`ptwp_${slug}_members_${inspectedPeriod}`) ||
+          localStorage.getItem(`ptwp_members_${inspectedPeriod}`);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            loaded = parsed;
+            inspectedMembers = parsed;
           }
         }
       } catch (e) {}
     }
-    if (loaded) {
-      inspectedMembers = loaded;
-    } else if (Array.isArray(members) && members.length > 0) {
-      // Jika belum ada rekap khusus untuk bulan ini, gunakan master anggota dengan tagihan 0
+  }
+
+  // Fallback: Jika belum ada rekap khusus untuk bulan ini, gunakan master anggota
+  // TETAP simpan nominal tagihan riil dari master (jangan di-nol-kan!) agar target grup tetap akurat
+  if (!inspectedMembers || inspectedMembers.length === 0) {
+    if (Array.isArray(members) && members.length > 0) {
       inspectedMembers = members.map((m) => ({
         ...m,
         paid: false,
-        pusat: 0,
-        daerah: 0,
-        cabang: 0,
-        tournamen: 0,
       }));
     } else {
       inspectedMembers = [];
@@ -262,6 +349,7 @@ export default function DashboardView({
   const donutPctCollected =
     donutTotalTarget > 0 ? ((donutTotalCollected / donutTotalTarget) * 100).toFixed(1) : "0.0";
   const donutTotalMembers = inspectedMembers.length;
+  const animatedDonutTarget = useCountUp(donutTotalTarget, 1800);
 
   const calcDonutUnitStats = (catName) => {
     const unitMembers = inspectedMembers.filter((m) => {
@@ -315,7 +403,7 @@ export default function DashboardView({
       title: "Hakim",
       stats: calcDonutUnitStats("Hakim"),
       icon: Scale,
-      color: "#064e3b",
+      color: "#10b981",
       bgColor: "rgba(6, 78, 59, 0.1)",
       borderColor: "rgba(6, 78, 59, 0.22)",
       desc: "Hakim Tingkat Pertama",
@@ -352,10 +440,22 @@ export default function DashboardView({
     },
   ];
 
-  // Skala sumbu Y dinamis berbasis nominal riil Rupiah
-  const maxBalance = Math.max(...realMonthlyData.map((d) => Math.max(d.balance, d.inflows)), 1000000);
-  const step = maxBalance > 30000000 ? 10000000 : maxBalance > 15000000 ? 5000000 : 2000000;
-  const yMax = Math.max(step * 4, Math.ceil((maxBalance * 1.25) / step) * step);
+  // Skala sumbu Y dinamis berbasis nominal riil Rupiah (3 Garis: Saldo Kas, Uang Masuk, Pengeluaran)
+  const anyVisible = visibleLines.balance || visibleLines.inflows || visibleLines.outflows;
+  const maxVal = Math.max(
+    ...realMonthlyData.map((d) =>
+      anyVisible
+        ? Math.max(
+            visibleLines.balance ? (d.balance || 0) : 0,
+            visibleLines.inflows ? (d.inflows || 0) : 0,
+            visibleLines.outflows ? (d.outflows || 0) : 0
+          )
+        : Math.max(d.balance || 0, d.inflows || 0, d.outflows || 0)
+    ),
+    1000000
+  );
+  const step = maxVal > 30000000 ? 10000000 : maxVal > 15000000 ? 5000000 : 2000000;
+  const yMax = Math.max(step * 4, Math.ceil((maxVal * 1.25) / step) * step);
 
   const formatJuta = (val) => {
     if (val === 0) return "0";
@@ -372,7 +472,7 @@ export default function DashboardView({
   ];
 
   const getYCoord = (val) => {
-    const clamped = Math.max(0, Math.min(yMax, val));
+    const clamped = Math.max(0, Math.min(yMax, val || 0));
     return 190 - (clamped / yMax) * 162;
   };
 
@@ -383,15 +483,48 @@ export default function DashboardView({
   const baselineY = 190;
   const usableWidth = svgWidth - leftPad - rightPad;
 
-  const chartPoints = realMonthlyData.map((d, i) => {
+  // Koordinat titik kurva untuk masing-masing garis
+  const chartPointsBalance = realMonthlyData.map((d, i) => {
     const x = leftPad + (i * usableWidth) / (realMonthlyData.length - 1);
     const y = getYCoord(d.balance);
     return { x, y, ...d };
   });
 
-  const smoothCurve = getSmoothPath(chartPoints);
-  const areaFill = `${smoothCurve} L ${chartPoints[chartPoints.length - 1].x} ${baselineY} L ${chartPoints[0].x} ${baselineY} Z`;
-  const activePoint = chartPoints[activeIdx] || chartPoints[0];
+  const chartPointsInflow = realMonthlyData.map((d, i) => {
+    const x = leftPad + (i * usableWidth) / (realMonthlyData.length - 1);
+    const y = getYCoord(d.inflows);
+    return { x, y, ...d };
+  });
+
+  const chartPointsOutflow = realMonthlyData.map((d, i) => {
+    const x = leftPad + (i * usableWidth) / (realMonthlyData.length - 1);
+    const y = getYCoord(d.outflows);
+    return { x, y, ...d };
+  });
+
+  // Kurva bezier Catmull-Rom untuk 3 garis
+  const smoothCurveBalance = getSmoothPath(chartPointsBalance);
+  const smoothCurveInflow = getSmoothPath(chartPointsInflow);
+  const smoothCurveOutflow = getSmoothPath(chartPointsOutflow);
+
+  const areaFillBalance = `${smoothCurveBalance} L ${chartPointsBalance[chartPointsBalance.length - 1].x} ${baselineY} L ${chartPointsBalance[0].x} ${baselineY} Z`;
+  const areaFillInflow = `${smoothCurveInflow} L ${chartPointsInflow[chartPointsInflow.length - 1].x} ${baselineY} L ${chartPointsInflow[0].x} ${baselineY} Z`;
+  const areaFillOutflow = `${smoothCurveOutflow} L ${chartPointsOutflow[chartPointsOutflow.length - 1].x} ${baselineY} L ${chartPointsOutflow[0].x} ${baselineY} Z`;
+
+  const pBalance = chartPointsBalance[activeIdx] || chartPointsBalance[0];
+  const pInflow = chartPointsInflow[activeIdx] || chartPointsInflow[0];
+  const pOutflow = chartPointsOutflow[activeIdx] || chartPointsOutflow[0];
+  const pAnchor = pBalance;
+
+  // Posisi tooltip vertikal dinamis agar tidak terpotong ke atas
+  const tooltipY = visibleLines.balance
+    ? pBalance.y
+    : visibleLines.inflows
+    ? pInflow.y
+    : visibleLines.outflows
+    ? pOutflow.y
+    : 100;
+  const isNearTop = tooltipY < 85;
 
   const renderCashflowCard = () => (
     <div
@@ -410,7 +543,7 @@ export default function DashboardView({
         justifyContent: "space-between",
       }}
     >
-      {/* Header Bar Tanpa Tulisan Cashflow */}
+      {/* Header Bar dengan Legend Filter 3 Kategori */}
       <div
         style={{
           display: "flex",
@@ -418,7 +551,7 @@ export default function DashboardView({
           justifyContent: "space-between",
           flexWrap: "wrap",
           gap: "14px",
-          marginBottom: "10px",
+          marginBottom: "12px",
         }}
       >
         <div>
@@ -447,7 +580,7 @@ export default function DashboardView({
                 lineHeight: 1.1,
               }}
             >
-              {formatRupiah(activePointData.balance)}
+              {formatRupiah(animatedChartBalance)}
             </div>
             <div
               style={{
@@ -483,25 +616,111 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Menu Opsi Kanan */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {/* Legend / Filter Toggles (Saldo Kas - Uang Masuk - Pengeluaran) */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+          {/* Saldo Kas Toggle (Biru) */}
           <button
             type="button"
-            title="Opsi Tampilan"
+            onClick={() => toggleLine("balance")}
             style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              border: "1px solid var(--border-light)",
-              background: "var(--bg-app)",
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text-muted)",
+              gap: "6px",
+              padding: "4px 10px",
+              borderRadius: "99px",
+              fontSize: "11.5px",
+              fontWeight: 700,
               cursor: "pointer",
+              transition: "all 0.15s ease",
+              border: visibleLines.balance
+                ? "1.5px solid #3b82f6"
+                : "1px dashed var(--border-light, #cbd5e1)",
+              background: visibleLines.balance ? "rgba(59, 130, 246, 0.12)" : "transparent",
+              color: visibleLines.balance ? "#1d4ed8" : "var(--text-muted)",
+              opacity: visibleLines.balance ? 1 : 0.5,
             }}
+            title="Klik untuk tampilkan/sembunyikan Saldo Kas"
           >
-            <MoreHorizontal size={16} />
+            <span
+              style={{
+                width: "12px",
+                height: "3px",
+                borderRadius: "2px",
+                background: visibleLines.balance ? "#2563eb" : "#94a3b8",
+                display: "inline-block",
+              }}
+            />
+            <span>Saldo Kas</span>
+          </button>
+
+          {/* Uang Masuk Toggle (Hijau) */}
+          <button
+            type="button"
+            onClick={() => toggleLine("inflows")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 10px",
+              borderRadius: "99px",
+              fontSize: "11.5px",
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              border: visibleLines.inflows
+                ? "1.5px solid #22c55e"
+                : "1px dashed var(--border-light, #cbd5e1)",
+              background: visibleLines.inflows ? "rgba(34, 197, 94, 0.12)" : "transparent",
+              color: visibleLines.inflows ? "#15803d" : "var(--text-muted)",
+              opacity: visibleLines.inflows ? 1 : 0.5,
+            }}
+            title="Klik untuk tampilkan/sembunyikan Uang Masuk"
+          >
+            <span
+              style={{
+                width: "12px",
+                height: "3px",
+                borderRadius: "2px",
+                background: visibleLines.inflows ? "#16a34a" : "#94a3b8",
+                display: "inline-block",
+              }}
+            />
+            <span>Uang Masuk</span>
+          </button>
+
+          {/* Pengeluaran Toggle (Merah) */}
+          <button
+            type="button"
+            onClick={() => toggleLine("outflows")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 10px",
+              borderRadius: "99px",
+              fontSize: "11.5px",
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              border: visibleLines.outflows
+                ? "1.5px solid #ef4444"
+                : "1px dashed var(--border-light, #cbd5e1)",
+              background: visibleLines.outflows ? "rgba(239, 68, 68, 0.12)" : "transparent",
+              color: visibleLines.outflows ? "#b91c1c" : "var(--text-muted)",
+              opacity: visibleLines.outflows ? 1 : 0.5,
+            }}
+            title="Klik untuk tampilkan/sembunyikan Pengeluaran"
+          >
+            <span
+              style={{
+                width: "12px",
+                height: "3px",
+                borderRadius: "2px",
+                background: visibleLines.outflows ? "#dc2626" : "#94a3b8",
+                display: "inline-block",
+              }}
+            />
+            <span>Pengeluaran</span>
           </button>
         </div>
       </div>
@@ -512,21 +731,26 @@ export default function DashboardView({
         <div
           style={{
             position: "absolute",
-            left: `${(activePoint.x / svgWidth) * 100}%`,
-            top: `${(activePoint.y / svgHeight) * 100}%`,
-            transform:
-              activeIdx >= chartPoints.length - 3
-                ? "translate(-88%, -115%)"
+            left: `${(pAnchor.x / svgWidth) * 100}%`,
+            top: `${(tooltipY / svgHeight) * 100}%`,
+            transform: isNearTop
+              ? activeIdx >= chartPointsBalance.length - 3
+                ? "translate(-88%, 15px)"
                 : activeIdx <= 2
-                ? "translate(-12%, -115%)"
-                : "translate(-50%, -115%)",
+                ? "translate(-12%, 15px)"
+                : "translate(-50%, 15px)"
+              : activeIdx >= chartPointsBalance.length - 3
+              ? "translate(-88%, -115%)"
+              : activeIdx <= 2
+              ? "translate(-12%, -115%)"
+              : "translate(-50%, -115%)",
             background: "var(--bg-surface)",
             border: "1px solid var(--border-light)",
             borderRadius: "12px",
             padding: "10px 14px",
             boxShadow: "0 12px 28px -4px rgba(0, 0, 0, 0.16), 0 4px 8px -2px rgba(0, 0, 0, 0.06)",
             pointerEvents: "none",
-            minWidth: "185px",
+            minWidth: "195px",
             zIndex: 15,
             transition: "left 0.2s cubic-bezier(0.16, 1, 0.3, 1), top 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
@@ -544,8 +768,8 @@ export default function DashboardView({
               justifyContent: "space-between",
             }}
           >
-            <span>{activePoint.periodTitle}</span>
-            {activePoint.isCurrent && (
+            <span>{activePointData.periodTitle}</span>
+            {activePointData.isCurrent && (
               <span
                 style={{
                   fontSize: "9.5px",
@@ -562,40 +786,129 @@ export default function DashboardView({
             )}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "5px", fontSize: "11.5px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-              <span style={{ color: "var(--text-muted)" }}>Balance</span>
-              <strong className="font-mono-num" style={{ color: "var(--text-primary)", fontSize: "12px" }}>
-                {formatRupiah(activePoint.balance)}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "11.5px" }}>
+            {/* Saldo Kas */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                opacity: visibleLines.balance ? 1 : 0.45,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#2563eb",
+                    display: "inline-block",
+                  }}
+                />
+                <span style={{ color: "var(--text-muted)" }}>Saldo Kas</span>
+              </div>
+              <strong className="font-mono-num" style={{ color: "#2563eb", fontSize: "12px" }}>
+                {formatRupiah(activePointData.balance)}
               </strong>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-              <span style={{ color: "var(--text-muted)" }}>Inflows</span>
+
+            {/* Uang Masuk */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                opacity: visibleLines.inflows ? 1 : 0.45,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#16a34a",
+                    display: "inline-block",
+                  }}
+                />
+                <span style={{ color: "var(--text-muted)" }}>Uang Masuk</span>
+              </div>
               <span className="font-mono-num" style={{ color: "#16a34a", fontWeight: 700 }}>
-                {formatRupiah(activePoint.inflows)}
+                {formatRupiah(activePointData.inflows)}
               </span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-              <span style={{ color: "var(--text-muted)" }}>Outflows</span>
+
+            {/* Pengeluaran */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                opacity: visibleLines.outflows ? 1 : 0.45,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#dc2626",
+                    display: "inline-block",
+                  }}
+                />
+                <span style={{ color: "var(--text-muted)" }}>Pengeluaran</span>
+              </div>
               <span className="font-mono-num" style={{ color: "#dc2626", fontWeight: 700 }}>
-                {formatRupiah(activePoint.outflows)}
+                {formatRupiah(activePointData.outflows)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* The SVG Smooth Wave Chart (Warna Hijau PTWP Sesuai Tema) */}
+        {/* The SVG Smooth Wave Chart (3 Garis: Uang Masuk, Pengeluaran, Saldo Kas) */}
         <div style={{ width: "100%", overflowX: "auto" }}>
           <svg
+            key={`chart-svg-${targetYear}-${currentUser?.satker || ""}`}
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
             style={{ width: "100%", minWidth: "400px", height: "auto", display: "block" }}
           >
             <defs>
-              <linearGradient id="ptwpGreenGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
-                <stop offset="65%" stopColor="#10b981" stopOpacity="0.08" />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+              <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.18" />
+                <stop offset="65%" stopColor="#2563eb" stopOpacity="0.04" />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
               </linearGradient>
+              <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#16a34a" stopOpacity="0.18" />
+                <stop offset="65%" stopColor="#16a34a" stopOpacity="0.04" />
+                <stop offset="100%" stopColor="#16a34a" stopOpacity="0.0" />
+              </linearGradient>
+              <linearGradient id="outflowGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#dc2626" stopOpacity="0.18" />
+                <stop offset="65%" stopColor="#dc2626" stopOpacity="0.04" />
+                <stop offset="100%" stopColor="#dc2626" stopOpacity="0.0" />
+              </linearGradient>
+
+              {/* Clip-Path Reveal dari Kiri ke Kanan dengan Durasi 1.8 Detik */}
+              <clipPath id="chartRevealFromLeft">
+                <rect x="0" y="0" width="0" height={svgHeight}>
+                  <animate
+                    attributeName="width"
+                    from="0"
+                    to={svgWidth}
+                    dur="1.8s"
+                    fill="freeze"
+                    calcMode="spline"
+                    keyTimes="0; 1"
+                    keySplines="0.25 0.7 0.1 1"
+                  />
+                </rect>
+              </clipPath>
             </defs>
 
             {/* Horizontal Dashed Grid Lines & Y Labels */}
@@ -624,53 +937,90 @@ export default function DashboardView({
               </g>
             ))}
 
-            {/* Area Fill Hijau Lembut */}
-            <path d={areaFill} fill="url(#ptwpGreenGrad)" />
+            {/* Elemen Grafik: Area Fill, Kurva Garis, dan Active Point Dots Muncul Perlahan dari Kiri (1.8 Detik) */}
+            <g clipPath="url(#chartRevealFromLeft)" className="chart-reveal-from-left">
+              {/* Area Fill Halus untuk masing-masing kurva aktif */}
+              {visibleLines.outflows && <path d={areaFillOutflow} fill="url(#outflowGrad)" />}
+              {visibleLines.inflows && <path d={areaFillInflow} fill="url(#inflowGrad)" />}
+              {visibleLines.balance && <path d={areaFillBalance} fill="url(#balanceGrad)" />}
 
-            {/* Smooth Bezier Line Curve Hijau Dwi-Warna */}
-            <path
-              d={smoothCurve}
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+              {/* 1. Kurva Saldo Kas (Biru) */}
+              {visibleLines.balance && (
+                <path
+                  d={smoothCurveBalance}
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
 
-            {/* Vertical Guide Line */}
-            <line
-              x1={activePoint.x}
-              y1={activePoint.y}
-              x2={activePoint.x}
-              y2={baselineY}
-              stroke="#10b981"
-              strokeWidth="1.5"
-              strokeDasharray="3 3"
-            />
+              {/* 2. Kurva Uang Masuk (Hijau) */}
+              {visibleLines.inflows && (
+                <path
+                  d={smoothCurveInflow}
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
 
-            {/* Active Point Glowing Dot */}
-            <circle
-              cx={activePoint.x}
-              cy={activePoint.y}
-              r="7"
-              fill="rgba(16, 185, 129, 0.25)"
-            />
-            <circle
-              cx={activePoint.x}
-              cy={activePoint.y}
-              r="4.5"
-              fill="#0f5132"
-              stroke="#ffffff"
-              strokeWidth="2.5"
-            />
+              {/* 3. Kurva Pengeluaran (Merah) */}
+              {visibleLines.outflows && (
+                <path
+                  d={smoothCurveOutflow}
+                  fill="none"
+                  stroke="#dc2626"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* Vertical Guide Line */}
+              <line
+                x1={pAnchor.x}
+                y1={24}
+                x2={pAnchor.x}
+                y2={baselineY}
+                stroke="#94a3b8"
+                strokeWidth="1.2"
+                strokeDasharray="3 3"
+              />
+
+              {/* Active Point Dots pada masing-masing kurva */}
+              {visibleLines.balance && (
+                <g>
+                  <circle cx={pBalance.x} cy={pBalance.y} r="7" fill="rgba(37, 99, 235, 0.25)" />
+                  <circle cx={pBalance.x} cy={pBalance.y} r="4.5" fill="#2563eb" stroke="#ffffff" strokeWidth="2.5" />
+                </g>
+              )}
+
+              {visibleLines.inflows && (
+                <g>
+                  <circle cx={pInflow.x} cy={pInflow.y} r="7" fill="rgba(22, 163, 74, 0.25)" />
+                  <circle cx={pInflow.x} cy={pInflow.y} r="4.5" fill="#16a34a" stroke="#ffffff" strokeWidth="2.5" />
+                </g>
+              )}
+
+              {visibleLines.outflows && (
+                <g>
+                  <circle cx={pOutflow.x} cy={pOutflow.y} r="7" fill="rgba(220, 38, 38, 0.25)" />
+                  <circle cx={pOutflow.x} cy={pOutflow.y} r="4.5" fill="#dc2626" stroke="#ffffff" strokeWidth="2.5" />
+                </g>
+              )}
+            </g>
 
             {/* Invisible Hover Hotspots for Smooth Hover Interactions */}
-            {chartPoints.map((p, idx) => (
+            {chartPointsBalance.map((p, idx) => (
               <rect
                 key={idx}
-                x={p.x - usableWidth / (chartPoints.length * 2)}
+                x={p.x - usableWidth / (chartPointsBalance.length * 2)}
                 y={20}
-                width={usableWidth / chartPoints.length}
+                width={usableWidth / chartPointsBalance.length}
                 height={baselineY - 20}
                 fill="transparent"
                 style={{ cursor: "pointer" }}
@@ -971,7 +1321,7 @@ export default function DashboardView({
             >
               {activeHoveredCat
                 ? formatRupiah(activeHoveredCat.stats.totalIuran)
-                : formatRupiah(donutTotalTarget)}
+                : formatRupiah(animatedDonutTarget)}
             </div>
             <div style={{ marginTop: "4px" }}>
               <span
@@ -1260,8 +1610,8 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* 2. Kartu Metrik Dashboard (Iuran Terkumpul & Saldo Kas Cabang) */}
-      <div className="stitch-dash-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      {/* 2. Kartu Metrik Dashboard (Iuran Terkumpul, Total Pengeluaran & Saldo Kas Cabang) */}
+      <div className="stitch-dash-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
         {/* Card 1: Iuran Terkumpul */}
         <div className="stitch-card">
           <div className="hairline-court"></div>
@@ -1269,43 +1619,63 @@ export default function DashboardView({
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
               Iuran Terkumpul
             </span>
-            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "#dcfce7", color: "#16a34a" }}>
-              {percentageCollected}%
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "var(--money-in-bg)", color: "var(--money-in)" }}>
+              {animatedPercent.toFixed(1)}%
             </span>
           </div>
-          <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "#0f5132" }}>
-            {formatRupiah(totalCollected)}
+          <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "var(--money-in)" }}>
+            {formatRupiah(animatedCollected)}
           </div>
           <div style={{ width: "100%", background: "var(--border-light)", height: "6px", borderRadius: "99px", marginTop: "10px", overflow: "hidden" }}>
             <div
               style={{
-                width: `${Math.min(100, Math.max(0, percentageCollected))}%`,
+                width: `${Math.min(100, Math.max(0, animatedPercent))}%`,
                 height: "100%",
-                background: "#0f5132",
+                background: "var(--money-in)",
                 borderRadius: "99px",
-                transition: "width 500ms ease",
+                transition: "width 1800ms cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             />
           </div>
         </div>
 
-        {/* Card 2: Saldo Kas Cabang */}
+        {/* Card 2: Total Pengeluaran */}
+        <div className="stitch-card" style={{ position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "#ef4444" }}></div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Total Pengeluaran
+            </span>
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "rgba(239, 68, 68, 0.12)", color: "#ef4444" }}>
+              {cashbook.filter((c) => c.type === "out").length} Belanja
+            </span>
+          </div>
+          <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "#ef4444" }}>
+            {formatRupiah(animatedCashOut)}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
+            <Receipt size={14} color="#ef4444" />
+            <span>Realisasi belanja kas operasional</span>
+          </div>
+        </div>
+
+        {/* Card 3: Saldo Kas Cabang */}
         <div className="stitch-card">
           <div className="hairline-gold"></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
               Saldo Kas Cabang
             </span>
-            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "var(--primary-50)", color: "#003820" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "var(--money-gold-bg)", color: "var(--money-gold)" }}>
               Kas Aktif
             </span>
           </div>
           <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>
-            {formatRupiah(currentBalance)}
+            {formatRupiah(animatedBalance)}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "12px", color: "var(--text-muted)" }}>
             <Landmark size={14} />
-            <span>Rek. Kas Cabang PA GS</span>
+            <span>{settings?.bank_holder || (currentUser?.satker ? `Rek. Kas Cabang ${currentUser.satker.replace("Pengadilan Agama ", "PA ").replace("Pengadilan Tinggi Agama ", "PTA ")}` : "Rek. Kas Cabang")}</span>
           </div>
         </div>
       </div>

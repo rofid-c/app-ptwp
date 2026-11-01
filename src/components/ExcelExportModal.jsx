@@ -75,13 +75,13 @@ export default function ExcelExportModal({
           )}
 
           <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", marginBottom: "16px" }}>
-            Sistem akan secara otomatis menyusun dan memformat berkas Microsoft Excel persis sesuai tata naskah resmi <strong>PTWP Pengadilan Agama Gunung Sugih</strong>:
+            Sistem akan secara otomatis menyusun dan memformat berkas Microsoft Excel persis sesuai tata naskah resmi <strong>PTWP {settings.institution || "Cabang"}</strong>:
           </p>
 
           <div style={{ background: "var(--bg-app)", borderRadius: "var(--radius-md)", padding: "16px", border: "1px solid var(--border-light)", display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--primary-700)", fontWeight: 600 }}>
               <CheckCircle2 size={16} />
-              <span>Judul & Periode: IURAN PTWP CABANG PA GUNUNG SUGIH ({period})</span>
+              <span>Judul & Periode: IURAN PTWP CABANG {settings.institution || "KANTOR"} ({period})</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--primary-700)", fontWeight: 600 }}>
               <CheckCircle2 size={16} />
