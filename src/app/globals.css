@@ -350,11 +350,11 @@ body {
 /* Main Content Area */
 .main-wrapper {
   flex: 1;
-  margin-left: 84px;
+  margin-left: 68px;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  width: calc(100% - 84px);
+  width: calc(100% - 68px);
 }
 
 /* Topbar */
@@ -445,9 +445,8 @@ body {
 
 /* Content Body */
 .content-area {
-  padding: 28px 32px 80px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 22px 28px 80px 14px;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -1355,7 +1354,7 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 84px;
+  width: 68px;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -1839,10 +1838,10 @@ body {
    TOPBAR FLOATING ISLANDS (Tabel Kotak Putih Terputus / 3 Pulau Terpisah)
    ========================================================================== */
 .stitch-topbar {
-  max-width: 1400px;
+  max-width: 100%;
   width: 100%;
-  margin: 16px auto 0 auto;
-  padding: 0 32px;
+  margin: 14px 0 0 0;
+  padding: 0 28px 0 14px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;

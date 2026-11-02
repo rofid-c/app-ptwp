@@ -199,7 +199,7 @@ export default function AuthView({
           setSuccessMsg(`Berhasil masuk ke ${json.user.satker}! Mengarahkan ke dashboard...`);
           setTimeout(() => {
             onLoginSuccess && onLoginSuccess(json.user);
-          }, 400);
+          }, 150);
           return;
         } else if (json.error) {
           setErrorMsg(json.error);
@@ -221,7 +221,7 @@ export default function AuthView({
     setSuccessMsg(`Berhasil masuk ke ${userData.satker}! Mengarahkan ke dashboard...`);
     setTimeout(() => {
       onLoginSuccess && onLoginSuccess(userData);
-    }, 400);
+    }, 150);
   };
 
 

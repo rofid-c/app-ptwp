@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { exportExpensesToExcel } from "@/services/excelService";
 import {
   FileSpreadsheet,
@@ -74,6 +75,7 @@ export default function HomePage() {
   const [settings, setSettings] = useState({});
   const [currentUser, setCurrentUser] = useState(INITIAL_USERS[0]);
   const [isAuthView, setIsAuthView] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "dues" | "cashbook"
   const [searchQuery, setSearchQuery] = useState("");
@@ -772,36 +774,99 @@ export default function HomePage() {
 
   const isAdmin = currentUser?.role === "bendahara" || currentUser?.role === "pimpinan" || currentUser?.role === "super_admin";
 
+  // Animasi Lingkaran Membesar dari Tengah ke Full Screen (1,5 Detik - Ultra Smooth)
+  const handleLoginTransition = (stateUpdateFn) => {
+    if (
+      typeof document === "undefined" ||
+      !document.startViewTransition ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      stateUpdateFn();
+      return;
+    }
+
+    const x = window.innerWidth / 2;
+    const y = window.innerHeight / 2;
+    const endRadius = Math.hypot(x, y);
+
+    setIsLoggingIn(true);
+
+    const transition = document.startViewTransition(() => {
+      flushSync(() => {
+        stateUpdateFn();
+      });
+    });
+
+    transition.ready.then(() => {
+      // 1. Dashboard baru membesar melingkar dari tengah menuhin layar (On Top, z-index 9999)
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 1500,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          pseudoElement: "::view-transition-new(root)",
+        }
+      );
+
+      // 2. Form login lama memudar, blur & menyusut lembut agar tidak menindih/menutupi lingkaran
+      document.documentElement.animate(
+        {
+          opacity: [1, 0.5, 0],
+          transform: ["scale(1)", "scale(0.95)"],
+          filter: ["blur(0px)", "blur(12px)"],
+        },
+        {
+          duration: 1500,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          pseudoElement: "::view-transition-old(root)",
+        }
+      );
+    });
+
+    transition.finished.finally(() => {
+      setIsLoggingIn(false);
+    });
+  };
+
   if (isAuthView) {
     return (
       <AuthView
         onLoginSuccess={(user) => {
-          loginUser(user, "", user.satker);
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.removeItem("ptwp_is_logged_out");
-            } catch (e) {}
-          }
-          setCurrentUser(user);
-          if (user?.role === "super_admin" || user?.username?.toLowerCase() === "aku admin") {
-            setActiveTab("admin");
-          } else {
-            setActiveTab("dashboard");
-          }
-          const userSatker = user?.satker || "Pengadilan Agama Gunung Sugih";
-          const userSettings = fetchSettings(userSatker);
-          setSettings(userSettings);
-          fetchMembersByPeriod(period, userSatker).then((d) => setMembers(d));
-          fetchCashBook(userSatker).then((c) => setCashbook(c));
-          setIsAuthView(false);
+          handleLoginTransition(() => {
+            loginUser(user, "", user.satker);
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.removeItem("ptwp_is_logged_out");
+              } catch (e) {}
+            }
+            setCurrentUser(user);
+            if (user?.role === "super_admin" || user?.username?.toLowerCase() === "aku admin") {
+              setActiveTab("admin");
+            } else {
+              setActiveTab("dashboard");
+            }
+            const userSatker = user?.satker || "Pengadilan Agama Gunung Sugih";
+            const userSettings = fetchSettings(userSatker);
+            setSettings(userSettings);
+            fetchMembersByPeriod(period, userSatker).then((d) => setMembers(d));
+            fetchCashBook(userSatker).then((c) => setCashbook(c));
+            setIsAuthView(false);
+          });
         }}
         onBypassToDashboard={() => {
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.removeItem("ptwp_is_logged_out");
-            } catch (e) {}
-          }
-          setIsAuthView(false);
+          handleLoginTransition(() => {
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.removeItem("ptwp_is_logged_out");
+              } catch (e) {}
+            }
+            setIsAuthView(false);
+          });
         }}
         defaultMode="login"
       />
@@ -849,7 +914,10 @@ export default function HomePage() {
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
-        <main key={activeTab} className="content-area page-transition-blur">
+        <main
+          key={activeTab}
+          className={`content-area ${!isLoggingIn ? "page-transition-blur" : ""}`}
+        >
           {/* TAB 0: DASHBOARD UTAMA (STITCH DESIGN) */}
             {activeTab === "dashboard" && (
               <DashboardView
