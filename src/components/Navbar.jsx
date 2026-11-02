@@ -10,6 +10,7 @@ import {
   Search,
   Settings,
   Clock,
+  Building2,
 } from "lucide-react";
 
 export default function Navbar({
@@ -29,10 +30,27 @@ export default function Navbar({
   onOpenSettings,
   showSearch = false,
   searchPlaceholder = "Cari nama, jabatan...",
+  // Khusus Monitoring PTA Bandar Lampung
+  activeTab = "dashboard",
+  onSelectTab,
+  settings = {},
 }) {
   const isSuper =
     currentUser?.role === "super_admin" ||
     currentUser?.username?.toLowerCase() === "aku admin";
+
+  const satkerText = (
+    currentUser?.satker ||
+    settings?.institution ||
+    settings?.satker ||
+    ""
+  ).toLowerCase();
+
+  const isPTA =
+    satkerText.includes("tinggi agama bandar lampung") ||
+    satkerText.includes("pta bandar lampung") ||
+    satkerText.includes("pengadilan tinggi agama") ||
+    satkerText.includes("pta");
 
   const [timeStr, setTimeStr] = useState("");
 
@@ -89,7 +107,7 @@ export default function Navbar({
       </div>
 
       {/* =====================================================================
-          2. PULAU TENGAH: Search (Khusus Menu Rekap Iuran) - Cetak PDF - Pengaturan
+          2. PULAU TENGAH: Search - Cetak PDF - Pengaturan - Monitoring Cabang (PTA)
           ===================================================================== */}
       <div className="top-island-center">
         {/* Search Input Box (Hanya Tampil Saat di Menu Rekap Iuran Sesuai Permintaan) */}
@@ -154,6 +172,30 @@ export default function Navbar({
           <Settings size={15} />
           <span className="tool-text">Pengaturan</span>
         </button>
+
+        {/* =====================================================================
+            KHUSUS PTA BANDAR LAMPUNG: Menu Monitoring Cabang (Samping Kanan Pengaturan)
+            ===================================================================== */}
+        {isPTA && (
+          <>
+            <div className="island-inner-divider" />
+            <button
+              type="button"
+              className={`island-tool-btn island-monitoring-direct-btn ${
+                activeTab === "monitoring" ? "active-monitoring" : ""
+              }`}
+              onClick={() => {
+                if (onSelectTab) {
+                  onSelectTab(activeTab === "monitoring" ? "dashboard" : "monitoring");
+                }
+              }}
+              title="Monitoring Pengadilan Agama Cabang"
+            >
+              <Building2 size={15} />
+              <span className="tool-text">Monitoring Cabang</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* =====================================================================

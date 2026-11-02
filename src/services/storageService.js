@@ -751,6 +751,28 @@ export const INITIAL_USERS = [
     satker: "Seluruh Satuan Kerja",
     level: "super_admin",
   },
+  {
+    username: "bendahara_pta",
+    phone: "08117200001",
+    password: "123",
+    name: "Tata Usaha PTA",
+    role: "bendahara",
+    roleLabel: "Bendahara PTWP Daerah PTA Bandar Lampung",
+    title: "Bendahara Daerah",
+    satker: "Pengadilan Tinggi Agama Bandar Lampung",
+    level: "daerah",
+  },
+  {
+    username: "pta_bandarlampung",
+    phone: "08117200002",
+    password: "123",
+    name: "Pengurus PTA Bandar Lampung",
+    role: "pimpinan",
+    roleLabel: "Pengurus PTWP Daerah PTA Bandar Lampung",
+    title: "Pimpinan Daerah",
+    satker: "Pengadilan Tinggi Agama Bandar Lampung",
+    level: "daerah",
+  },
 ];
 
 export function getRegisteredUsers() {

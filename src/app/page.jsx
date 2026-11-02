@@ -37,6 +37,7 @@ import AuthView from "@/components/AuthView";
 import UserProfileModal from "@/components/UserProfileModal";
 import AdminView from "@/components/AdminView";
 import DuesExpenseView from "@/components/DuesExpenseView";
+import MonitoringCabangView from "@/components/MonitoringCabangView";
 import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 
 import {
@@ -99,6 +100,7 @@ export default function HomePage() {
   const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState("all");
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [selectedMonitoringBranch, setSelectedMonitoringBranch] = useState("all");
 
   // Helper ganti periode aktif yang persisten across reload/restart
   const changePeriod = (newPeriod) => {
@@ -669,28 +671,17 @@ export default function HomePage() {
   const totalPeriodExpenses = currentPeriodExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const netBalance = effectiveUangMasuk - totalPeriodExpenses;
 
-  const baseExpenseCategories = [
-    "Setoran Wajib Pusat",
-    "Setoran Wajib Daerah",
-    "Operasional Lapangan",
-    "Konsumsi",
-    "Pemeliharaan Lapangan",
-    "Kegiatan & Turnamen",
-  ];
-
-  const dynamicExpenseCategories = Array.from(
-    new Set([
-      ...baseExpenseCategories,
-      ...currentPeriodExpenses.map((e) => e.category).filter(Boolean),
-    ])
-  );
-
   const getExpenseCount = (cat) => {
     if (cat === "all") return currentPeriodExpenses.length;
     return currentPeriodExpenses.filter(
       (e) => (e.category || "").toLowerCase() === cat.toLowerCase()
     ).length;
   };
+
+  // Hanya ambil kategori belanja yang benar-benar ada datanya pada periode ini (jika 0 tidak ditampilkan)
+  const dynamicExpenseCategories = Array.from(
+    new Set(currentPeriodExpenses.map((e) => e.category).filter(Boolean))
+  ).filter((cat) => getExpenseCount(cat) > 0);
 
   const filteredExpenses = currentPeriodExpenses.filter((e) => {
     const q = expenseSearchQuery.toLowerCase();
@@ -912,6 +903,11 @@ export default function HomePage() {
           searchPlaceholder={duesSubTab === "in" ? "Cari nama, jabatan..." : "Cari pos belanja..."}
           onOpenPeriodPicker={() => setIsPeriodPickerOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
+          selectedMonitoringBranch={selectedMonitoringBranch}
+          onSelectMonitoringBranch={setSelectedMonitoringBranch}
+          settings={settings}
         />
 
         <main
@@ -931,6 +927,11 @@ export default function HomePage() {
                 onOpenExport={() => setIsExportOpen(true)}
                 onOpenPeriodPicker={() => setIsPeriodPickerOpen(true)}
               />
+            )}
+
+            {/* TAB MONITORING PA CABANG (KHUSUS PTA BANDAR LAMPUNG) */}
+            {activeTab === "monitoring" && (
+              <MonitoringCabangView />
             )}
 
             {/* TAB 1: REKAPITULASI IURAN */}
@@ -1065,19 +1066,21 @@ export default function HomePage() {
 
                   {/* Kanan Atas: Tombol Filter & Tambah */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <button
-                      type="button"
-                      className={`rekap-filter-toggle-btn ${isFilterVisible ? "active" : ""}`}
-                      onClick={() => setIsFilterVisible(!isFilterVisible)}
-                      title={isFilterVisible ? "Sembunyikan filter kategori (hilangkan ke atas)" : "Tampilkan filter kategori"}
-                    >
-                      <Filter size={14} />
-                      <span>Filter</span>
-                      {((duesSubTab === "in" && categoryFilter !== "all") || (duesSubTab === "out" && expenseCategoryFilter !== "all")) && (
-                        <span className="rekap-filter-active-dot" />
-                      )}
-                      {isFilterVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
+                    {((duesSubTab === "in" && members.length > 0) || (duesSubTab === "out" && currentPeriodExpenses.length > 0)) && (
+                      <button
+                        type="button"
+                        className={`rekap-filter-toggle-btn ${isFilterVisible ? "active" : ""}`}
+                        onClick={() => setIsFilterVisible(!isFilterVisible)}
+                        title={isFilterVisible ? "Sembunyikan filter kategori (hilangkan ke atas)" : "Tampilkan filter kategori"}
+                      >
+                        <Filter size={14} />
+                        <span>Filter</span>
+                        {((duesSubTab === "in" && categoryFilter !== "all") || (duesSubTab === "out" && expenseCategoryFilter !== "all")) && (
+                          <span className="rekap-filter-active-dot" />
+                        )}
+                        {isFilterVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -1099,71 +1102,81 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Baris 2: Filter Kategori di Tengah dalam Tabung Putih (Dapat Dihilangkan ke Atas) */}
-                <div className={`rekap-filter-collapsible ${isFilterVisible ? "open" : "collapsed"}`}>
-                  <div className="rekap-filter-tube">
-                    {duesSubTab === "in" ? (
-                      <>
-                        <button
-                          type="button"
-                          className={`stitch-filter-pill-btn ${categoryFilter === "all" ? "active" : ""}`}
-                          onClick={() => setCategoryFilter("all")}
-                        >
-                          Semua ({members.length})
-                        </button>
-                        <button
-                          type="button"
-                          className={`stitch-filter-pill-btn ${categoryFilter === "Hakim" ? "active" : ""}`}
-                          onClick={() => setCategoryFilter("Hakim")}
-                        >
-                          Hakim ({hakimCount})
-                        </button>
-                        <button
-                          type="button"
-                          className={`stitch-filter-pill-btn ${categoryFilter === "Kepaniteraan" ? "active" : ""}`}
-                          onClick={() => setCategoryFilter("Kepaniteraan")}
-                        >
-                          Kepaniteraan ({paniteraCount})
-                        </button>
-                        <button
-                          type="button"
-                          className={`stitch-filter-pill-btn ${categoryFilter === "Kesekretariatan" ? "active" : ""}`}
-                          onClick={() => setCategoryFilter("Kesekretariatan")}
-                        >
-                          Kesekretariatan ({sekretariatCount})
-                        </button>
-                        <button
-                          type="button"
-                          className={`stitch-filter-pill-btn ${categoryFilter === "Staf" ? "active" : ""}`}
-                          onClick={() => setCategoryFilter("Staf")}
-                        >
-                          Staf ({stafCount})
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className={`stitch-filter-pill-btn ${expenseCategoryFilter === "all" ? "active" : ""}`}
-                          onClick={() => setExpenseCategoryFilter("all")}
-                        >
-                          Semua ({currentPeriodExpenses.length})
-                        </button>
-                        {dynamicExpenseCategories.map((cat) => (
+                {/* Baris 2: Filter Kategori di Tengah dalam Tabung Putih (Hanya tampil jika ada data & tidak menampilkan kategori kosong 0) */}
+                {((duesSubTab === "in" && members.length > 0) || (duesSubTab === "out" && currentPeriodExpenses.length > 0)) && (
+                  <div className={`rekap-filter-collapsible ${isFilterVisible ? "open" : "collapsed"}`}>
+                    <div className="rekap-filter-tube">
+                      {duesSubTab === "in" ? (
+                        <>
                           <button
-                            key={cat}
                             type="button"
-                            className={`stitch-filter-pill-btn ${expenseCategoryFilter.toLowerCase() === cat.toLowerCase() ? "active" : ""}`}
-                            onClick={() => setExpenseCategoryFilter(cat)}
-                            style={{ whiteSpace: "nowrap" }}
+                            className={`stitch-filter-pill-btn ${categoryFilter === "all" ? "active" : ""}`}
+                            onClick={() => setCategoryFilter("all")}
                           >
-                            {cat} ({getExpenseCount(cat)})
+                            Semua ({members.length})
                           </button>
-                        ))}
-                      </>
-                    )}
+                          {hakimCount > 0 && (
+                            <button
+                              type="button"
+                              className={`stitch-filter-pill-btn ${categoryFilter === "Hakim" ? "active" : ""}`}
+                              onClick={() => setCategoryFilter("Hakim")}
+                            >
+                              Hakim ({hakimCount})
+                            </button>
+                          )}
+                          {paniteraCount > 0 && (
+                            <button
+                              type="button"
+                              className={`stitch-filter-pill-btn ${categoryFilter === "Kepaniteraan" ? "active" : ""}`}
+                              onClick={() => setCategoryFilter("Kepaniteraan")}
+                            >
+                              Kepaniteraan ({paniteraCount})
+                            </button>
+                          )}
+                          {sekretariatCount > 0 && (
+                            <button
+                              type="button"
+                              className={`stitch-filter-pill-btn ${categoryFilter === "Kesekretariatan" ? "active" : ""}`}
+                              onClick={() => setCategoryFilter("Kesekretariatan")}
+                            >
+                              Kesekretariatan ({sekretariatCount})
+                            </button>
+                          )}
+                          {stafCount > 0 && (
+                            <button
+                              type="button"
+                              className={`stitch-filter-pill-btn ${categoryFilter === "Staf" ? "active" : ""}`}
+                              onClick={() => setCategoryFilter("Staf")}
+                            >
+                              Staf ({stafCount})
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className={`stitch-filter-pill-btn ${expenseCategoryFilter === "all" ? "active" : ""}`}
+                            onClick={() => setExpenseCategoryFilter("all")}
+                          >
+                            Semua ({currentPeriodExpenses.length})
+                          </button>
+                          {dynamicExpenseCategories.map((cat) => (
+                            <button
+                              key={cat}
+                              type="button"
+                              className={`stitch-filter-pill-btn ${expenseCategoryFilter.toLowerCase() === cat.toLowerCase() ? "active" : ""}`}
+                              onClick={() => setExpenseCategoryFilter(cat)}
+                              style={{ whiteSpace: "nowrap" }}
+                            >
+                              {cat} ({getExpenseCount(cat)})
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* 2. 4 KEY METRIC CARDS: Uang Masuk - Total Saldo Kas - Uang Keluar - Saldo Bersih */}
