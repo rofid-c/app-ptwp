@@ -456,31 +456,13 @@ export default function MonitoringCabangView({
                   onClick={() => setSelectedBranch(branch.name)}
                   className={`branch-item-btn ${isCurrent ? "active-branch" : ""}`}
                 >
-                  <div className="branch-icon-square">
-                    <span className="branch-code-text">{branch.code}</span>
-                  </div>
+                  <span className="branch-name-label">{branch.shortName}</span>
 
-                  <div className="branch-meta-info">
-                    <span className="branch-name-label">{branch.shortName}</span>
-                    <span className="branch-region-label">{branch.region}</span>
-                  </div>
-
-                  <div className="branch-status-wrap">
-                    <span
-                      className={`branch-compliance-pill ${
-                        branch.collectionRate === "100.0%"
-                          ? "pill-perfect"
-                          : "pill-good"
-                      }`}
-                    >
-                      {branch.collectionRate}
+                  {isCurrent && (
+                    <span className="branch-current-indicator">
+                      <CheckCircle2 size={15} color="#0f5132" />
                     </span>
-                    {isCurrent && (
-                      <span className="branch-current-indicator">
-                        <CheckCircle2 size={12} color="#0f5132" />
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </button>
               );
             })}
