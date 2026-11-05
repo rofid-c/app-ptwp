@@ -475,10 +475,46 @@ body {
 }
 
 .page-transition-blur {
-  animation: pageFadeBlurIn 0.3 s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: pageFadeBlurIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   -webkit-animation: pageFadeBlurIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   will-change: opacity, filter, transform;
 }
+
+/* ==========================================================================
+   STAGGERED SLIDE & WIDEN FROM LEFT (MUNCUL MELEBAR 1 PER 1 DARI UJUNG KIRI MENU)
+   Durasi total 1.8 detik, kurva Apple cubic-bezier sangat halus
+   ========================================================================== */
+@keyframes emergeAndWidenFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-50px) scaleX(0.88);
+    filter: blur(3px);
+  }
+  30% {
+    opacity: 0.7;
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+    filter: blur(0px);
+  }
+}
+
+.widen-stagger {
+  animation: emergeAndWidenFromLeft 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: left center;
+  will-change: transform, opacity, filter;
+}
+
+.widen-delay-1 { animation-delay: 60ms; }
+.widen-delay-2 { animation-delay: 180ms; }
+.widen-delay-3 { animation-delay: 300ms; }
+.widen-delay-4 { animation-delay: 420ms; }
+.widen-delay-5 { animation-delay: 540ms; }
+.widen-delay-6 { animation-delay: 660ms; }
+.widen-delay-7 { animation-delay: 780ms; }
+.widen-delay-8 { animation-delay: 900ms; }
 
 /* ==========================================================================
    METRIC CARDS (DASHBOARD STATS)
@@ -1979,15 +2015,15 @@ body {
 .island-tool-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 4px 10px;
   border-radius: 9999px;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #475569;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
   transition: all 0.16s ease;
   white-space: nowrap;
 }
@@ -2662,7 +2698,7 @@ body {
   display: inline-block;
 }
 
-/* Filter Kategori Collapsible & Tabung Putih di Tengah */
+/* Filter Kategori Collapsible & Tabung Putih di Tengah (Terpisah sebagai Floating Pill Bar) */
 .rekap-filter-collapsible {
   width: 100%;
   display: flex;
@@ -2671,19 +2707,21 @@ body {
   transition: max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
               opacity 0.22s ease,
               transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-              margin-top 0.25s ease;
+              margin 0.25s ease;
   max-height: 90px;
   opacity: 1;
   transform: translateY(0);
   overflow: hidden;
-  margin-top: 14px;
+  margin-top: 0;
+  margin-bottom: 16px;
 }
 
 .rekap-filter-collapsible.collapsed {
   max-height: 0;
   opacity: 0;
-  transform: translateY(-12px);
+  transform: translateY(-10px);
   margin-top: 0;
+  margin-bottom: 0;
   pointer-events: none;
 }
 
@@ -4191,4 +4229,1570 @@ body {
 .monitoring-view-empty {
   min-height: calc(100vh - 120px);
   width: 100%;
+}
+
+/* ==========================================================================
+   FEATURE LOCKED MODAL (Fitur Eksklusif Terkunci - PA Gunung Sugih)
+   ========================================================================== */
+.feature-locked-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeInBlur 0.25s ease-out forwards;
+}
+
+.feature-locked-modal {
+  background: #ffffff;
+  border-radius: 26px;
+  max-width: 470px;
+  width: 100%;
+  padding: 32px 28px 24px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .feature-locked-modal {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 28px 70px -12px rgba(0, 0, 0, 0.7);
+}
+
+.locked-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: all 0.16s ease;
+}
+
+[data-theme="dark"] .locked-close-btn {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+.locked-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme="dark"] .locked-close-btn:hover {
+  background: #2b394f;
+  color: #ffffff;
+}
+
+.locked-icon-halo {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 14px 32px -4px rgba(245, 158, 11, 0.45);
+  animation: pulseScale 3s ease-in-out infinite;
+}
+
+@keyframes pulseScale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+.locked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  margin-bottom: 8px;
+}
+
+[data-theme="dark"] .locked-badge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.locked-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+  letter-spacing: -0.3px;
+}
+
+.locked-main-text {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+
+.locked-sub-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+
+.locked-contact-card {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+[data-theme="dark"] .locked-contact-card {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+.contact-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.contact-badge-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.contact-online-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.online-ping {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.contact-main-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wa-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #25D366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+  flex-shrink: 0;
+}
+
+.contact-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.contact-number {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
+}
+
+.copy-wa-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .copy-wa-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.copy-wa-btn:hover {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .copy-wa-btn:hover {
+  background: #2d3b50;
+}
+
+.copy-wa-btn.copied {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+[data-theme="dark"] .copy-wa-btn.copied {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+.locked-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.locked-wa-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  border-radius: 14px;
+  background: #25D366;
+  color: #ffffff !important;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px -2px rgba(37, 211, 102, 0.4);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.locked-wa-link:hover {
+  background: #20bd5a;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -2px rgba(37, 211, 102, 0.5);
+}
+
+.locked-dismiss-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.locked-dismiss-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .locked-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================================================
+   LOCKED BLUR OVERLAY (Efek Blur Tampilan + Logo Terkunci di Tengah)
+   ========================================================================== */
+.locked-blur-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(248, 250, 252, 0.5);
+  cursor: pointer;
+  border-radius: inherit;
+  animation: fadeInBlur 0.3s ease-out forwards;
+}
+
+[data-theme="dark"] .locked-blur-overlay {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+/* Floating Minimal Lock Button in the Center of Blurred View (Hanya Icon Kunci) */
+.locked-floating-icon-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.locked-floating-icon-btn:hover {
+  transform: scale(1.14);
+}
+
+.locked-floating-icon-btn:active {
+  transform: scale(0.95);
+}
+
+.locked-icon-pulse-ring {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, rgba(245, 158, 11, 0) 70%);
+  animation: pulseHalo 2.2s ease-in-out infinite;
+}
+
+.locked-icon-circle {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 60%, #b45309 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 32px -4px rgba(217, 119, 6, 0.5), 0 0 0 5px rgba(255, 255, 255, 0.9);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .locked-icon-circle {
+  box-shadow: 0 12px 32px -4px rgba(217, 119, 6, 0.6), 0 0 0 5px rgba(30, 41, 59, 0.9);
+}
+
+.locked-floating-icon-btn:hover .locked-icon-circle {
+  box-shadow: 0 18px 44px -2px rgba(217, 119, 6, 0.7), 0 0 0 8px rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="dark"] .locked-floating-icon-btn:hover .locked-icon-circle {
+  box-shadow: 0 18px 44px -2px rgba(217, 119, 6, 0.8), 0 0 0 8px rgba(30, 41, 59, 0.95);
+}
+
+
+
+
+/* ==========================================================================
+   MONITORING CABANG PTA: SPLIT SCREEN DENGAN 2 TABEL TABUNG KANAN (Gambar 1 & 2)
+   ========================================================================== */
+
+/* 1. Transisi Bilah Atas (Navbar): "Cetak PDF" Bergeser ke Kanan Atas (Gambar 3) */
+.stitch-topbar {
+  transition: all 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.top-island-center {
+  transition: all 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stitch-topbar.navbar-monitoring-mode {
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+}
+
+.island-calendar-btn {
+  transition: all 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.calendar-btn-monitoring-hidden {
+  opacity: 0 !important;
+  transform: scale(0.82) translateX(-25px) !important;
+  pointer-events: none !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+/* Tombol Cetak PDF di Pulau Kanan (di samping Jam Digital) */
+.island-print-btn {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .island-print-btn {
+  background: #141f33;
+  border-color: #23314d;
+  color: #cbd5e1;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.4);
+}
+
+.island-print-btn:hover {
+  background: rgba(15, 81, 50, 0.08);
+  color: #0f5132;
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px -2px rgba(0, 0, 0, 0.1);
+  border-color: rgba(15, 81, 50, 0.35);
+}
+
+[data-theme="dark"] .island-print-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #4ade80;
+}
+
+/* 2. Container Layout Monitoring: Split Screen */
+.monitoring-split-layout {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  align-items: flex-start;
+  position: relative;
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: 24px;
+}
+
+/* 3. Panel Kiri: Dashboard Utuh Menyesuaikan Ruang dengan Halus */
+.monitoring-left-pane {
+  flex: 1;
+  min-width: 0;
+  animation: monitoringLeftSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes monitoringLeftSlideIn {
+  0% {
+    opacity: 0.85;
+    transform: translateX(-15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Khusus Monitoring Cabang: Skala 80% pada body (Rasio aspek 80% seperti Gambar 2) */
+body.monitoring-active-tab {
+  zoom: 0.8;
+}
+
+.monitoring-branch-indicator-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  padding: 8px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+[data-theme="dark"] .monitoring-branch-indicator-bar {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.35);
+}
+
+.monitoring-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+  animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.monitoring-pill-region {
+  background: rgba(15, 81, 50, 0.08);
+  color: #0f5132;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .monitoring-pill-region {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+.monitoring-pill-rate {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.monitoring-pill-rate strong {
+  color: #0f5132;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .monitoring-pill-rate strong {
+  color: #34d399;
+}
+
+.monitoring-pill-status {
+  font-size: 12px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* 4. Panel Kanan: 2 Tabel Tabung Melengkung (Seperti Gambar 1) */
+.monitoring-right-pane {
+  width: 350px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 14px;
+  animation: slideInRightTabung 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 20;
+}
+
+@keyframes slideInRightTabung {
+  0% {
+    opacity: 0;
+    transform: translateX(45px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Desain Tabel Tabung Kapsul Putih */
+.monitoring-tabung-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 26px;
+  box-shadow: 0 8px 28px -4px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 18px 20px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .monitoring-tabung-card {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.35);
+}
+
+.monitoring-tabung-card:hover {
+  box-shadow: 0 12px 34px -4px rgba(0, 0, 0, 0.08);
+}
+
+.tabung-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(15, 81, 50, 0.09);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .tabung-icon-badge {
+  background: rgba(52, 211, 153, 0.15);
+}
+
+.tabung-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.tabung-subtitle {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Tabung 1: Kalender Periode (Grid 12 Bulan Saja Tanpa Tanggal 1-30) */
+.calendar-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.calendar-nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calendar-arrow-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.calendar-arrow-btn:hover {
+  background: rgba(15, 81, 50, 0.08);
+  color: #0f5132;
+  border-color: rgba(15, 81, 50, 0.25);
+}
+
+[data-theme="dark"] .calendar-arrow-btn:hover {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+.period-months-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.period-month-pill-btn {
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.period-month-pill-btn:hover {
+  background: rgba(15, 81, 50, 0.05);
+  color: #0f5132;
+  border-color: rgba(15, 81, 50, 0.2);
+}
+
+.period-month-pill-btn.active {
+  background: #0f5132 !important;
+  color: #ffffff !important;
+  border-color: #0f5132 !important;
+  box-shadow: 0 4px 12px rgba(15, 81, 50, 0.25);
+}
+
+[data-theme="dark"] .period-month-pill-btn.active {
+  background: #10b981 !important;
+  color: #051f15 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.month-code {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.month-active-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  margin-top: 2px;
+}
+
+[data-theme="dark"] .month-active-dot {
+  background: #051f15;
+}
+
+/* Tabung 2: Wilayah 14 PA Cabang */
+.branches-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.branches-count-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f5132;
+  background: rgba(15, 81, 50, 0.08);
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+[data-theme="dark"] .branches-count-pill {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+.branches-search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 6px 12px;
+  margin-bottom: 12px;
+  transition: all 0.18s ease;
+}
+
+[data-theme="dark"] .branches-search-container {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.branches-search-container:focus-within {
+  border-color: rgba(15, 81, 50, 0.4);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.08);
+}
+
+[data-theme="dark"] .branches-search-container:focus-within {
+  background: #0f172a;
+  border-color: #10b981;
+}
+
+.branches-search-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.branches-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.branches-search-input::placeholder {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.branches-clear-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.monitoring-branches-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.branches-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(100vh - 280px);
+  min-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.branches-scroll-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.branches-scroll-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .branches-scroll-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.branch-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.16s ease;
+  width: 100%;
+}
+
+.branch-item-btn:hover {
+  background: rgba(15, 81, 50, 0.05);
+  border-color: rgba(15, 81, 50, 0.12);
+}
+
+[data-theme="dark"] .branch-item-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.branch-item-btn.active-branch {
+  background: rgba(15, 81, 50, 0.09) !important;
+  border-color: rgba(15, 81, 50, 0.3) !important;
+  box-shadow: 0 2px 8px -1px rgba(15, 81, 50, 0.1);
+}
+
+[data-theme="dark"] .branch-item-btn.active-branch {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.branch-icon-square {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.16s ease;
+}
+
+[data-theme="dark"] .branch-icon-square {
+  background: #1e293b;
+}
+
+.branch-item-btn.active-branch .branch-icon-square {
+  background: #0f5132;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .branch-item-btn.active-branch .branch-icon-square {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.branch-code-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: inherit;
+}
+
+.branch-meta-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.branch-name-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-region-label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.branch-compliance-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 9999px;
+}
+
+.branch-compliance-pill.pill-perfect {
+  background: #dcfce7;
+  color: #166534;
+}
+
+[data-theme="dark"] .branch-compliance-pill.pill-perfect {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.branch-compliance-pill.pill-good {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+[data-theme="dark"] .branch-compliance-pill.pill-good {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.branch-current-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.branches-empty-notice {
+  text-align: center;
+  padding: 24px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Responsif: Layar lebih kecil dari 1200px */
+@media (max-width: 1200px) {
+  .monitoring-split-layout {
+    flex-direction: column;
+  }
+  .monitoring-left-pane {
+    width: 100%;
+  }
+  .monitoring-right-pane {
+    width: 100%;
+    position: static;
+  }
+}
+
+/* ==========================================================================
+   PTWP CUSTOM ERROR PAGES (404 NOT FOUND, 500 SERVER ERROR, STATUS HANDLERS)
+   ========================================================================== */
+.ptwp-error-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background-color: var(--bg-app);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.error-blur-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.22;
+  pointer-events: none;
+  animation: floatOrb 8s ease-in-out infinite alternate;
+}
+
+.error-blur-orb.orb-1 {
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, #10b981 0%, rgba(16, 185, 129, 0) 70%);
+  top: -80px;
+  left: -60px;
+}
+
+.error-blur-orb.orb-2 {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, #f59e0b 0%, rgba(245, 158, 11, 0) 70%);
+  bottom: -100px;
+  right: -80px;
+  animation-delay: -4s;
+}
+
+.error-orb-red {
+  background: radial-gradient(circle, #ef4444 0%, rgba(239, 68, 68, 0) 70%) !important;
+}
+
+.error-orb-gold {
+  background: radial-gradient(circle, #ca8a04 0%, rgba(202, 138, 4, 0) 70%) !important;
+}
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, 20px) scale(1.08); }
+}
+
+.ptwp-error-card {
+  position: relative;
+  z-index: 10;
+  max-width: 580px;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 28px;
+  padding: 38px 34px 28px;
+  box-shadow: 0 20px 48px -12px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  animation: pageFadeBlurIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-theme="dark"] .ptwp-error-card {
+  background: #141f33;
+  border-color: #23314d;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
+}
+
+.error-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 81, 50, 0.06);
+  border: 1px solid rgba(15, 81, 50, 0.14);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  margin-bottom: 22px;
+}
+
+[data-theme="dark"] .error-brand-pill {
+  background: rgba(52, 211, 153, 0.08);
+  border-color: rgba(52, 211, 153, 0.22);
+}
+
+.error-brand-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-brand-badge.badge-warning {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.error-brand-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+}
+
+.error-code-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.badge-404 {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+[data-theme="dark"] .badge-404 {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.badge-500 {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+[data-theme="dark"] .badge-500 {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.error-icon-box {
+  width: 82px;
+  height: 82px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 81, 50, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  position: relative;
+}
+
+.error-icon-box.icon-box-warning {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.08) 100%);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.error-main-icon {
+  color: #0f5132;
+}
+
+[data-theme="dark"] .error-main-icon {
+  color: #34d399;
+}
+
+.error-main-icon.icon-warning {
+  color: #dc2626;
+}
+
+[data-theme="dark"] .error-main-icon.icon-warning {
+  color: #f87171;
+}
+
+.error-icon-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 30px;
+  background: rgba(16, 185, 129, 0.15);
+  filter: blur(10px);
+  z-index: -1;
+}
+
+.error-icon-glow.glow-warning {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.error-heading {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  letter-spacing: -0.3px;
+}
+
+.error-subtext {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto 20px;
+}
+
+.error-url-box {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 8px 14px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  text-align: left;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .error-url-box {
+  background: #1a253c;
+}
+
+.url-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.url-code {
+  font-family: 'JetBrains Mono', monospace;
+  color: #0f5132;
+  word-break: break-all;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .url-code {
+  color: #34d399;
+}
+
+.error-tips-box {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 16px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+[data-theme="dark"] .error-tips-box {
+  background: rgba(234, 179, 8, 0.06);
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.tips-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b45309;
+  margin-bottom: 6px;
+}
+
+[data-theme="dark"] .tips-title {
+  color: #fbbf24;
+}
+
+.tips-list {
+  padding-left: 18px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.tips-list li + li {
+  margin-top: 4px;
+}
+
+.tips-list strong {
+  color: var(--text-primary);
+}
+
+.error-tech-container {
+  margin-bottom: 22px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.error-tech-toggle {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.02);
+  border: none;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .error-tech-toggle {
+  background: #1a253c;
+}
+
+.error-tech-details {
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 11.5px;
+  border-top: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .error-tech-details {
+  background: #0f172a;
+}
+
+.tech-msg, .tech-digest {
+  margin: 0 0 6px;
+  color: var(--text-secondary);
+}
+
+.tech-stack {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  max-height: 140px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: #ef4444;
+}
+
+[data-theme="dark"] .tech-stack {
+  background: #111827;
+  color: #f87171;
+}
+
+.error-actions-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.error-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.error-btn.btn-primary {
+  background: #0f5132;
+  color: #ffffff;
+  border: 1px solid #0f5132;
+  box-shadow: 0 4px 14px rgba(15, 81, 50, 0.25);
+}
+
+.error-btn.btn-primary:hover {
+  background: #146c43;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 81, 50, 0.35);
+}
+
+[data-theme="dark"] .error-btn.btn-primary {
+  background: #10b981;
+  color: #051f15;
+  border-color: #10b981;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .error-btn.btn-primary:hover {
+  background: #34d399;
+}
+
+.error-btn.btn-secondary {
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.error-btn.btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .error-btn.btn-secondary {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .error-btn.btn-secondary:hover {
+  background: #273549;
+}
+
+.error-btn.btn-outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+}
+
+.error-btn.btn-outline:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .error-btn.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.error-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.error-version-chip {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 10.5px;
+}
+
+[data-theme="dark"] .error-version-chip {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 600px) {
+  .ptwp-error-card {
+    padding: 28px 20px 20px;
+    border-radius: 20px;
+  }
+  .error-heading {
+    font-size: 19px;
+  }
+  .error-actions-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  .error-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Floating Network Sentinel */
+.ptwp-network-sentinel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  border-radius: 9999px;
+  padding: 8px 16px;
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.18);
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ptwp-network-sentinel.status-offline {
+  background: #ffffff;
+  border: 1px solid #fecaca;
+}
+
+[data-theme="dark"] .ptwp-network-sentinel.status-offline {
+  background: #1e293b;
+  border-color: #ef4444;
+}
+
+.ptwp-network-sentinel.status-reconnected {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+}
+
+[data-theme="dark"] .ptwp-network-sentinel.status-reconnected {
+  background: #1e293b;
+  border-color: #10b981;
+}
+
+.sentinel-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sentinel-icon-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offline-circle {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.online-circle {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.sentinel-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.sentinel-text strong {
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.sentinel-text span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sentinel-retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+}
+
+.sentinel-retry-btn:hover {
+  background: #fecaca;
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

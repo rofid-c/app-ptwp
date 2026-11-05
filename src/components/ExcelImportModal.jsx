@@ -16,12 +16,15 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { parseExcelFile } from "@/services/excelService";
+import LockedBlurOverlay from "./LockedBlurOverlay";
 
 export default function ExcelImportModal({
   isOpen,
   onClose,
   onImportSuccess,
   period = "September 2026",
+  isLocked = false,
+  onLockedClick,
 }) {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
@@ -203,8 +206,24 @@ export default function ExcelImportModal({
       <div
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: isMultiSheet ? "840px" : "740px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        style={{
+          maxWidth: isMultiSheet ? "840px" : "740px",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          overflow: "hidden",
+        }}
       >
+        {/* Efek Blur + Logo Kunci di Tengah jika Akun PTA / Fitur Terkunci */}
+        {isLocked && (
+          <LockedBlurOverlay
+            onUnlockClick={() => {
+              if (onLockedClick) onLockedClick();
+            }}
+          />
+        )}
+
         {/* Header */}
         <div className="modal-header">
           <div className="modal-title">

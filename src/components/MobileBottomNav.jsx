@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LayoutDashboard, FileSpreadsheet, Wallet, User, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, Wallet, User, ShieldCheck, Building2 } from "lucide-react";
 
 export default function MobileBottomNav({
   activeTab = "dashboard",
@@ -11,6 +11,10 @@ export default function MobileBottomNav({
   onOpenProfile,
 }) {
   const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
+  const isPTA = Boolean(
+    (currentUser?.satker || "").toLowerCase().includes("tinggi") ||
+    (currentUser?.satker || "").toLowerCase().includes("pta")
+  );
 
   if (isSuper) {
     return (
@@ -55,6 +59,17 @@ export default function MobileBottomNav({
           <LayoutDashboard className="icon" size={18} />
           <span>Dashboard</span>
         </button>
+
+        {isPTA && (
+          <button
+            type="button"
+            className={`bottom-nav-item ${activeTab === "monitoring" ? "active" : ""}`}
+            onClick={() => setActiveTab("monitoring")}
+          >
+            <Building2 className="icon" size={18} />
+            <span>Monitoring</span>
+          </button>
+        )}
 
         <button
           type="button"

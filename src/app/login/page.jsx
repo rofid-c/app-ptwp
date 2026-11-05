@@ -36,7 +36,7 @@ export default function LoginPage() {
           ],
         },
         {
-          duration: 1500,
+          duration: 700,
           easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           pseudoElement: "::view-transition-new(root)",
         }
@@ -46,11 +46,11 @@ export default function LoginPage() {
       document.documentElement.animate(
         {
           opacity: [1, 0.5, 0],
-          transform: ["scale(1)", "scale(0.95)"],
-          filter: ["blur(0px)", "blur(12px)"],
+          transform: ["scale(1)", "scale(0.96)"],
+          filter: ["blur(0px)", "blur(8px)"],
         },
         {
-          duration: 1500,
+          duration: 700,
           easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           pseudoElement: "::view-transition-old(root)",
         }

@@ -8,7 +8,6 @@ import {
   Printer,
   Calendar,
   Search,
-  Settings,
   Clock,
   Building2,
 } from "lucide-react";
@@ -73,9 +72,14 @@ export default function Navbar({
   }, []);
 
   return (
-    <header className="stitch-topbar" aria-label="Bilah Atas Navigasi">
+    <header
+      className={`stitch-topbar ${activeTab === "monitoring" ? "navbar-monitoring-mode" : ""}`}
+      aria-label="Bilah Atas Navigasi"
+    >
       {/* =====================================================================
-          1. PULAU KIRI: Kalender Periode (Terputus / Terpisah)
+          1. PULAU KIRI:
+          - Halaman Selain Monitoring: Kalender Periode
+          - Halaman Monitoring Cabang: Cetak PDF (Kiri Atas)
           ===================================================================== */}
       <div className="top-island-left">
         <button
@@ -88,7 +92,23 @@ export default function Navbar({
           <Menu size={20} />
         </button>
 
-        {!isSuper ? (
+        {isSuper ? (
+          <div className="island-admin-badge">
+            <span>Portal Super Admin</span>
+          </div>
+        ) : activeTab === "monitoring" ? (
+          /* Khusus Monitoring Cabang: Cetak PDF di Kiri Atas */
+          <button
+            type="button"
+            className="island-print-btn"
+            onClick={onPrint}
+            title="Cetak Laporan Resmi (PDF/Print)"
+          >
+            <Printer size={15} color="#0f5132" />
+            <span className="tool-text">Cetak PDF</span>
+          </button>
+        ) : (
+          /* Halaman Selain Monitoring: Kalender di Kiri */
           <button
             type="button"
             className="island-calendar-btn"
@@ -99,107 +119,63 @@ export default function Navbar({
             <span className="calendar-label">{period}</span>
             <span className="calendar-caret">▾</span>
           </button>
-        ) : (
-          <div className="island-admin-badge">
-            <span>Portal Super Admin</span>
-          </div>
         )}
       </div>
 
       {/* =====================================================================
-          2. PULAU TENGAH: Search - Cetak PDF - Pengaturan - Monitoring Cabang (PTA)
+          2. PULAU TENGAH: Cetak PDF di Tengah (Untuk Halaman Selain Monitoring Cabang)
+          Sesuai permintaan: "untuk halaman selain monitoring cabang. menu atas ini di benrin kiri kalender tengah cetak pdf kanan jam"
           ===================================================================== */}
-      <div className="top-island-center">
-        {/* Search Input Box (Hanya Tampil Saat di Menu Rekap Iuran Sesuai Permintaan) */}
-        {showSearch && (
-          <>
-            <div className="island-search-group">
-              <Search size={15} className="island-search-icon" />
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-                className="island-search-input"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => onSearchChange && onSearchChange("")}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    fontSize: "15px",
-                    lineHeight: 1,
-                    padding: "0 2px",
-                  }}
-                  title="Hapus pencarian"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-            <div className="island-inner-divider" />
-          </>
-        )}
+      {activeTab !== "monitoring" && !isSuper && (
+        <div className="top-island-center">
+          {showSearch && (
+            <>
+              <div className="island-search-group">
+                <Search size={15} className="island-search-icon" />
+                <input
+                  type="text"
+                  placeholder={searchPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                  className="island-search-input"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange && onSearchChange("")}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--text-muted)",
+                      cursor: "pointer",
+                      fontSize: "15px",
+                      lineHeight: 1,
+                      padding: "0 2px",
+                    }}
+                    title="Hapus pencarian"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <div className="island-inner-divider" />
+            </>
+          )}
 
-        {/* Cetak PDF Button */}
-        {!isSuper && (
           <button
             type="button"
             className="island-tool-btn"
             onClick={onPrint}
             title="Cetak Laporan Resmi (PDF/Print)"
           >
-            <Printer size={15} />
+            <Printer size={15} color="#0f5132" />
             <span className="tool-text">Cetak PDF</span>
           </button>
-        )}
-
-        {!isSuper && <div className="island-inner-divider" />}
-
-        {/* Pengaturan Button */}
-        <button
-          type="button"
-          className="island-tool-btn"
-          onClick={() => {
-            if (onOpenSettings) onOpenSettings();
-          }}
-          title="Pengaturan Satker & Pejabat"
-        >
-          <Settings size={15} />
-          <span className="tool-text">Pengaturan</span>
-        </button>
-
-        {/* =====================================================================
-            KHUSUS PTA BANDAR LAMPUNG: Menu Monitoring Cabang (Samping Kanan Pengaturan)
-            ===================================================================== */}
-        {isPTA && (
-          <>
-            <div className="island-inner-divider" />
-            <button
-              type="button"
-              className={`island-tool-btn island-monitoring-direct-btn ${
-                activeTab === "monitoring" ? "active-monitoring" : ""
-              }`}
-              onClick={() => {
-                if (onSelectTab) {
-                  onSelectTab(activeTab === "monitoring" ? "dashboard" : "monitoring");
-                }
-              }}
-              title="Monitoring Pengadilan Agama Cabang"
-            >
-              <Building2 size={15} />
-              <span className="tool-text">Monitoring Cabang</span>
-            </button>
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* =====================================================================
-          3. PULAU KANAN: Jam Digital Saja (Mode Tema dipusatkan di Sidebar)
+          3. PULAU KANAN: Jam Digital Sistem
           ===================================================================== */}
       <div className="top-island-right">
         <div className="island-clock-badge" title="Waktu Sistem Saat Ini">

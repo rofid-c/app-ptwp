@@ -38,6 +38,7 @@ import UserProfileModal from "@/components/UserProfileModal";
 import AdminView from "@/components/AdminView";
 import DuesExpenseView from "@/components/DuesExpenseView";
 import MonitoringCabangView from "@/components/MonitoringCabangView";
+import NetworkStatusSentinel from "@/components/NetworkStatusSentinel";
 import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 
 import {
@@ -74,8 +75,8 @@ export default function HomePage() {
   const [members, setMembers] = useState([]);
   const [cashbook, setCashbook] = useState([]);
   const [settings, setSettings] = useState({});
-  const [currentUser, setCurrentUser] = useState(INITIAL_USERS[0]);
-  const [isAuthView, setIsAuthView] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthView, setIsAuthView] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "dues" | "cashbook"
@@ -101,6 +102,7 @@ export default function HomePage() {
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState("all");
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [selectedMonitoringBranch, setSelectedMonitoringBranch] = useState("all");
+  const currentSatkerName = currentUser?.satker || settings?.institution || settings?.satker || "Pengadilan Agama Gunung Sugih";
 
   // Helper ganti periode aktif yang persisten across reload/restart
   const changePeriod = (newPeriod) => {
@@ -117,19 +119,29 @@ export default function HomePage() {
     setCashbook(cashData);
   };
 
+  // Khusus Monitoring Cabang: Seluruh aplikasi mengecil ke 80% (rasio aspek 80% seperti zoom browser)
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      if (activeTab === "monitoring") {
+        document.body.style.zoom = "0.8";
+        document.body.classList.add("monitoring-active-tab");
+      } else {
+        document.body.style.zoom = "1";
+        document.body.classList.remove("monitoring-active-tab");
+      }
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.body.style.zoom = "1";
+        document.body.classList.remove("monitoring-active-tab");
+      }
+    };
+  }, [activeTab]);
+
   // Initial load
   useEffect(() => {
     async function loadInitialData() {
-      const isLoggedOut = typeof window !== "undefined" && localStorage.getItem("ptwp_is_logged_out") === "true";
-      const user = getCurrentUser();
-      const activeSatker = user?.satker || "Pengadilan Agama Gunung Sugih";
-
-      const periods = getAvailablePeriods(activeSatker);
-      setAvailablePeriods(periods);
-
-      const savedSettings = fetchSettings(activeSatker);
-      setSettings(savedSettings);
-
+      // 1. Muat preferensi tema tampilan
       if (typeof window !== "undefined") {
         const savedTheme = localStorage.getItem("ptwp_theme");
         if (savedTheme === "dark") {
@@ -138,26 +150,37 @@ export default function HomePage() {
         }
       }
 
-      if (user && !isLoggedOut) {
-        setCurrentUser(user);
-        setIsAuthView(false);
-        if (user?.role === "super_admin" || user?.username?.toLowerCase() === "aku admin") {
-          setActiveTab("admin");
-        } else {
-          setActiveTab("dashboard");
-        }
-      } else if (isLoggedOut) {
+      // 2. Periksa sesi aktif (sessionStorage - hanya aktif selama browser/tab belum ditutup)
+      const user = getCurrentUser();
+
+      // Jika TIDAK ada sesi aktif (misal web baru dibuka setelah tab/browser ditutup):
+      // WAJIB login dulu, jangan langsung masuk ke halaman utama!
+      if (!user) {
         setCurrentUser(null);
         setIsAuthView(true);
-      } else {
-        // Default session aktif agar pengguna langsung masuk ke dashboard
-        setCurrentUser(user);
-        setIsAuthView(false);
-        if (user?.role === "super_admin" || user?.username?.toLowerCase() === "aku admin") {
-          setActiveTab("admin");
-        } else {
-          setActiveTab("dashboard");
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("ptwp_auth_user");
+          } catch (e) {}
         }
+        return;
+      }
+
+      // Jika ADA sesi aktif di tab ini (misal reload F5 saat sedang bekerja):
+      setCurrentUser(user);
+      setIsAuthView(false);
+
+      const activeSatker = user.satker || "Pengadilan Agama Gunung Sugih";
+      const periods = getAvailablePeriods(activeSatker);
+      setAvailablePeriods(periods);
+
+      const savedSettings = fetchSettings(activeSatker);
+      setSettings(savedSettings);
+
+      if (user.role === "super_admin" || user.username?.toLowerCase() === "aku admin") {
+        setActiveTab("admin");
+      } else {
+        setActiveTab("dashboard");
       }
 
       // Ambil periode tersimpan jika pengguna sebelumnya memilih periode lain
@@ -765,7 +788,7 @@ export default function HomePage() {
 
   const isAdmin = currentUser?.role === "bendahara" || currentUser?.role === "pimpinan" || currentUser?.role === "super_admin";
 
-  // Animasi Lingkaran Membesar dari Tengah ke Full Screen (1,5 Detik - Ultra Smooth)
+  // Animasi Lingkaran Membesar dari Tengah ke Full Screen (Smooth & Cepat 0.7 Detik)
   const handleLoginTransition = (stateUpdateFn) => {
     if (
       typeof document === "undefined" ||
@@ -798,7 +821,7 @@ export default function HomePage() {
           ],
         },
         {
-          duration: 1500,
+          duration: 700,
           easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           pseudoElement: "::view-transition-new(root)",
         }
@@ -808,11 +831,11 @@ export default function HomePage() {
       document.documentElement.animate(
         {
           opacity: [1, 0.5, 0],
-          transform: ["scale(1)", "scale(0.95)"],
-          filter: ["blur(0px)", "blur(12px)"],
+          transform: ["scale(1)", "scale(0.96)"],
+          filter: ["blur(0px)", "blur(8px)"],
         },
         {
-          duration: 1500,
+          duration: 700,
           easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           pseudoElement: "::view-transition-old(root)",
         }
@@ -851,11 +874,9 @@ export default function HomePage() {
         }}
         onBypassToDashboard={() => {
           handleLoginTransition(() => {
-            if (typeof window !== "undefined") {
-              try {
-                localStorage.removeItem("ptwp_is_logged_out");
-              } catch (e) {}
-            }
+            const guestUser = INITIAL_USERS[0];
+            loginUser(guestUser, "", guestUser.satker);
+            setCurrentUser(guestUser);
             setIsAuthView(false);
           });
         }}
@@ -866,6 +887,7 @@ export default function HomePage() {
 
   return (
     <div className="app-container">
+
       {/* Sidebar Navigasi (Desktop) */}
       <Sidebar
         activeTab={activeTab}
@@ -891,7 +913,9 @@ export default function HomePage() {
           onToggleTheme={handleToggleTheme}
           onOpenAuth={() => setIsAuthView(true)}
           onOpenProfile={() => setIsProfileOpen(true)}
-          onPrint={() => window.print()}
+          onPrint={() => {
+            window.print();
+          }}
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
           currentUser={currentUser}
           searchQuery={duesSubTab === "in" ? searchQuery : expenseSearchQuery}
@@ -912,31 +936,44 @@ export default function HomePage() {
 
         <main
           key={activeTab}
-          className={`content-area ${!isLoggingIn ? "page-transition-blur" : ""}`}
+          className={`content-area ${activeTab !== "dashboard" && !isLoggingIn ? "page-transition-blur" : ""}`}
         >
           {/* TAB 0: DASHBOARD UTAMA (STITCH DESIGN) */}
             {activeTab === "dashboard" && (
-              <DashboardView
-                members={members}
-                cashbook={cashbook}
-                period={period}
-                settings={settings}
-                currentUser={currentUser}
-                onOpenDues={() => setActiveTab("dues")}
-                onOpenAddCash={() => setIsAddCashOpen(true)}
-                onOpenExport={() => setIsExportOpen(true)}
-                onOpenPeriodPicker={() => setIsPeriodPickerOpen(true)}
-              />
+              <div style={{ position: "relative" }}>
+                <DashboardView
+                  members={members}
+                  cashbook={cashbook}
+                  period={period}
+                  settings={settings}
+                  currentUser={currentUser}
+                  isLoggingIn={isLoggingIn}
+                  onOpenDues={() => setActiveTab("dues")}
+                  onOpenAddCash={() => {
+                    setIsAddCashOpen(true);
+                  }}
+                  onOpenExport={() => {
+                    setIsExportOpen(true);
+                  }}
+                  onOpenPeriodPicker={() => setIsPeriodPickerOpen(true)}
+                />
+
+              </div>
             )}
 
             {/* TAB MONITORING PA CABANG (KHUSUS PTA BANDAR LAMPUNG) */}
             {activeTab === "monitoring" && (
-              <MonitoringCabangView />
+              <MonitoringCabangView
+                period={period}
+                onPeriodChange={changePeriod}
+                currentUser={currentUser}
+                onPrint={() => window.print()}
+              />
             )}
 
             {/* TAB 1: REKAPITULASI IURAN */}
             {activeTab === "dues" && (
-              <div>
+              <div style={{ position: "relative" }}>
                 {/* Header Cetak Formal (Hanya tampil saat Print) */}
                 <div style={{ display: "none" }} className="print-header">
                   <h2 style={{ textAlign: "center", fontSize: "14pt", fontWeight: "bold" }}>
@@ -963,7 +1000,9 @@ export default function HomePage() {
                   <button
                     type="button"
                     className="rekap-action-btn rekap-action-import"
-                    onClick={() => setIsImportOpen(true)}
+                    onClick={() => {
+                      setIsImportOpen(true);
+                    }}
                     title="Import data dari Excel (.xlsx / .csv)"
                   >
                     <UploadCloud size={15} />
@@ -993,7 +1032,10 @@ export default function HomePage() {
                   <button
                     type="button"
                     className="rekap-action-btn rekap-action-delete"
-                    onClick={duesSubTab === "in" ? handleClearData : handleClearExpenses}
+                    onClick={() => {
+                      if (duesSubTab === "in") handleClearData();
+                      else handleClearExpenses();
+                    }}
                     title={duesSubTab === "in" ? `Kosongkan/Hapus data iuran periode ${period}` : `Kosongkan/Hapus belanja periode ${period}`}
                   >
                     <Trash2 size={14} />
@@ -1005,7 +1047,10 @@ export default function HomePage() {
                   <button
                     type="button"
                     className="rekap-action-btn rekap-action-reset"
-                    onClick={duesSubTab === "in" ? handleClearAllData : handleClearAllExpenses}
+                    onClick={() => {
+                      if (duesSubTab === "in") handleClearAllData();
+                      else handleClearAllExpenses();
+                    }}
                     title="Kosongkan seluruh data dari seluruh periode yang tersimpan"
                   >
                     <RotateCcw size={13} />
@@ -1019,7 +1064,9 @@ export default function HomePage() {
                 {/* 3. KANAN: Tab Iuran Keluar */}
                 <button
                   type="button"
-                  onClick={() => setDuesSubTab("out")}
+                  onClick={() => {
+                    setDuesSubTab("out");
+                  }}
                   className={`rekap-subtab-pill ${duesSubTab === "out" ? "active-out" : ""}`}
                 >
                   <span>Iuran Keluar</span>
@@ -1101,83 +1148,83 @@ export default function HomePage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Baris 2: Filter Kategori di Tengah dalam Tabung Putih (Hanya tampil jika ada data & tidak menampilkan kategori kosong 0) */}
-                {((duesSubTab === "in" && members.length > 0) || (duesSubTab === "out" && currentPeriodExpenses.length > 0)) && (
-                  <div className={`rekap-filter-collapsible ${isFilterVisible ? "open" : "collapsed"}`}>
-                    <div className="rekap-filter-tube">
-                      {duesSubTab === "in" ? (
-                        <>
-                          <button
-                            type="button"
-                            className={`stitch-filter-pill-btn ${categoryFilter === "all" ? "active" : ""}`}
-                            onClick={() => setCategoryFilter("all")}
-                          >
-                            Semua ({members.length})
-                          </button>
-                          {hakimCount > 0 && (
-                            <button
-                              type="button"
-                              className={`stitch-filter-pill-btn ${categoryFilter === "Hakim" ? "active" : ""}`}
-                              onClick={() => setCategoryFilter("Hakim")}
-                            >
-                              Hakim ({hakimCount})
-                            </button>
-                          )}
-                          {paniteraCount > 0 && (
-                            <button
-                              type="button"
-                              className={`stitch-filter-pill-btn ${categoryFilter === "Kepaniteraan" ? "active" : ""}`}
-                              onClick={() => setCategoryFilter("Kepaniteraan")}
-                            >
-                              Kepaniteraan ({paniteraCount})
-                            </button>
-                          )}
-                          {sekretariatCount > 0 && (
-                            <button
-                              type="button"
-                              className={`stitch-filter-pill-btn ${categoryFilter === "Kesekretariatan" ? "active" : ""}`}
-                              onClick={() => setCategoryFilter("Kesekretariatan")}
-                            >
-                              Kesekretariatan ({sekretariatCount})
-                            </button>
-                          )}
-                          {stafCount > 0 && (
-                            <button
-                              type="button"
-                              className={`stitch-filter-pill-btn ${categoryFilter === "Staf" ? "active" : ""}`}
-                              onClick={() => setCategoryFilter("Staf")}
-                            >
-                              Staf ({stafCount})
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className={`stitch-filter-pill-btn ${expenseCategoryFilter === "all" ? "active" : ""}`}
-                            onClick={() => setExpenseCategoryFilter("all")}
-                          >
-                            Semua ({currentPeriodExpenses.length})
-                          </button>
-                          {dynamicExpenseCategories.map((cat) => (
-                            <button
-                              key={cat}
-                              type="button"
-                              className={`stitch-filter-pill-btn ${expenseCategoryFilter.toLowerCase() === cat.toLowerCase() ? "active" : ""}`}
-                              onClick={() => setExpenseCategoryFilter(cat)}
-                              style={{ whiteSpace: "nowrap" }}
-                            >
-                              {cat} ({getExpenseCount(cat)})
-                            </button>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* Baris 2: Filter Kategori Mandiri di Bawah (Terpisah dan Tidak Menyatu dengan Kotak Atas) */}
+              {((duesSubTab === "in" && members.length > 0) || (duesSubTab === "out" && currentPeriodExpenses.length > 0)) && (
+                <div className={`rekap-filter-collapsible ${isFilterVisible ? "open" : "collapsed"}`}>
+                  <div className="rekap-filter-tube">
+                    {duesSubTab === "in" ? (
+                      <>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${categoryFilter === "all" ? "active" : ""}`}
+                          onClick={() => setCategoryFilter("all")}
+                        >
+                          Semua ({members.length})
+                        </button>
+                        {hakimCount > 0 && (
+                          <button
+                            type="button"
+                            className={`stitch-filter-pill-btn ${categoryFilter === "Hakim" ? "active" : ""}`}
+                            onClick={() => setCategoryFilter("Hakim")}
+                          >
+                            Hakim ({hakimCount})
+                          </button>
+                        )}
+                        {paniteraCount > 0 && (
+                          <button
+                            type="button"
+                            className={`stitch-filter-pill-btn ${categoryFilter === "Kepaniteraan" ? "active" : ""}`}
+                            onClick={() => setCategoryFilter("Kepaniteraan")}
+                          >
+                            Kepaniteraan ({paniteraCount})
+                          </button>
+                        )}
+                        {sekretariatCount > 0 && (
+                          <button
+                            type="button"
+                            className={`stitch-filter-pill-btn ${categoryFilter === "Kesekretariatan" ? "active" : ""}`}
+                            onClick={() => setCategoryFilter("Kesekretariatan")}
+                          >
+                            Kesekretariatan ({sekretariatCount})
+                          </button>
+                        )}
+                        {stafCount > 0 && (
+                          <button
+                            type="button"
+                            className={`stitch-filter-pill-btn ${categoryFilter === "Staf" ? "active" : ""}`}
+                            onClick={() => setCategoryFilter("Staf")}
+                          >
+                            Staf ({stafCount})
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className={`stitch-filter-pill-btn ${expenseCategoryFilter === "all" ? "active" : ""}`}
+                          onClick={() => setExpenseCategoryFilter("all")}
+                        >
+                          Semua ({currentPeriodExpenses.length})
+                        </button>
+                        {dynamicExpenseCategories.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            className={`stitch-filter-pill-btn ${expenseCategoryFilter.toLowerCase() === cat.toLowerCase() ? "active" : ""}`}
+                            onClick={() => setExpenseCategoryFilter(cat)}
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {cat} ({getExpenseCount(cat)})
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 2. 4 KEY METRIC CARDS: Uang Masuk - Total Saldo Kas - Uang Keluar - Saldo Bersih */}
               <div
@@ -1293,7 +1340,9 @@ export default function HomePage() {
                     onEditMember={handleEditClick}
                     onDeleteMember={handleDeleteMember}
                     isAdmin={isAdmin}
-                    onOpenImport={() => setIsImportOpen(true)}
+                    onOpenImport={() => {
+                      setIsImportOpen(true);
+                    }}
                     onOpenAdd={() => {
                       setEditingMember(null);
                       setIsMemberFormOpen(true);
@@ -1310,7 +1359,9 @@ export default function HomePage() {
                     onDeleteMember={handleDeleteMember}
                     isAdmin={isAdmin}
                     enableWhatsAppReminder={enableWhatsApp}
-                    onOpenImport={() => setIsImportOpen(true)}
+                    onOpenImport={() => {
+                      setIsImportOpen(true);
+                    }}
                     onOpenAdd={() => {
                       setEditingMember(null);
                       setIsMemberFormOpen(true);
@@ -1330,18 +1381,27 @@ export default function HomePage() {
                 />
               )}
               </div>
+
+
             </div>
           )}
 
           {/* TAB 2: BUKU KAS CABANG */}
           {activeTab === "cashbook" && (
-            <CashBookView
-              cashbook={cashbook}
-              onAddEntry={handleAddCashEntry}
-              onDeleteEntry={handleDeleteCashEntry}
-              isAdmin={isAdmin}
-              currentUser={currentUser}
-            />
+            <div style={{ position: "relative" }}>
+              <CashBookView
+                cashbook={cashbook}
+                onAddEntry={(entry) => {
+                  handleAddCashEntry(entry);
+                }}
+                onDeleteEntry={(id) => {
+                  handleDeleteCashEntry(id);
+                }}
+                isAdmin={isAdmin}
+                currentUser={currentUser}
+              />
+
+            </div>
           )}
 
           {/* TAB 3: PORTAL SUPER ADMINISTRATOR */}
@@ -1382,6 +1442,7 @@ export default function HomePage() {
         onClose={() => setIsImportOpen(false)}
         onImportSuccess={handleImportSuccess}
         period={period}
+
       />
 
       <AuthModal
@@ -1432,6 +1493,10 @@ export default function HomePage() {
           }
         }}
       />
+
+      {/* Indikator Status Koneksi Jaringan */}
+      <NetworkStatusSentinel />
+
     </div>
   );
 }

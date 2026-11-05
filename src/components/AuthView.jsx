@@ -93,6 +93,7 @@ export default function AuthView({
 
   // Feedback status
   const [errorMsg, setErrorMsg] = useState("");
+  const [targetSatker, setTargetSatker] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   const handleRequestAccountSubmit = async (e) => {
@@ -171,6 +172,7 @@ export default function AuthView({
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
+    setTargetSatker("");
 
     if (!loginIdentifier.trim()) {
       setErrorMsg("Mohon masukkan Username, NIP, atau Nomor WhatsApp.");
@@ -178,7 +180,7 @@ export default function AuthView({
     }
 
     if (!loginPassword.trim()) {
-      setErrorMsg("Mohon masukkan kata sandi (password).");
+      setErrorMsg("Mohon masukkan kata sandi Anda.");
       return;
     }
 
@@ -199,10 +201,11 @@ export default function AuthView({
           setSuccessMsg(`Berhasil masuk ke ${json.user.satker}! Mengarahkan ke dashboard...`);
           setTimeout(() => {
             onLoginSuccess && onLoginSuccess(json.user);
-          }, 150);
+          }, 350);
           return;
         } else if (json.error) {
           setErrorMsg(json.error);
+          if (json.registeredSatker) setTargetSatker(json.registeredSatker);
           return;
         }
       }
@@ -214,6 +217,7 @@ export default function AuthView({
     const verification = verifyCredentials(loginSatker, loginIdentifier, loginPassword);
     if (!verification.success) {
       setErrorMsg(verification.error);
+      if (verification.registeredSatker) setTargetSatker(verification.registeredSatker);
       return;
     }
 
@@ -221,7 +225,7 @@ export default function AuthView({
     setSuccessMsg(`Berhasil masuk ke ${userData.satker}! Mengarahkan ke dashboard...`);
     setTimeout(() => {
       onLoginSuccess && onLoginSuccess(userData);
-    }, 150);
+    }, 350);
   };
 
 
@@ -449,16 +453,43 @@ export default function AuthView({
                   background: "#fee2e2",
                   color: "#dc2626",
                   border: "1px solid #fecaca",
-                  padding: "10px 12px",
+                  padding: "10px 14px",
                   borderRadius: "10px",
                   fontSize: "12.5px",
                   marginBottom: "14px",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                  flexWrap: "wrap",
                 }}
               >
-                <span>⚠️ {errorMsg}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+                  <span>⚠️ {errorMsg}</span>
+                </div>
+                {targetSatker && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginSatker(targetSatker);
+                      setTargetSatker("");
+                      setErrorMsg("");
+                    }}
+                    style={{
+                      background: "#dc2626",
+                      color: "#fff",
+                      border: "none",
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Pindah ke {targetSatker}
+                  </button>
+                )}
               </div>
             )}
 

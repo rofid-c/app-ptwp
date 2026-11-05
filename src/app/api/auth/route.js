@@ -21,7 +21,7 @@ export async function POST(request) {
     if (!users || users.length === 0) {
       return NextResponse.json({
         success: false,
-        error: `Akun "${identifier}" tidak terdaftar dalam sistem PTWP. Silakan hubungi Administrasi untuk mengajukan akun.`
+        error: "Akun tidak terdaftar. Pastikan Username, NIP, atau Satuan Kerja yang dipilih sudah benar."
       });
     }
 
@@ -36,20 +36,25 @@ export async function POST(request) {
       }
     } else {
       if (cleanPassword !== user.password && cleanPassword !== "admin123" && cleanPassword !== "123") {
-        return NextResponse.json({ success: false, error: "Kata sandi (password) yang Anda masukkan salah. Silakan coba lagi." });
+        return NextResponse.json({ success: false, error: "Kata sandi yang Anda masukkan salah. Silakan periksa kembali." });
       }
     }
 
-    // 3. Verifikasi Satker (RBAC)
+    // 3. Verifikasi Satker
     const userSatkerNorm = String(user.satker || "").trim().toLowerCase();
-    if (!isSuperAdmin && !isPusat && userSatkerNorm !== cleanSatker) {
+    if (!isSuperAdmin && !isPusat && cleanSatker && userSatkerNorm !== cleanSatker) {
       return NextResponse.json({
         success: false,
-        error: `Akses ditolak (RBAC): Akun "${user.name}" (${user.username}) terdaftar pada ${user.satker}, bukan pada ${satker}. Anda tidak dapat masuk ke Satker lain.`
+        error: `Akun ini terdaftar pada ${user.satker}. Silakan pilih Satuan Kerja yang sesuai.`,
+        registeredSatker: user.satker
       });
     }
 
-    const activeSatker = isSuperAdmin ? "Seluruh Satuan Kerja (Super Admin)" : (isPusat ? (satker || "Mahkamah Agung RI") : user.satker);
+    const activeSatker = isSuperAdmin
+      ? "Seluruh Satuan Kerja (Super Admin)"
+      : isPusat
+      ? (satker || "Mahkamah Agung RI")
+      : (user.satker || satker || "Pengadilan Agama Gunung Sugih");
 
     return NextResponse.json({
       success: true,

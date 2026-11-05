@@ -803,12 +803,20 @@ export function getRegisteredUsers() {
 }
 
 export function getCurrentUser() {
-  const user = getLocalData(STORAGE_KEYS.AUTH_USER, INITIAL_USERS[0]);
-  if (user && user.name && user.name.includes("Wulan Febrianti")) {
-    setLocalData(STORAGE_KEYS.AUTH_USER, INITIAL_USERS[0]);
-    return INITIAL_USERS[0];
+  if (!isClient()) return null;
+  try {
+    const sessionUser = sessionStorage.getItem(STORAGE_KEYS.AUTH_USER);
+    if (sessionUser) {
+      const parsed = JSON.parse(sessionUser);
+      if (parsed && parsed.name && parsed.name.includes("Wulan Febrianti")) {
+        return null;
+      }
+      return parsed;
+    }
+  } catch (e) {
+    console.error("Error reading session user", e);
   }
-  return user || INITIAL_USERS[0];
+  return null;
 }
 
 /**
@@ -832,7 +840,7 @@ export function verifyCredentials(selectedSatker, identifier, password) {
   if (!user) {
     return {
       success: false,
-      error: `Akun "${identifier}" tidak terdaftar dalam sistem PTWP. Silakan hubungi Administrasi untuk mengajukan akun.`,
+      error: "Akun tidak terdaftar. Pastikan Username, NIP, atau Satuan Kerja yang dipilih sudah benar.",
     };
   }
 
@@ -855,23 +863,24 @@ export function verifyCredentials(selectedSatker, identifier, password) {
     ) {
       return {
         success: false,
-        error: "Kata sandi (password) yang Anda masukkan salah. Silakan coba lagi.",
+        error: "Kata sandi yang Anda masukkan salah. Silakan periksa kembali.",
       };
     }
   }
 
-  // 3. RBAC: Super Admin & Pusat memiliki akses universal lintas seluruh Satker
+  // 3. Verifikasi Satker
   const isPusat = user.role === "pusat" || user.level === "pusat";
   const userSatker = user.satker || "Pengadilan Agama Gunung Sugih";
 
-  if (!isSuperAdmin && !isPusat) {
+  if (!isSuperAdmin && !isPusat && selectedSatker) {
     const normUserSatker = String(userSatker || "").trim().toLowerCase();
     const normSelectedSatker = String(selectedSatker || "").trim().toLowerCase();
 
-    if (normUserSatker !== normSelectedSatker) {
+    if (normSelectedSatker && normUserSatker !== normSelectedSatker) {
       return {
         success: false,
-        error: "Kombinasi Akun dan Satuan Kerja tidak sesuai. Silakan periksa kembali pilihan Satker Anda.",
+        error: `Akun ini terdaftar pada ${userSatker}. Silakan pilih Satuan Kerja yang sesuai.`,
+        registeredSatker: userSatker,
       };
     }
   }
@@ -880,7 +889,7 @@ export function verifyCredentials(selectedSatker, identifier, password) {
     ? "Seluruh Satuan Kerja (Super Admin)"
     : isPusat
     ? (selectedSatker || "Mahkamah Agung RI")
-    : userSatker;
+    : (userSatker || selectedSatker || "Pengadilan Agama Gunung Sugih");
 
   return {
     success: true,
@@ -892,16 +901,26 @@ export function verifyCredentials(selectedSatker, identifier, password) {
 }
 
 export function loginUser(identifier, password, selectedSatker) {
+  let user = null;
   // Jika identifier sudah merupakan object user yang terverifikasi
   if (typeof identifier === "object" && identifier !== null) {
-    setLocalData(STORAGE_KEYS.AUTH_USER, identifier);
-    return identifier;
+    user = identifier;
+  } else {
+    const verification = verifyCredentials(selectedSatker, identifier, password);
+    if (verification.success) {
+      user = verification.user;
+    }
   }
 
-  const verification = verifyCredentials(selectedSatker, identifier, password);
-  if (verification.success) {
-    setLocalData(STORAGE_KEYS.AUTH_USER, verification.user);
-    return verification.user;
+  if (user) {
+    if (isClient()) {
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(user));
+        sessionStorage.setItem("ptwp_session_active", "true");
+        localStorage.removeItem("ptwp_is_logged_out");
+      } catch (e) {}
+    }
+    return user;
   }
   return null;
 }
@@ -922,13 +941,23 @@ export function registerUser(userData) {
 
   const updatedUsers = [...users.filter((u) => u.username !== newUser.username), newUser];
   setLocalData("ptwp_registered_users", updatedUsers);
-  setLocalData(STORAGE_KEYS.AUTH_USER, newUser);
+  if (isClient()) {
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(newUser));
+      sessionStorage.setItem("ptwp_session_active", "true");
+    } catch (e) {}
+  }
   return newUser;
 }
 
 export function logoutUser() {
   if (isClient()) {
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+      sessionStorage.removeItem("ptwp_session_active");
+    } catch (e) {}
     localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+    localStorage.setItem("ptwp_is_logged_out", "true");
   }
 }
 

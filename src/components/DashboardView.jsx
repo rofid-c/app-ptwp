@@ -90,6 +90,7 @@ export default function DashboardView({
   onOpenAddCash,
   onOpenExport,
   onOpenPeriodPicker,
+  hideHeader = false,
 }) {
   const formatRupiah = (val) => {
     return new Intl.NumberFormat("id-ID", {
@@ -1410,44 +1411,6 @@ export default function DashboardView({
             );
           })}
         </div>
-
-        {/* Footer Pill Status Kepatuhan */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "8px 12px",
-            borderRadius: "10px",
-            background: "rgba(15, 81, 50, 0.05)",
-            border: "1px solid rgba(15, 81, 50, 0.14)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-secondary)" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "3px",
-                fontWeight: 800,
-                color: donutTotalTarget > 0 ? "#16a34a" : "var(--text-muted)",
-                background: donutTotalTarget > 0 ? "#dcfce7" : "var(--bg-app)",
-                padding: "1px 6px",
-                borderRadius: "99px",
-                border: `1px solid ${donutTotalTarget > 0 ? "#86efac" : "var(--border-light)"}`,
-              }}
-            >
-              {donutTotalTarget > 0 && <ArrowUpRight size={12} />}
-              {donutPctCollected}%
-            </span>
-            <span>
-              {donutTotalTarget > 0
-                ? `Terkumpul (${donutPaidMembers.length}/${donutTotalMembers} Pegawai Lunas)`
-                : `Belum ada rekap iuran ${activePointData.periodTitle}`}
-            </span>
-          </div>
-          <ArrowUpRight size={15} color={donutTotalTarget > 0 ? "#16a34a" : "var(--text-muted)"} />
-        </div>
       </div>
     );
   };
@@ -1564,56 +1527,37 @@ export default function DashboardView({
   return (
     <div className="stitch-dash-container">
       {/* 1. Header Banner Dashboard */}
-      <div className="stitch-dash-header">
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>Dashboard Utama</h2>
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: "99px",
-                background: "#0b3b2b",
-                color: "#ffffff",
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-              }}
-            >
-              Eksekutif
-            </span>
-          </div>
-          <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "2px" }}>
-            Ikhtisar perbendaharaan dan kepatuhan iuran PTWP {settings.institution || "Pengadilan Agama Gunung Sugih"}
-          </p>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "5px 12px",
-              borderRadius: "99px",
-              background: "#dcfce7",
-              color: "#16a34a",
-              fontSize: "12px",
-              fontWeight: 700,
-            }}
-          >
-            <CheckCircle2 size={14} />
-            <span>
-              {paidMembers.length} / {members.length} Lunas ({percentageCollected}%)
-            </span>
+      {!hideHeader && (
+        <div className="stitch-dash-header widen-stagger widen-delay-1">
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h2 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>Dashboard Utama</h2>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: "99px",
+                  background: "#0b3b2b",
+                  color: "#ffffff",
+                  letterSpacing: "0.5px",
+                  textTransform: "uppercase",
+                }}
+              >
+                Eksekutif
+              </span>
+            </div>
+            <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+              Ikhtisar perbendaharaan dan kepatuhan iuran PTWP {settings.institution || "Pengadilan Agama Gunung Sugih"}
+            </p>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 2. Kartu Metrik Dashboard (Iuran Terkumpul, Total Pengeluaran & Saldo Kas Cabang) */}
       <div className="stitch-dash-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
         {/* Card 1: Iuran Terkumpul */}
-        <div className="stitch-card">
+        <div className="stitch-card widen-stagger widen-delay-2">
           <div className="hairline-court"></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
@@ -1640,7 +1584,7 @@ export default function DashboardView({
         </div>
 
         {/* Card 2: Total Pengeluaran */}
-        <div className="stitch-card" style={{ position: "relative", overflow: "hidden" }}>
+        <div className="stitch-card widen-stagger widen-delay-3" style={{ position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "#ef4444" }}></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
@@ -1660,7 +1604,7 @@ export default function DashboardView({
         </div>
 
         {/* Card 3: Saldo Kas Cabang */}
-        <div className="stitch-card">
+        <div className="stitch-card widen-stagger widen-delay-4">
           <div className="hairline-gold"></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
@@ -1682,24 +1626,24 @@ export default function DashboardView({
 
       {/* 3. Hero Row: Grafik Tren Kas Bulanan & Donut Distribusi Kategori Berdampingan */}
       <div className="stitch-dash-chart-row">
-        <div>{renderCashflowCard()}</div>
-        <div>{renderDonutDistribusiCard()}</div>
+        <div className="widen-stagger widen-delay-5">{renderCashflowCard()}</div>
+        <div className="widen-stagger widen-delay-6">{renderDonutDistribusiCard()}</div>
       </div>
 
       {/* 4. Layout Realisasi 4 Pos Iuran & Mutasi Kas Terakhir */}
       {hasCashbook ? (
         <div className="stitch-two-col" style={{ marginBottom: "20px" }}>
-          {renderRealisasiCard()}
-          {renderMutasiCard()}
+          <div className="widen-stagger widen-delay-7">{renderRealisasiCard()}</div>
+          <div className="widen-stagger widen-delay-8">{renderMutasiCard()}</div>
         </div>
       ) : (
-        <div style={{ marginBottom: "20px" }}>
+        <div className="widen-stagger widen-delay-7" style={{ marginBottom: "20px" }}>
           {renderRealisasiCard()}
         </div>
       )}
 
-      {/* 4. Banner Aksi Cepat Bendahara */}
-      <div className="stitch-quick-bar">
+      {/* 5. Banner Aksi Cepat Bendahara */}
+      <div className="stitch-quick-bar widen-stagger widen-delay-8">
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div
             style={{

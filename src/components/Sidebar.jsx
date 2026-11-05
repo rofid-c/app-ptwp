@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   X,
+  Building2,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -29,6 +30,11 @@ export default function Sidebar({
     currentUser?.role === "super_admin" ||
     currentUser?.username?.toLowerCase() === "aku admin";
 
+  const isPTA = Boolean(
+    (currentUser?.satker || "").toLowerCase().includes("tinggi") ||
+    (currentUser?.satker || "").toLowerCase().includes("pta")
+  );
+
   const navItems = isSuper
     ? [
         {
@@ -43,6 +49,15 @@ export default function Sidebar({
           label: "Dashboard",
           icon: LayoutDashboard,
         },
+        ...(isPTA
+          ? [
+              {
+                id: "monitoring",
+                label: "Monitoring Cabang",
+                icon: Building2,
+              },
+            ]
+          : []),
         {
           id: "dues",
           label: "Rekap Iuran",
@@ -84,7 +99,7 @@ export default function Sidebar({
           >
             <span className="dock-brand-letter">P</span>
             <span className="dock-tooltip">
-              {isSuper ? "PTWP PUSAT" : `PTWP Cabang ${satkerShort}`}
+              {isSuper ? "PTWP PUSAT" : isPTA ? "PTWP DAERAH PTA" : `PTWP Cabang ${satkerShort}`}
             </span>
           </button>
 
