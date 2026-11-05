@@ -8,7 +8,6 @@ import {
   fetchSettings,
   getPeriodsWithData,
 } from "@/services/storageService";
-import { INITIAL_MEMBERS } from "@/data/initialMembers";
 import {
   Building2,
   Calendar as CalendarIcon,
@@ -240,46 +239,8 @@ export default function MonitoringCabangView({
 
         if (!isMounted) return;
 
-        // Jika cabang belum memiliki data tersendiri, sediakan data representatif sesuai profil cabang
-        if (!mems || mems.length === 0) {
-          const branchMeta = PA_BRANCHES.find((b) => b.name === selectedBranch);
-          const targetCount = branchMeta ? branchMeta.membersCount : 40;
-          const adjustedMems = INITIAL_MEMBERS.slice(0, targetCount).map(
-            (m, idx) => ({
-              ...m,
-              id: idx + 1,
-              no: idx + 1,
-              paid: idx !== 2 && idx !== 7, // Variasi status bayar
-            })
-          );
-          setBranchMembers(adjustedMems);
-        } else {
-          setBranchMembers(mems);
-        }
-
-        if (!cash || cash.length === 0) {
-          setBranchCashbook([
-            {
-              id: "cash-init-1",
-              date: "2026-09-02",
-              type: "in",
-              description: `Penerimaan Iuran Anggota PTWP ${selectedBranch}`,
-              amount: 2750000,
-              category: "Iuran Anggota",
-            },
-            {
-              id: "cash-init-2",
-              date: "2026-09-10",
-              type: "out",
-              description: "Belanja Pengadaan Bola Tenis & Konsumsi Lapangan",
-              amount: 650000,
-              category: "Belanja Lapangan",
-            },
-          ]);
-        } else {
-          setBranchCashbook(cash);
-        }
-
+        setBranchMembers(Array.isArray(mems) ? mems : []);
+        setBranchCashbook(Array.isArray(cash) ? cash : []);
         setBranchSettings(sett || {});
       } catch (e) {
         console.error("Error loading branch data in MonitoringCabangView", e);

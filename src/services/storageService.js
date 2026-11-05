@@ -4,7 +4,7 @@
 import { INITIAL_MEMBERS, DEFAULT_SETTINGS, INITIAL_CASHBOOK } from "@/data/initialMembers";
 
 export const API_CONFIG = {
-  USE_REMOTE_API: false, // Ubah ke true jika API/Database server sudah siap
+  USE_REMOTE_API: true, // Terhubung ke Database MySQL Laragon via API
   API_BASE_URL: process.env.NEXT_PUBLIC_API_URL || "/api",
 };
 
@@ -113,16 +113,25 @@ export function filterRealMembers(members = []) {
 export async function fetchMembersByPeriod(period = "September 2026", satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   const slug = getSafeSatkerSlug(targetSatker);
+  const key = `ptwp_${slug}_members_${period}`;
 
-  if (API_CONFIG.USE_REMOTE_API) {
-    const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`);
-    if (!res.ok) throw new Error("Gagal mengambil data iuran dari API server.");
-    const json = await res.json();
-    return filterRealMembers(json.data || []);
+  if (API_CONFIG.USE_REMOTE_API && isClient()) {
+    try {
+      const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const apiMembers = filterRealMembers(json.data);
+          setLocalData(key, apiMembers);
+          return apiMembers;
+        }
+      }
+    } catch (e) {
+      console.warn("Koneksi API dues gagal, fallback ke data lokal:", e);
+    }
   }
 
   // Key terisolasi per Satker
-  const key = `ptwp_${slug}_members_${period}`;
   let data = getLocalData(key, null);
 
   // Fallback migrasi jika PA Gunung Sugih sebelumnya memakai key global tanpa slug
@@ -258,16 +267,6 @@ export async function saveMembersByPeriod(period, members, satker) {
   const slug = getSafeSatkerSlug(targetSatker);
   const cleaned = filterRealMembers(members);
 
-  if (API_CONFIG.USE_REMOTE_API) {
-    const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
-    });
-    if (!res.ok) throw new Error("Gagal menyimpan data iuran ke API server.");
-    return await res.json();
-  }
-
   const key = `ptwp_${slug}_members_${period}`;
   setLocalData(key, cleaned);
 
@@ -278,7 +277,19 @@ export async function saveMembersByPeriod(period, members, satker) {
     setLocalData(`ptwp_${slug}_periods`, availablePeriods);
   }
 
-  return members;
+  if (API_CONFIG.USE_REMOTE_API && isClient()) {
+    try {
+      await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
+      });
+    } catch (e) {
+      console.warn("Sync dues ke API gagal:", e);
+    }
+  }
+
+  return cleaned;
 }
 
 export async function saveMultiplePeriodsData(periodsData = [], satker) {
@@ -394,7 +405,7 @@ export function getPeriodsWithData(satker) {
       const p = k.slice(prefix.length);
       try {
         const val = JSON.parse(localStorage.getItem(k));
-        if (Array.isArray(val) && val.length > 0) {
+        if (Array.isArray(val) && val.length > 0 && val.some((m) => m.paid)) {
           list.push(p);
         }
       } catch (e) {}
@@ -402,12 +413,26 @@ export function getPeriodsWithData(satker) {
       const p = k.slice(legacyPrefix.length);
       try {
         const val = JSON.parse(localStorage.getItem(k));
-        if (Array.isArray(val) && val.length > 0 && !list.includes(p)) {
+        if (Array.isArray(val) && val.length > 0 && val.some((m) => m.paid) && !list.includes(p)) {
           list.push(p);
         }
       } catch (e) {}
     }
   });
+
+  // Periksa juga penerimaan iuran di buku kas lokal
+  try {
+    const cashKey = `ptwp_${slug}_cashbook`;
+    const cash = JSON.parse(localStorage.getItem(cashKey) || "[]");
+    if (Array.isArray(cash)) {
+      cash.forEach((item) => {
+        if (item?.type === "in" && item?.period && !list.includes(item.period)) {
+          list.push(item.period);
+        }
+      });
+    }
+  } catch (e) {}
+
   return list;
 }
 
@@ -480,14 +505,27 @@ export function getRealDuesCashEntries(satker) {
 export async function fetchCashBook(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   const slug = getSafeSatkerSlug(targetSatker);
+  const key = `ptwp_${slug}_cashbook`;
 
-  if (API_CONFIG.USE_REMOTE_API) {
-    const res = await fetch(`${API_CONFIG.API_BASE_URL}/cashbook?satker=${encodeURIComponent(targetSatker)}`);
-    if (!res.ok) throw new Error("Gagal mengambil data buku kas.");
-    return await res.json();
+  if (API_CONFIG.USE_REMOTE_API && isClient()) {
+    try {
+      const res = await fetch(`${API_CONFIG.API_BASE_URL}/cashbook?satker=${encodeURIComponent(targetSatker)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const rows = json.data.map((r) => ({
+            ...r,
+            amount: Number(r.amount || 0),
+          }));
+          setLocalData(key, rows);
+          return rows;
+        }
+      }
+    } catch (e) {
+      console.warn("Koneksi API cashbook gagal, fallback ke data lokal:", e);
+    }
   }
 
-  const key = `ptwp_${slug}_cashbook`;
   let raw = getLocalData(key, null);
 
   // Fallback migrasi jika PA Gunung Sugih data lamanya ada di ptwp_cashbook

@@ -9,7 +9,11 @@ export async function GET(request) {
     const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
 
     const rows = await query("SELECT * FROM cashbook WHERE satker = ? ORDER BY date DESC, id DESC", [satker]);
-    return NextResponse.json({ success: true, data: rows });
+    const formatted = rows.map((r) => ({
+      ...r,
+      amount: Number(r.amount || 0),
+    }));
+    return NextResponse.json({ success: true, data: formatted });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
