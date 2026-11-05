@@ -6,6 +6,7 @@ import {
   fetchMembersByPeriod,
   fetchCashBook,
   fetchSettings,
+  getPeriodsWithData,
 } from "@/services/storageService";
 import { INITIAL_MEMBERS } from "@/data/initialMembers";
 import {
@@ -194,6 +195,24 @@ export default function MonitoringCabangView({
   const [branchMembers, setBranchMembers] = useState([]);
   const [branchCashbook, setBranchCashbook] = useState([]);
   const [branchSettings, setBranchSettings] = useState({});
+  const [periodsWithData, setPeriodsWithData] = useState([]);
+
+  // Sinkronkan daftar periode yang memiliki data riil untuk satker terpilih
+  useEffect(() => {
+    const updatePeriods = () => {
+      if (typeof window !== "undefined") {
+        const targetSatker = selectedBranch || currentUser?.satker || "Pengadilan Agama Gunung Sugih";
+        const pData = getPeriodsWithData(targetSatker);
+        setPeriodsWithData(pData || []);
+      }
+    };
+
+    updatePeriods();
+    window.addEventListener("storage", updatePeriods);
+    return () => {
+      window.removeEventListener("storage", updatePeriods);
+    };
+  }, [selectedBranch, period, currentUser]);
 
   // Parse Periode aktif (e.g. "September 2026")
   const { currentMonthIdx, currentYear } = useMemo(() => {
@@ -382,23 +401,38 @@ export default function MonitoringCabangView({
             </div>
           </div>
 
-          {/* Grid 12 Bulan (Tanpa Tabel Angka Tanggal Sesuai Permintaan) */}
+          {/* Grid 12 Bulan (Dengan Tanda "Ada Data" Sesuai Modal Periode) */}
           <div className="period-months-grid">
             {MONTH_NAMES.map((mName, idx) => {
+              const periodString = `${mName} ${currentYear}`;
               const isMonthActive = idx === currentMonthIdx;
+              const hasData = periodsWithData.some(
+                (p) => (p || "").trim().toLowerCase() === periodString.toLowerCase()
+              );
+
               return (
                 <button
                   key={mName}
                   type="button"
                   onClick={() => {
                     if (onPeriodChange) {
-                      onPeriodChange(`${mName} ${currentYear}`);
+                      onPeriodChange(periodString);
                     }
                   }}
-                  className={`period-month-pill-btn ${isMonthActive ? "active" : ""}`}
+                  className={`period-month-pill-btn ${isMonthActive ? "active" : ""} ${hasData ? "has-data" : "no-data"}`}
+                  title={
+                    hasData
+                      ? `${mName} ${currentYear} • Ada Data Tersimpan`
+                      : `${mName} ${currentYear} • Belum ada data`
+                  }
                 >
                   <span className="month-code">{mName.substring(0, 3)}</span>
-                  {isMonthActive && <span className="month-active-dot" />}
+                  <span
+                    className={`month-data-indicator ${hasData ? "has-data-visible" : "has-data-hidden"}`}
+                  >
+                    <span className="month-indicator-dot" />
+                    <span className="month-indicator-text">Ada Data</span>
+                  </span>
                 </button>
               );
             })}

@@ -4913,53 +4913,185 @@ body.monitoring-active-tab {
 }
 
 .period-month-pill-btn {
-  padding: 8px 4px;
-  border-radius: 12px;
-  border: 1px solid var(--border-light);
-  background: transparent;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  height: 50px;
+  padding: 6px 3px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  background: #ffffff;
+  color: var(--text-primary, #0f172a);
   cursor: pointer;
   position: relative;
-  transition: all 0.16s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .period-month-pill-btn:hover {
-  background: rgba(15, 81, 50, 0.05);
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+/* Status: Ada Data (Tidak Aktif) - Tampilan Mint Hijau Persis Modal Dialog Periode */
+.period-month-pill-btn.has-data {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
   color: #0f5132;
-  border-color: rgba(15, 81, 50, 0.2);
+  box-shadow: 0 1px 2px rgba(16, 185, 129, 0.06);
 }
 
-.period-month-pill-btn.active {
-  background: #0f5132 !important;
-  color: #ffffff !important;
-  border-color: #0f5132 !important;
-  box-shadow: 0 4px 12px rgba(15, 81, 50, 0.25);
+.period-month-pill-btn.has-data:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+  color: #0b3d26;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
 }
 
-[data-theme="dark"] .period-month-pill-btn.active {
-  background: #10b981 !important;
-  color: #051f15 !important;
-  border-color: #10b981 !important;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
-}
-
-.month-code {
-  font-size: 11.5px;
+.period-month-pill-btn.has-data .month-code {
+  color: #0f5132;
   font-weight: 700;
 }
 
+/* Status: Aktif Terpilih (Active State) */
+.period-month-pill-btn.active {
+  background: #0f5132 !important;
+  color: #ffffff !important;
+  border: 2px solid #0f5132 !important;
+  box-shadow: 0 4px 14px rgba(15, 81, 50, 0.28) !important;
+}
+
+.period-month-pill-btn.active .month-code {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+/* Tipografi Nama Bulan */
+.month-code {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  transition: color 0.15s ease;
+}
+
+/* Indikator "Ada Data" & Dot - Simetris & Identik dengan Modal Periode */
+.month-data-indicator {
+  height: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5px;
+  margin-top: 2.5px;
+  line-height: 1;
+  transition: opacity 0.15s ease;
+}
+
+.month-data-indicator.has-data-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+.month-data-indicator.has-data-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.month-indicator-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #16a34a;
+  flex-shrink: 0;
+  display: inline-block;
+  transition: background 0.15s ease;
+}
+
+.month-indicator-text {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #0f5132;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+/* Ketika Aktif & Ada Data: Dot dan Teks Jadi Kuning/Emas Persis Modal */
+.period-month-pill-btn.active.has-data .month-indicator-dot {
+  background: #fef08a !important;
+}
+
+.period-month-pill-btn.active.has-data .month-indicator-text {
+  color: #fef08a !important;
+  font-weight: 800;
+}
+
+/* Fallback legacy dot jika dipakai */
 .month-active-dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: #ffffff;
   margin-top: 2px;
+}
+
+/* Dark Theme Support */
+[data-theme="dark"] .period-month-pill-btn {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .period-month-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .period-month-pill-btn.has-data {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1.5px solid rgba(52, 211, 153, 0.35);
+  color: #34d399;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .period-month-pill-btn.has-data:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #34d399;
+  color: #a7f3d0;
+}
+
+[data-theme="dark"] .period-month-pill-btn.has-data .month-code {
+  color: #34d399;
+}
+
+[data-theme="dark"] .period-month-pill-btn.has-data .month-indicator-dot {
+  background: #34d399;
+}
+
+[data-theme="dark"] .period-month-pill-btn.has-data .month-indicator-text {
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .period-month-pill-btn.active {
+  background: #10b981 !important;
+  color: #051f15 !important;
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35) !important;
+}
+
+[data-theme="dark"] .period-month-pill-btn.active .month-code {
+  color: #051f15 !important;
+}
+
+[data-theme="dark"] .period-month-pill-btn.active.has-data .month-indicator-dot {
+  background: #051f15 !important;
+}
+
+[data-theme="dark"] .period-month-pill-btn.active.has-data .month-indicator-text {
+  color: #051f15 !important;
 }
 
 [data-theme="dark"] .month-active-dot {
