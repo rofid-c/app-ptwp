@@ -461,6 +461,15 @@ export default function HomePage() {
       }
 
       await reloadCashbook(activeSatker);
+
+      setTimeout(() => {
+        alert(
+          `✅ Berhasil mengimpor ${importedData.length} lembar bulan iuran PTWP!\n\n` +
+          `• Data rekap iuran ${allNewPeriods.join(', ')} telah tersimpan rapi ke sistem & database MySQL.\n` +
+          `• Seluruh penerimaan iuran berhasil dicatat ke Buku Kas.\n` +
+          `• Periode aktif diarahkan ke ${finalPeriod}.`
+        );
+      }, 300);
     } else {
       // Import 1 lembar bulan tunggal
       const finalPeriod = targetPeriod || period;
@@ -474,6 +483,14 @@ export default function HomePage() {
       }
       setMembers(filterRealMembers(importedData));
       await reloadCashbook(activeSatker);
+
+      setTimeout(() => {
+        alert(
+          `✅ Berhasil mengimpor data iuran periode "${finalPeriod}"!\n\n` +
+          `• Data anggota & status iuran berhasil disimpan ke sistem & database MySQL.\n` +
+          `• Rekap iuran masuk telah dicatatkan ke Buku Kas.`
+        );
+      }, 300);
     }
   };
 

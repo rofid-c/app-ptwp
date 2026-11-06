@@ -1103,9 +1103,24 @@ export async function parseExcelFile(file, fallbackPeriod = "September 2026") {
 
         // Jika terdeteksi sheet bulan
         if (validSheets.length > 0) {
+          const nameToId = new Map();
+          let nextAutoId = 1;
+
           validSheets.forEach((s) => {
             s.year = s.year || finalYear;
             s.period = s.monthIndex !== 99 ? `${s.monthName} ${s.year}` : `${s.sheetName} ${s.year}`;
+
+            // Standarisasi konsistensi ID anggota di seluruh lembar bulan
+            if (Array.isArray(s.members)) {
+              s.members.forEach((m, idx) => {
+                const cleanName = String(m.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+                if (!nameToId.has(cleanName)) {
+                  nameToId.set(cleanName, nextAutoId++);
+                }
+                m.id = nameToId.get(cleanName);
+                m.no = idx + 1;
+              });
+            }
           });
 
           // Urutkan sheet secara kronologis dari Januari s/d Desember

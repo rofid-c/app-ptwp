@@ -120,7 +120,7 @@ export async function fetchMembersByPeriod(period = "September 2026", satker) {
       const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           const apiMembers = filterRealMembers(json.data);
           setLocalData(key, apiMembers);
           return apiMembers;
@@ -151,6 +151,16 @@ export async function fetchMembersByPeriod(period = "September 2026", satker) {
   if (isClient() && Array.isArray(data) && cleaned.length !== data.length) {
     setLocalData(key, cleaned);
   }
+
+  // Jika ada data lokal tapi di database MySQL belum ada, sinkronkan ke MySQL secara background
+  if (isClient() && API_CONFIG.USE_REMOTE_API && cleaned.length > 0) {
+    fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
+    }).catch(() => {});
+  }
+
   return cleaned;
 }
 
@@ -277,6 +287,7 @@ export async function saveMembersByPeriod(period, members, satker) {
     setLocalData(`ptwp_${slug}_periods`, availablePeriods);
   }
 
+  // 1. Sinkronisasi data anggota ke MySQL
   if (API_CONFIG.USE_REMOTE_API && isClient()) {
     try {
       await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
@@ -286,6 +297,54 @@ export async function saveMembersByPeriod(period, members, satker) {
       });
     } catch (e) {
       console.warn("Sync dues ke API gagal:", e);
+    }
+  }
+
+  // 2. Sinkronisasi otomatis penerimaan iuran periode ini ke Buku Kas (cashbook)
+  const paidMembers = cleaned.filter((m) => m.paid);
+  const totalCollected = paidMembers.reduce(
+    (sum, m) =>
+      sum +
+      (Number(m.pusat || 0) +
+        Number(m.daerah || 0) +
+        Number(m.cabang || 0) +
+        Number(m.tournamen || 0)),
+    0
+  );
+
+  const monthParts = period.split(" ");
+  const mLower = (monthParts[0] || "").toLowerCase();
+  const mYear = monthParts[1] || "2026";
+  const monthNumMap = {
+    januari: "01", februari: "02", maret: "03", april: "04",
+    mei: "05", juni: "06", juli: "07", agustus: "08",
+    september: "09", oktober: "10", november: "11", desember: "12"
+  };
+  const mm = monthNumMap[mLower] || "01";
+
+  if (totalCollected > 0) {
+    const duesEntry = {
+      id: `dues_${period}`,
+      satker: targetSatker,
+      date: `${mYear}-${mm}-28`,
+      type: "in",
+      category: "Iuran Anggota",
+      amount: totalCollected,
+      description: `Penerimaan Iuran PTWP Periode ${period} (${paidMembers.length}/${cleaned.length} Pegawai Lunas)`,
+      source: "rekap_iuran",
+      period: period,
+    };
+    await addCashBookEntriesBatch([duesEntry], targetSatker);
+  } else {
+    // Jika 0 lunas, hapus entry kas jika ada
+    const cashKey = `ptwp_${slug}_cashbook`;
+    const rawCash = getLocalData(cashKey, []);
+    const updatedCash = (Array.isArray(rawCash) ? rawCash : []).filter((c) => c.id !== `dues_${period}`);
+    setLocalData(cashKey, updatedCash);
+    if (isClient()) {
+      fetch(`/api/cashbook?id=${encodeURIComponent(`dues_${period}`)}&satker=${encodeURIComponent(targetSatker)}`, {
+        method: "DELETE",
+      }).catch(() => {});
     }
   }
 
@@ -300,6 +359,13 @@ export async function saveMultiplePeriodsData(periodsData = [], satker) {
   const savedPeriods = [];
   const currentAvailable = getAvailablePeriods(targetSatker);
   const updatedAvailable = [...currentAvailable];
+  const newCashEntries = [];
+
+  const monthNumMap = {
+    januari: "01", februari: "02", maret: "03", april: "04",
+    mei: "05", juni: "06", juli: "07", agustus: "08",
+    september: "09", oktober: "10", november: "11", desember: "12"
+  };
 
   periodsData.forEach((item) => {
     const { period, members } = item;
@@ -313,9 +379,70 @@ export async function saveMultiplePeriodsData(periodsData = [], satker) {
       updatedAvailable.push(period);
     }
     savedPeriods.push(period);
+
+    // Hitung akumulasi iuran lunas untuk Buku Kas (cashbook)
+    const paidMembers = cleaned.filter((m) => m.paid !== false);
+    const totalCollected = paidMembers.reduce(
+      (sum, m) =>
+        sum +
+        (Number(m.pusat || 0) +
+          Number(m.daerah || 0) +
+          Number(m.cabang || 0) +
+          Number(m.tournamen || 0)),
+      0
+    );
+
+    if (totalCollected > 0) {
+      const parts = period.split(" ");
+      const mLower = (parts[0] || "").toLowerCase();
+      const mYear = parts[1] || "2026";
+      const mm = monthNumMap[mLower] || "01";
+
+      newCashEntries.push({
+        id: `dues_${period}`,
+        satker: targetSatker,
+        date: `${mYear}-${mm}-28`,
+        type: "in",
+        category: "Iuran Anggota",
+        amount: totalCollected,
+        description: `Penerimaan Iuran PTWP Periode ${period} (${paidMembers.length}/${cleaned.length} Pegawai Lunas)`,
+        source: "rekap_iuran",
+        period: period,
+      });
+    }
   });
 
   setLocalData(`ptwp_${slug}_periods`, updatedAvailable);
+
+  // 1. Sinkronisasi semua periode ke MySQL via /api/dues
+  if (API_CONFIG.USE_REMOTE_API && isClient()) {
+    try {
+      await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_multiple_periods",
+          satker: targetSatker,
+          periodsData: periodsData.map((p) => ({
+            period: p.period,
+            members: filterRealMembers(p.members),
+          })),
+        }),
+      });
+    } catch (e) {
+      console.warn("Sync multiple periods dues ke API gagal:", e);
+    }
+  }
+
+  // 2. Sinkronisasi penerimaan iuran kas ke MySQL via /api/cashbook (Batch)
+  if (newCashEntries.length > 0) {
+    try {
+      await addCashBookEntriesBatch(newCashEntries, targetSatker);
+    } catch (e) {
+      console.warn("Sync cashbook batch iuran gagal:", e);
+    }
+  }
+
   return savedPeriods;
 }
 
@@ -507,18 +634,17 @@ export async function fetchCashBook(satker) {
   const slug = getSafeSatkerSlug(targetSatker);
   const key = `ptwp_${slug}_cashbook`;
 
+  let rows = [];
   if (API_CONFIG.USE_REMOTE_API && isClient()) {
     try {
       const res = await fetch(`${API_CONFIG.API_BASE_URL}/cashbook?satker=${encodeURIComponent(targetSatker)}`);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          const rows = json.data.map((r) => ({
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          rows = json.data.map((r) => ({
             ...r,
             amount: Number(r.amount || 0),
           }));
-          setLocalData(key, rows);
-          return rows;
         }
       }
     } catch (e) {
@@ -526,44 +652,42 @@ export async function fetchCashBook(satker) {
     }
   }
 
-  let raw = getLocalData(key, null);
-
-  // Fallback migrasi jika PA Gunung Sugih data lamanya ada di ptwp_cashbook
-  if (raw === null && slug === "pengadilan_agama_gunung_sugih") {
-    raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
-    if (Array.isArray(raw) && raw.length > 0) {
-      setLocalData(key, raw);
+  if (rows.length === 0) {
+    let raw = getLocalData(key, null);
+    if (raw === null && slug === "pengadilan_agama_gunung_sugih") {
+      raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
     }
-  }
-  if (!Array.isArray(raw)) raw = [];
-
-  // Jika di browser dan localStorage kosong, coba tarik dari database MySQL
-  if (isClient() && raw.length === 0) {
-    try {
-      const res = await fetch(`/api/cashbook?satker=${encodeURIComponent(targetSatker)}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          raw = json.data;
-          setLocalData(key, raw);
-        }
-      }
-    } catch (e) {}
+    if (Array.isArray(raw)) rows = raw;
   }
 
+  // Pastikan data iuran dari Rekap Iuran terakomodasi di buku kas
   const duesEntries = getRealDuesCashEntries(targetSatker);
-  const duesPeriods = new Set(duesEntries.map((d) => d.period));
+  const duesPeriodsInRows = new Set(
+    rows
+      .filter((item) => item?.source === "rekap_iuran" || String(item?.id).startsWith("dues_"))
+      .map((d) => d.period)
+  );
 
-  const cleanManual = raw.filter((item) => {
-    // Jangan duplikasi jika duesEntries sudah memiliki data iuran dari anggota periode bersangkutan
-    if (item?.source === "rekap_iuran" && duesPeriods.has(item?.period)) {
-      return false;
-    }
+  const missingDuesEntries = duesEntries.filter((d) => !duesPeriodsInRows.has(d.period));
+
+  const cleanManual = rows.filter((item) => {
     return true;
   });
 
-  const combined = [...duesEntries, ...cleanManual];
+  const combined = [...missingDuesEntries, ...cleanManual];
   combined.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+  setLocalData(key, combined);
+
+  // Jika ada missingDuesEntries dan API aktif, sinkronkan ke MySQL di background
+  if (isClient() && API_CONFIG.USE_REMOTE_API && missingDuesEntries.length > 0) {
+    fetch("/api/cashbook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(missingDuesEntries),
+    }).catch(() => {});
+  }
+
   return combined;
 }
 
