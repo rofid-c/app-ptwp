@@ -4686,10 +4686,10 @@ body {
   color: #4ade80;
 }
 
-/* 2. Container Layout Monitoring: Split Screen */
+/* 2. Container Layout Monitoring: Split Screen (Rasio 80% Kiri : 20% Kanan) */
 .monitoring-split-layout {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   width: 100%;
   align-items: flex-start;
   position: relative;
@@ -4697,9 +4697,9 @@ body {
   padding-bottom: 24px;
 }
 
-/* 3. Panel Kiri: Dashboard Utuh Menyesuaikan Ruang dengan Halus */
+/* 3. Panel Kiri: Dashboard Utuh Menyesuaikan Ruang (Rasio 80%) */
 .monitoring-left-pane {
-  flex: 1;
+  flex: 4;
   min-width: 0;
   animation: monitoringLeftSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
@@ -4794,9 +4794,11 @@ body.monitoring-active-tab {
   color: #10b981;
 }
 
-/* 4. Panel Kanan: 2 Tabel Tabung Melengkung (Seperti Gambar 1) */
+/* 4. Panel Kanan: 2 Tabel Tabung Melengkung (Rasio 20%) */
 .monitoring-right-pane {
-  width: 350px;
+  flex: 1;
+  min-width: 290px;
+  max-width: 350px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

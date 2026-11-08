@@ -289,8 +289,7 @@ export default function MonitoringCabangView({
   return (
     <div className="monitoring-split-layout">
       {/* =====================================================================
-          BAGIAN KIRI: Dashboard Utama Utuh Skala ~72% (Tanpa Overlap / Tanpa Animasi Ukuran)
-          Sesuai permintaan: "tidak berubah ukurannya, jadi utuh kyk ukuran 70% gitu"
+          BAGIAN KIRI: Dashboard Utama Utuh Rasio 80% (Skala 80%)
           ===================================================================== */}
       <div className="monitoring-left-pane">
         {/* Dashboard Terintegrasi dengan Data Cabang Bersangkutan */}
