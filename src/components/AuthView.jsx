@@ -366,9 +366,6 @@ export default function AuthView({
           </div>
 
           <div>
-            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "1.5px", color: "#fef08a", textTransform: "uppercase" }}>
-              MAHKAMAH AGUNG REPUBLIK INDONESIA
-            </div>
             <div style={{ fontSize: "20px", fontWeight: 800, color: "#ffffff", letterSpacing: "0.5px" }}>
               PTWP-HUB SISTEM TERPADU
             </div>
