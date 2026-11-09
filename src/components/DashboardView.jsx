@@ -1094,20 +1094,6 @@ export default function DashboardView({
             <TrendingUp size={18} color="#0f5132" />
             <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Realisasi Penerimaan Iuran</h3>
           </div>
-          <span
-            className="font-mono-num"
-            style={{
-              fontSize: "12px",
-              fontWeight: 700,
-              padding: "2px 8px",
-              borderRadius: "99px",
-              background: "#dcfce7",
-              color: "#16a34a",
-              border: "1px solid #86efac",
-            }}
-          >
-            {percentageCollected}% Terkumpul
-          </span>
         </div>
 
         {/* Dual Progress Bar */}
@@ -1563,9 +1549,6 @@ export default function DashboardView({
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
               Iuran Terkumpul
             </span>
-            <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "var(--money-in-bg)", color: "var(--money-in)" }}>
-              {animatedPercent.toFixed(1)}%
-            </span>
           </div>
           <div className="font-mono-num" style={{ fontSize: "20px", fontWeight: 700, color: "var(--money-in)" }}>
             {formatRupiah(animatedCollected)}
@@ -1603,12 +1586,12 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Card 3: Saldo Kas Cabang */}
+        {/* Card 3: Saldo Kas */}
         <div className="stitch-card widen-stagger widen-delay-4">
           <div className="hairline-gold"></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Saldo Kas Cabang
+              Saldo Kas
             </span>
             <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "var(--money-gold-bg)", color: "var(--money-gold)" }}>
               Kas Aktif

@@ -516,6 +516,297 @@ export async function exportExpensesToExcel({
   return true;
 }
 
+/**
+ * Export dokumen resmi gabungan (Sheet 1: Rekap Iuran, Sheet 2: Realisasi Belanja) per cabang
+ */
+export async function exportCombinedBranchReport({
+  satker = "Pengadilan Agama Gunung Sugih",
+  members = [],
+  expenses = [],
+  period = "September 2026",
+  city = "Gunung Sugih",
+  treasurerName = "Bendahara Kantor",
+  treasurerTitle = "Bendahara PTWP",
+  institution = "PENGADILAN AGAMA GUNUNG SUGIH",
+  totalPeriodExpenses = 0,
+  netBalance = 0,
+}) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "PTWP-Hub Terpadu";
+  workbook.lastModifiedBy = "Pengawas Daerah PTA / Bendahara PTWP";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  // 1. TAMBAHKAN SHEET 1: IURAN
+  const sheetIuran = workbook.addWorksheet(`Iuran ${period.replace(/[\/\\]/g, "-")}`, {
+    pageSetup: {
+      paperSize: 9,
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+    },
+    views: [{ showGridLines: true }],
+  });
+
+  sheetIuran.columns = [
+    { key: "no", width: 6 },
+    { key: "name", width: 36 },
+    { key: "title", width: 18 },
+    { key: "pusat", width: 15 },
+    { key: "daerah", width: 15 },
+    { key: "cabang", width: 15 },
+    { key: "tournamen", width: 18 },
+    { key: "total", width: 17 },
+  ];
+
+  sheetIuran.mergeCells("A1:H1");
+  const title1 = sheetIuran.getCell("A1");
+  title1.value = `IURAN PTWP CABANG ${institution.toUpperCase()}`;
+  title1.font = { name: "Arial", size: 12, bold: true, color: { argb: "FF0F5132" } };
+  title1.alignment = { vertical: "middle", horizontal: "center" };
+  sheetIuran.getRow(1).height = 24;
+
+  sheetIuran.getCell("B3").value = `Bulan :  ${period}`;
+  sheetIuran.getCell("B3").font = { name: "Arial", size: 10, bold: true };
+  sheetIuran.getCell("B3").alignment = { vertical: "middle", horizontal: "left" };
+  sheetIuran.getRow(3).height = 18;
+
+  const headerRow1 = sheetIuran.getRow(5);
+  headerRow1.values = ["NO", "N A M A", "JABATAN", "IURAN PUSAT", "IURAN DAERAH", "IURAN CABANG", "IURAN TOURNAMEN", "TOTAL"];
+  headerRow1.height = 24;
+  headerRow1.eachCell((cell) => {
+    cell.font = { name: "Arial", size: 9, bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F5132" } };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  });
+
+  const guideRow1 = sheetIuran.getRow(7);
+  guideRow1.values = ["1", "2", "9", "", "", "", "15", "16"];
+  guideRow1.height = 16;
+  guideRow1.eachCell((cell) => {
+    cell.font = { name: "Arial", size: 8, italic: true, color: { argb: "FF555555" } };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+    cell.border = {
+      top: { style: "hair", color: { argb: "FFCCCCCC" } },
+      bottom: { style: "hair", color: { argb: "FFCCCCCC" } },
+      left: { style: "hair", color: { argb: "FFCCCCCC" } },
+      right: { style: "hair", color: { argb: "FFCCCCCC" } },
+    };
+  });
+
+  let curRow1 = 10;
+  const startRow1 = curRow1;
+  members.forEach((m, idx) => {
+    const row = sheetIuran.getRow(curRow1);
+    const rowTot = (m.pusat || 0) + (m.daerah || 0) + (m.cabang || 0) + (m.tournamen || 0);
+    row.values = [idx + 1, m.name, m.title || "", Number(m.pusat || 0), Number(m.daerah || 0), Number(m.cabang || 0), Number(m.tournamen || 0), Number(rowTot)];
+    row.height = 20;
+    row.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+    row.getCell(2).alignment = { vertical: "middle", horizontal: "left" };
+    row.getCell(3).alignment = { vertical: "middle", horizontal: "left" };
+    for (let c = 4; c <= 8; c++) {
+      const cell = row.getCell(c);
+      cell.alignment = { vertical: "middle", horizontal: "right" };
+      cell.numFmt = "#,##0";
+    }
+    for (let c = 1; c <= 8; c++) {
+      row.getCell(c).border = {
+        top: { style: "thin", color: { argb: "FF000000" } },
+        bottom: { style: "thin", color: { argb: "FF000000" } },
+        left: { style: "thin", color: { argb: "FF000000" } },
+        right: { style: "thin", color: { argb: "FF000000" } },
+      };
+      row.getCell(c).font = { name: "Arial", size: 9 };
+    }
+    curRow1++;
+  });
+
+  const endRow1 = Math.max(startRow1, curRow1 - 1);
+  const totalRow1 = sheetIuran.getRow(curRow1);
+  totalRow1.height = 22;
+  totalRow1.getCell(1).value = "TOTAL";
+  sheetIuran.mergeCells(`A${curRow1}:C${curRow1}`);
+  totalRow1.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+  totalRow1.getCell(1).font = { name: "Arial", size: 9, bold: true };
+  ["D", "E", "F", "G", "H"].forEach((col) => {
+    const cell = sheetIuran.getCell(`${col}${curRow1}`);
+    cell.value = { formula: `SUM(${col}${startRow1}:${col}${endRow1})` };
+    cell.numFmt = "#,##0";
+    cell.font = { name: "Arial", size: 9, bold: true };
+    cell.alignment = { vertical: "middle", horizontal: "right" };
+  });
+  for (let c = 1; c <= 8; c++) {
+    const cell = totalRow1.getCell(c);
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "medium", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  }
+
+  const sigRow1 = curRow1 + 2;
+  sheetIuran.getCell(`F${sigRow1}`).value = `${city},        ${period}`;
+  sheetIuran.getCell(`F${sigRow1}`).font = { name: "Arial", size: 9 };
+  sheetIuran.getCell(`F${sigRow1}`).alignment = { vertical: "middle", horizontal: "center" };
+
+  sheetIuran.getCell(`F${sigRow1 + 1}`).value = treasurerTitle;
+  sheetIuran.getCell(`F${sigRow1 + 1}`).font = { name: "Arial", size: 9 };
+  sheetIuran.getCell(`F${sigRow1 + 1}`).alignment = { vertical: "middle", horizontal: "center" };
+
+  sheetIuran.getCell(`F${sigRow1 + 5}`).value = treasurerName;
+  sheetIuran.getCell(`F${sigRow1 + 5}`).font = { name: "Arial", size: 9, bold: true, underline: true };
+  sheetIuran.getCell(`F${sigRow1 + 5}`).alignment = { vertical: "middle", horizontal: "center" };
+
+  // 2. TAMBAHKAN SHEET 2: BELANJA
+  const sheetBelanja = workbook.addWorksheet(`Belanja ${period.replace(/[\/\\]/g, "-")}`, {
+    pageSetup: {
+      paperSize: 9,
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+    },
+    views: [{ showGridLines: true }],
+  });
+
+  sheetBelanja.columns = [
+    { key: "no", width: 6 },
+    { key: "uraian", width: 38 },
+    { key: "category", width: 24 },
+    { key: "date", width: 14 },
+    { key: "amount", width: 18 },
+    { key: "ket", width: 28 },
+  ];
+
+  sheetBelanja.mergeCells("A1:F1");
+  const title2 = sheetBelanja.getCell("A1");
+  title2.value = "REALISASI BELANJA DAN PENGELUARAN IURAN PTWP";
+  title2.font = { name: "Arial", size: 12, bold: true, color: { argb: "FF991B1B" } };
+  title2.alignment = { vertical: "middle", horizontal: "center" };
+  sheetBelanja.getRow(1).height = 22;
+
+  sheetBelanja.mergeCells("A2:F2");
+  const subTitle2 = sheetBelanja.getCell("A2");
+  subTitle2.value = "CABANG " + institution.toUpperCase();
+  subTitle2.font = { name: "Arial", size: 11, bold: true, color: { argb: "FF334155" } };
+  subTitle2.alignment = { vertical: "middle", horizontal: "center" };
+  sheetBelanja.getRow(2).height = 20;
+
+  sheetBelanja.getCell("A4").value = "Bulan :  " + period;
+  sheetBelanja.getCell("A4").font = { name: "Arial", size: 10, bold: true };
+  sheetBelanja.getCell("A4").alignment = { vertical: "middle", horizontal: "left" };
+  sheetBelanja.getRow(4).height = 18;
+
+  const headerRow2 = sheetBelanja.getRow(6);
+  headerRow2.values = ["NO", "URAIAN PENGELUARAN", "KATEGORI", "TANGGAL", "PENGELUARAN (RP)", "KETERANGAN / CATATAN"];
+  headerRow2.height = 24;
+  headerRow2.eachCell((cell) => {
+    cell.font = { name: "Arial", size: 9, bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF991B1B" } };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  });
+
+  let curRow2 = 7;
+  const startRow2 = curRow2;
+  expenses.forEach((item, index) => {
+    const row = sheetBelanja.getRow(curRow2);
+    row.height = 20;
+    row.getCell(1).value = index + 1;
+    row.getCell(2).value = item.uraian || item.description || "-";
+    row.getCell(3).value = item.category || "Operasional";
+    row.getCell(4).value = item.date || "-";
+    row.getCell(5).value = Number(item.amount || 0);
+    row.getCell(6).value = item.ket || "-";
+
+    row.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+    row.getCell(2).alignment = { vertical: "middle", horizontal: "left" };
+    row.getCell(3).alignment = { vertical: "middle", horizontal: "left" };
+    row.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
+    row.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+    row.getCell(5).numFmt = "#,##0";
+    row.getCell(6).alignment = { vertical: "middle", horizontal: "left" };
+
+    for (let c = 1; c <= 6; c++) {
+      row.getCell(c).border = {
+        top: { style: "thin", color: { argb: "FF000000" } },
+        bottom: { style: "thin", color: { argb: "FF000000" } },
+        left: { style: "thin", color: { argb: "FF000000" } },
+        right: { style: "thin", color: { argb: "FF000000" } },
+      };
+      row.getCell(c).font = { name: "Arial", size: 9 };
+    }
+    curRow2++;
+  });
+
+  const endRow2 = Math.max(startRow2, curRow2 - 1);
+  const totalRow2 = sheetBelanja.getRow(curRow2);
+  totalRow2.height = 22;
+  sheetBelanja.mergeCells("A" + curRow2 + ":D" + curRow2);
+  totalRow2.getCell(1).value = "TOTAL PENGELUARAN PERIODE " + period.toUpperCase();
+  totalRow2.getCell(1).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF991B1B" } };
+  totalRow2.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+
+  totalRow2.getCell(5).value = { formula: "SUM(E" + startRow2 + ":E" + endRow2 + ")" };
+  totalRow2.getCell(5).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF991B1B" } };
+  totalRow2.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+  totalRow2.getCell(5).numFmt = "#,##0";
+
+  for (let c = 1; c <= 6; c++) {
+    const cell = totalRow2.getCell(c);
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF000000" } },
+      bottom: { style: "thin", color: { argb: "FF000000" } },
+      left: { style: "thin", color: { argb: "FF000000" } },
+      right: { style: "thin", color: { argb: "FF000000" } },
+    };
+  }
+
+  const sigRow2 = curRow2 + 3;
+  sheetBelanja.getCell("E" + sigRow2).value = city + ", " + new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  sheetBelanja.getCell("E" + sigRow2).font = { name: "Arial", size: 9 };
+  sheetBelanja.getCell("E" + sigRow2).alignment = { vertical: "middle", horizontal: "center" };
+
+  sheetBelanja.getCell("E" + (sigRow2 + 1)).value = treasurerTitle;
+  sheetBelanja.getCell("E" + (sigRow2 + 1)).font = { name: "Arial", size: 9 };
+  sheetBelanja.getCell("E" + (sigRow2 + 1)).alignment = { vertical: "middle", horizontal: "center" };
+
+  sheetBelanja.getCell("E" + (sigRow2 + 5)).value = treasurerName;
+  sheetBelanja.getCell("E" + (sigRow2 + 5)).font = { name: "Arial", size: 9, bold: true, underline: true };
+  sheetBelanja.getCell("E" + (sigRow2 + 5)).alignment = { vertical: "middle", horizontal: "center" };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const sanitizedSatker = satker.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
+  const sanitizedPeriod = period.replace(/[^a-zA-Z0-9]/g, "_");
+  link.download = `DOKUMEN_LENGKAP_PTWP_${sanitizedSatker}_${sanitizedPeriod}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+  return true;
+}
+
 
 export const MONTH_NAMES_ID = [
   "Januari",
@@ -753,7 +1044,7 @@ function parseSheetRows(rows) {
       continue;
     }
 
-    if (!rawName || rawName === "2" || /^\d+$/.test(rawName)) {
+    if (!rawName || rawName === "2" || /^\d+$/.test(rawName) || rawName.length < 3) {
       continue;
     }
 
@@ -1110,15 +1401,13 @@ export async function parseExcelFile(file, fallbackPeriod = "September 2026") {
             s.year = s.year || finalYear;
             s.period = s.monthIndex !== 99 ? `${s.monthName} ${s.year}` : `${s.sheetName} ${s.year}`;
 
-            // Standarisasi konsistensi ID anggota di seluruh lembar bulan
+            // Penomoran ID anggota per lembar bulan (terisolasi per periode)
             if (Array.isArray(s.members)) {
               s.members.forEach((m, idx) => {
-                const cleanName = String(m.name || "").trim().toLowerCase().replace(/\s+/g, " ");
-                if (!nameToId.has(cleanName)) {
-                  nameToId.set(cleanName, nextAutoId++);
-                }
-                m.id = nameToId.get(cleanName);
+                m.id = String(idx + 1);
                 m.no = idx + 1;
+                m.satker = m.satker || "Pengadilan Agama Gunung Sugih";
+                m.period = s.period;
               });
             }
           });

@@ -76,11 +76,12 @@ CREATE TABLE `account_requests` (
 
 -- 4. TABEL ANGGOTA PTWP (MEMBERS)
 -- Data anggota diisi melalui fitur Import Excel oleh bendahara masing-masing cabang
--- Menggunakan Composite Primary Key (satker, id) untuk multi-tenant satker yang terisolasi
+-- Menggunakan Composite Primary Key (satker, period, id) agar daftar pegawai terisolasi akurat per periode bulan
 DROP TABLE IF EXISTS `members`;
 CREATE TABLE `members` (
   `id` VARCHAR(100) NOT NULL,
   `satker` VARCHAR(255) NOT NULL,
+  `period` VARCHAR(50) NOT NULL DEFAULT 'September 2026',
   `nip` VARCHAR(50) DEFAULT '',
   `name` VARCHAR(255) NOT NULL,
   `title` VARCHAR(100) DEFAULT '',
@@ -89,9 +90,12 @@ CREATE TABLE `members` (
   `daerah` DECIMAL(15,2) DEFAULT 0,
   `cabang` DECIMAL(15,2) DEFAULT 0,
   `tournamen` DECIMAL(15,2) DEFAULT 0,
+  `paid` TINYINT(1) DEFAULT 1,
+  `paid_date` VARCHAR(50) DEFAULT NULL,
   `phone` VARCHAR(50) DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`satker`, `id`)
+  PRIMARY KEY (`satker`, `period`, `id`),
+  INDEX `idx_satker_period` (`satker`, `period`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. TABEL STATUS PEMBAYARAN IURAN PER PERIODE (DUES_RECORDS)
@@ -102,10 +106,11 @@ CREATE TABLE `dues_records` (
   `period` VARCHAR(50) NOT NULL,
   `satker` VARCHAR(255) NOT NULL,
   `member_id` VARCHAR(100) NOT NULL,
-  `paid` TINYINT(1) DEFAULT 0,
+  `paid` TINYINT(1) DEFAULT 1,
   `paid_date` VARCHAR(50) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `unique_period_member` (`period`, `satker`, `member_id`)
+  UNIQUE KEY `unique_period_member` (`period`, `satker`, `member_id`),
+  INDEX `idx_satker_period` (`satker`, `period`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. TABEL BUKU KAS (CASHBOOK)
@@ -146,5 +151,21 @@ CREATE TABLE `settings` (
 INSERT INTO `settings` (`satker`, `institution`, `branch`, `treasurer_name`, `treasurer_nip`, `chairperson_name`, `chairperson_nip`) VALUES
 ('Pengadilan Agama Gunung Sugih', 'PENGADILAN AGAMA GUNUNG SUGIH', 'CABANG PENGADILAN AGAMA GUNUNG SUGIH', 'User Test PA Gunung Sugih', '198909182014022006', 'Ketua Pengadilan Agama Gunung Sugih', '196805121994031001'),
 ('Pengadilan Agama Metro', 'PENGADILAN AGAMA METRO', 'CABANG PENGADILAN AGAMA METRO', 'Bendahara PA Metro', '198501012010011002', 'Ketua Pengadilan Agama Metro', '197001011996031001');
+
+-- 8. TABEL ARSIP BERKAS EXCEL ASLI PENGELUARAN CABANG (EXPENSE_DOCUMENTS)
+-- Menyimpan dokumen Excel murni (.xlsx) asli yang diunggah oleh bendahara cabang
+DROP TABLE IF EXISTS `expense_documents`;
+CREATE TABLE `expense_documents` (
+  `id` VARCHAR(100) PRIMARY KEY,
+  `satker` VARCHAR(255) NOT NULL,
+  `filename` VARCHAR(255) NOT NULL,
+  `file_data` LONGBLOB NOT NULL,
+  `file_size` INT NOT NULL,
+  `mime_type` VARCHAR(100) DEFAULT 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  `year` VARCHAR(10) DEFAULT '2026',
+  `uploaded_by` VARCHAR(150) DEFAULT '',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_satker` (`satker`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- SELESAI

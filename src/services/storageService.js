@@ -110,7 +110,27 @@ export function filterRealMembers(members = []) {
     .map((m, idx) => ({ ...m, no: idx + 1 }));
 }
 
+const CACHE_VERSION_KEY = "ptwp_cache_version";
+const CURRENT_CACHE_VERSION = "2.8_period_isolated";
+
+function checkAndInvalidateLegacyCache() {
+  if (!isClient()) return;
+  try {
+    const v = localStorage.getItem(CACHE_VERSION_KEY);
+    if (v !== CURRENT_CACHE_VERSION) {
+      const keys = Object.keys(localStorage);
+      keys.forEach((k) => {
+        if (k.startsWith("ptwp_") && (k.includes("_members_") || k.startsWith("ptwp_members_"))) {
+          localStorage.removeItem(k);
+        }
+      });
+      localStorage.setItem(CACHE_VERSION_KEY, CURRENT_CACHE_VERSION);
+    }
+  } catch (e) {}
+}
+
 export async function fetchMembersByPeriod(period = "September 2026", satker) {
+  checkAndInvalidateLegacyCache();
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   const slug = getSafeSatkerSlug(targetSatker);
   const key = `ptwp_${slug}_members_${period}`;
@@ -150,15 +170,6 @@ export async function fetchMembersByPeriod(period = "September 2026", satker) {
   const cleaned = filterRealMembers(data);
   if (isClient() && Array.isArray(data) && cleaned.length !== data.length) {
     setLocalData(key, cleaned);
-  }
-
-  // Jika ada data lokal tapi di database MySQL belum ada, sinkronkan ke MySQL secara background
-  if (isClient() && API_CONFIG.USE_REMOTE_API && cleaned.length > 0) {
-    fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
-    }).catch(() => {});
   }
 
   return cleaned;

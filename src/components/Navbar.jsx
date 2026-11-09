@@ -10,6 +10,10 @@ import {
   Search,
   Clock,
   Building2,
+  FileSpreadsheet,
+  TrendingUp,
+  LayoutDashboard,
+  ReceiptText,
 } from "lucide-react";
 
 export default function Navbar({
@@ -22,6 +26,9 @@ export default function Navbar({
   onOpenProfile,
   onPrint,
   onToggleMobileMenu,
+  onOpenExpenseDocs,
+  monitoringSubTab = "dashboard",
+  onMonitoringSubTabChange,
   currentUser,
   searchQuery = "",
   onSearchChange,
@@ -123,55 +130,81 @@ export default function Navbar({
       </div>
 
       {/* =====================================================================
-          2. PULAU TENGAH: Cetak PDF di Tengah (Untuk Halaman Selain Monitoring Cabang)
-          Sesuai permintaan: "untuk halaman selain monitoring cabang. menu atas ini di benrin kiri kalender tengah cetak pdf kanan jam"
+          2. PULAU TENGAH:
+          - Halaman Monitoring Cabang: 2 Menu (Dashboard & Rekap Pengeluaran)
+          - Halaman Selain Monitoring: Search + Cetak PDF
           ===================================================================== */}
-      {activeTab !== "monitoring" && !isSuper && (
-        <div className="top-island-center">
-          {showSearch && (
-            <>
-              <div className="island-search-group">
-                <Search size={15} className="island-search-icon" />
-                <input
-                  type="text"
-                  placeholder={searchPlaceholder}
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-                  className="island-search-input"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => onSearchChange && onSearchChange("")}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "15px",
-                      lineHeight: 1,
-                      padding: "0 2px",
-                    }}
-                    title="Hapus pencarian"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              <div className="island-inner-divider" />
-            </>
-          )}
-
-          <button
-            type="button"
-            className="island-tool-btn"
-            onClick={onPrint}
-            title="Cetak Laporan Resmi (PDF/Print)"
-          >
-            <Printer size={15} color="#0f5132" />
-            <span className="tool-text">Cetak PDF</span>
-          </button>
+      {activeTab === "monitoring" ? (
+        <div className="top-island-center monitoring-island-center">
+          <div className="monitoring-nav-segmented">
+            <button
+              type="button"
+              className={`monitoring-segment-btn ${monitoringSubTab === "dashboard" ? "active" : ""}`}
+              onClick={() => onMonitoringSubTabChange && onMonitoringSubTabChange("dashboard")}
+              title="Tampilkan Dashboard Monitoring Cabang"
+            >
+              <LayoutDashboard size={14} />
+              <span>Dashboard</span>
+            </button>
+            <button
+              type="button"
+              className={`monitoring-segment-btn ${monitoringSubTab === "expenses" ? "active" : ""}`}
+              onClick={() => onMonitoringSubTabChange && onMonitoringSubTabChange("expenses")}
+              title="Tampilkan Rekap Pengeluaran Cabang"
+            >
+              <ReceiptText size={14} />
+              <span>Rekap Pengeluaran</span>
+            </button>
+          </div>
         </div>
+      ) : (
+        !isSuper && (
+          <div className="top-island-center">
+            {showSearch && (
+              <>
+                <div className="island-search-group">
+                  <Search size={15} className="island-search-icon" />
+                  <input
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                    className="island-search-input"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => onSearchChange && onSearchChange("")}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        fontSize: "15px",
+                        lineHeight: 1,
+                        padding: "0 2px",
+                      }}
+                      title="Hapus pencarian"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <div className="island-inner-divider" />
+              </>
+            )}
+
+            <button
+              type="button"
+              className="island-tool-btn"
+              onClick={onPrint}
+              title="Cetak Laporan Resmi (PDF/Print)"
+            >
+              <Printer size={15} color="#0f5132" />
+              <span className="tool-text">Cetak PDF</span>
+            </button>
+          </div>
+        )
       )}
 
       {/* =====================================================================

@@ -75,10 +75,10 @@ export default function MetricCards({ members = [], cashbook = [] }) {
         </div>
       </div>
 
-      {/* 4. Saldo Kas Cabang */}
+      {/* 4. Saldo Kas */}
       <div className="metric-card">
         <div className="metric-header">
-          <span className="metric-title">Saldo Kas Cabang</span>
+          <span className="metric-title">Saldo Kas</span>
           <div className="metric-icon-box">
             <Landmark size={20} />
           </div>

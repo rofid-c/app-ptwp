@@ -37,6 +37,7 @@ import AuthView from "@/components/AuthView";
 import UserProfileModal from "@/components/UserProfileModal";
 import AdminView from "@/components/AdminView";
 import DuesExpenseView from "@/components/DuesExpenseView";
+import AddExpenseModal from "@/components/AddExpenseModal";
 import MonitoringCabangView from "@/components/MonitoringCabangView";
 import NetworkStatusSentinel from "@/components/NetworkStatusSentinel";
 import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
@@ -102,6 +103,7 @@ export default function HomePage() {
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState("all");
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [selectedMonitoringBranch, setSelectedMonitoringBranch] = useState("all");
+  const [monitoringSubTab, setMonitoringSubTab] = useState("dashboard");
   const currentSatkerName = currentUser?.satker || settings?.institution || settings?.satker || "Pengadilan Agama Gunung Sugih";
 
   // Helper ganti periode aktif yang persisten across reload/restart
@@ -334,10 +336,28 @@ export default function HomePage() {
   };
 
   // Import Excel / CSV Success (Mendukung deteksi multi-bulan, single-bulan, dan matrix cashbook)
-  const handleImportSuccess = async (importedData, targetPeriod, isMulti = false) => {
+  const handleImportSuccess = async (importedData, targetPeriod, isMulti = false, rawFile = null) => {
+    const activeSatker = currentUser?.satker || settings.institution || "Pengadilan Agama Gunung Sugih";
+
+    // Arsipkan dokumen Excel asli yang diunggah ke database MySQL (expense_documents)
+    if (rawFile && typeof window !== "undefined") {
+      try {
+        const formData = new FormData();
+        formData.append("file", rawFile);
+        formData.append("satker", activeSatker);
+        formData.append("year", targetPeriod?.match(/\b(20\d{2})\b/)?.[1] || "2026");
+        formData.append("uploaded_by", currentUser?.name || currentUser?.username || "Bendahara Cabang");
+        fetch("/api/expenses/documents", {
+          method: "POST",
+          body: formData,
+        }).catch((e) => console.warn("Gagal mengarsipkan berkas asli ke DB:", e));
+      } catch (err) {
+        console.warn("Gagal mengarsipkan berkas asli ke DB:", err);
+      }
+    }
+
     // 1. Format Rekapitulasi Kas Triwulan (PA Gunung Sugih - 12 Bulan)
     if (importedData && importedData.type === "matrix_cashbook" && Array.isArray(importedData.months)) {
-      const activeSatker = currentUser?.satker || settings.institution || "Pengadilan Agama Gunung Sugih";
       const satkerName = activeSatker;
       const newCashEntries = [];
       const newPeriods = [];
@@ -434,7 +454,6 @@ export default function HomePage() {
       return;
     }
 
-    const activeSatker = currentUser?.satker || settings.institution || "Pengadilan Agama Gunung Sugih";
     if (isMulti && Array.isArray(importedData)) {
       // Import banyak bulan sekaligus
       await saveMultiplePeriodsData(importedData, activeSatker);
@@ -944,6 +963,8 @@ export default function HomePage() {
           searchPlaceholder={duesSubTab === "in" ? "Cari nama, jabatan..." : "Cari pos belanja..."}
           onOpenPeriodPicker={() => setIsPeriodPickerOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          monitoringSubTab={monitoringSubTab}
+          onMonitoringSubTabChange={setMonitoringSubTab}
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           selectedMonitoringBranch={selectedMonitoringBranch}
@@ -985,6 +1006,8 @@ export default function HomePage() {
                 onPeriodChange={changePeriod}
                 currentUser={currentUser}
                 onPrint={() => window.print()}
+                monitoringSubTab={monitoringSubTab}
+                onMonitoringSubTabChange={setMonitoringSubTab}
               />
             )}
 
@@ -1392,9 +1415,6 @@ export default function HomePage() {
                   onDeleteExpense={handleDeleteCashEntry}
                   isAdmin={isAdmin}
                   formatRupiah={formatRupiah}
-                  isAddModalOpen={isAddExpenseOpen}
-                  setIsAddModalOpen={setIsAddExpenseOpen}
-                  onAddExpense={handleAddCashEntry}
                 />
               )}
               </div>
@@ -1497,6 +1517,14 @@ export default function HomePage() {
         onAddEntry={handleAddCashEntry}
       />
 
+      {/* Modal Catat Pengeluaran Baru (Khusus Rekap Iuran Keluar) */}
+      <AddExpenseModal
+        isOpen={isAddExpenseOpen}
+        onClose={() => setIsAddExpenseOpen(false)}
+        period={period}
+        onAddExpense={handleAddCashEntry}
+      />
+
       <PeriodPickerModal
         isOpen={isPeriodPickerOpen}
         onClose={() => setIsPeriodPickerOpen(false)}
@@ -1510,6 +1538,7 @@ export default function HomePage() {
           }
         }}
       />
+
 
       {/* Indikator Status Koneksi Jaringan */}
       <NetworkStatusSentinel />

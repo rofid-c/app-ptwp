@@ -149,7 +149,7 @@ export default function ExcelImportModal({
       if (onImportSuccess) {
         const sept = selected.find((m) => m.period.toLowerCase().includes("september"));
         const target = sept ? sept.period : (selected.find((m) => m.period.toLowerCase() === period.toLowerCase())?.period || selected[selected.length - 1].period);
-        onImportSuccess({ type: "matrix_cashbook", months: selected }, target, true);
+        onImportSuccess({ type: "matrix_cashbook", months: selected }, target, true, file);
         onClose();
       }
       return;
@@ -171,12 +171,12 @@ export default function ExcelImportModal({
       const activeTargetPeriod = `${activeSheet.monthName} ${targetYear}`;
 
       if (onImportSuccess) {
-        onImportSuccess(payload, activeTargetPeriod, true);
+        onImportSuccess(payload, activeTargetPeriod, true, file);
         onClose();
       }
     } else {
       if (singleData.length > 0 && onImportSuccess) {
-        onImportSuccess(singleData, singlePeriod, false);
+        onImportSuccess(singleData, singlePeriod, false, file);
         onClose();
       }
     }
