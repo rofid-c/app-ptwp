@@ -428,17 +428,32 @@ export default function UserProfileModal({
                   padding: "14px 16px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                  <Copyright size={18} color="#0f5132" />
-                  <span style={{ fontSize: "13px", fontWeight: 800, color: "#0f5132", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Lisensi Resmi & Hak Cipta
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Copyright size={18} color="#0f5132" />
+                    <span style={{ fontSize: "13px", fontWeight: 800, color: "#0f5132", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Lisensi Resmi & Hak Cipta
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "10.5px",
+                      fontWeight: 800,
+                      background: "#0f5132",
+                      color: "#fef08a",
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                      letterSpacing: "0.4px",
+                    }}
+                  >
+                    APACHE 2.0
                   </span>
                 </div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
                   Aplikasi Sistem Informasi PTWP-Hub
                 </div>
                 <div style={{ marginTop: "4px", color: "var(--text-muted)", fontSize: "12px" }}>
-                  Dilisensikan secara resmi di bawah ketentuan <strong>MIT License</strong> atas nama:
+                  Dilisensikan secara resmi di bawah ketentuan ketat <strong>Apache License, Version 2.0</strong> atas nama:
                 </div>
                 <div
                   style={{
@@ -457,7 +472,7 @@ export default function UserProfileModal({
                   © 2026 Rofid Safwanda
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center", marginTop: "4px" }}>
-                  All Rights Reserved • Seluruh Hak Cipta Dilindungi
+                  All Rights Reserved • Author & Primary Maintainer
                 </div>
               </div>
 
@@ -478,11 +493,11 @@ export default function UserProfileModal({
                 </div>
                 <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
                   Aplikasi ini dilindungi sebagai <strong>Karya Program Komputer</strong> berdasarkan{" "}
-                  <strong>Undang-Undang Republik Indonesia Nomor 28 Tahun 2014 tentang Hak Cipta</strong> (Pasal 40 ayat 1 huruf s).
+                  <strong>Undang-Undang Republik Indonesia Nomor 28 Tahun 2014 tentang Hak Cipta</strong> (Pasal 40 ayat 1 huruf s) serta traktat perlindungan hak cipta internasional.
                 </p>
               </div>
 
-              {/* 4. TATA ATURAN PENGGUNAAN */}
+              {/* 4. TATA ATURAN & BATASAN KETAT APACHE 2.0 */}
               <div
                 style={{
                   background: "var(--bg-app)",
@@ -494,14 +509,22 @@ export default function UserProfileModal({
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                   <FileText size={16} color="#eab308" />
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-primary)" }}>
-                    Tata Aturan & Batasan Penggunaan
+                    Ketentuan & Batasan Ketat Lisensi (Apache 2.0)
                   </span>
                 </div>
                 <ul style={{ margin: "4px 0 0", paddingLeft: "18px", color: "var(--text-muted)", fontSize: "11.5px" }}>
-                  <li>Aplikasi digunakan khusus untuk tata kelola kedinasan organisasi PTWP peradilan.</li>
-                  <li>Dilarang menghapus atau mengubah identitas hak cipta atas nama <strong>Rofid Safwanda</strong>.</li>
-                  <li>Dilarang merekayasa balik (*reverse engineering*), membajak, atau mengklaim kepemilikan kode sumber secara sepihak.</li>
-                  <li>Dilarang memperjualbelikan atau mengomersialisasi sistem tanpa izin tertulis dari pemegang hak cipta.</li>
+                  <li>
+                    <strong>Kewajiban Retensi Berkas NOTICE & Atribusi:</strong> Setiap salinan atau distribusi wajib menyertakan berkas <code>NOTICE</code> dan mempertahankan identitas hak cipta atas nama <strong>Rofid Safwanda</strong>.
+                  </li>
+                  <li>
+                    <strong>Larangan Pencatutan Merek & Nama:</strong> Dilarang keras menggunakan nama <strong>Rofid Safwanda</strong> atau merek dagang <strong>PTWP-Hub</strong> untuk promosi, iklan, publikasi, atau endorsement tanpa izin tertulis resmi.
+                  </li>
+                  <li>
+                    <strong>Kewajiban Pencatatan Modifikasi:</strong> Siapapun yang memodifikasi berkas sistem ini wajib memberikan notis tertulis (*prominent notices*) yang mencatat setiap perubahan yang dilakukan secara transparan.
+                  </li>
+                  <li>
+                    <strong>Perlindungan Hak Paten & Pembajakan:</strong> Dilengkapi proteksi paten (*patent retaliation clause*), serta dilarang memperjualbelikan atau mengomersialisasi sistem tanpa izin tertulis dari pencipta.
+                  </li>
                 </ul>
               </div>
 

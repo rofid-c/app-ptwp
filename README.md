@@ -5,7 +5,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![ExcelJS](https://img.shields.io/badge/ExcelJS-4.4-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white)](https://github.com/exceljs/exceljs)
 [![SheetJS](https://img.shields.io/badge/SheetJS-0.18-green?style=for-the-badge&logo=coffeescript&logoColor=white)](https://sheetjs.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Rofid%20Safwanda-blue?style=for-the-badge)](https://github.com/rofid-c)
 [![Design](https://img.shields.io/badge/Design-Google%20Stitch%20Tokens-0F5132?style=for-the-badge)](https://fonts.google.com/)
 
@@ -409,15 +409,44 @@ Untuk keperluan pengujian peran (*RBAC*), basis data telah dilengkapi akun bawaa
 
 ---
 
-## 📄 Lisensi & Hak Cipta
+## 📄 Lisensi, Hak Cipta & Ketentuan Hukum
 
-Proyek ini dilisensikan di bawah ketentuan **[MIT License](LICENSE)** atas nama **Rofid Safwanda**.
+Proyek dan seluruh kode sumber ini dilisensikan secara resmi di bawah ketentuan ketat **[Apache License, Version 2.0](LICENSE)** dengan kepemilikan hak cipta tunggal atas nama **Rofid Safwanda**.
 
 ```text
-MIT License
-Copyright (c) 2026 Rofid Safwanda
+PTWP-Hub (Sistem Informasi, Rekapitulasi Iuran & Perbendaharaan Kas PTWP)
+Copyright (c) 2026 Rofid Safwanda. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ```
 
-Aplikasi ini dikembangkan untuk mendukung transparansi, akuntabilitas, dan modernisasi tata kelola perbendaharaan pada organisasi **Persatuan Tenis Warga Peradilan (PTWP)** Cabang Pengadilan Agama Gunung Sugih dan Pengurus Daerah se-wilayah Pengadilan Tinggi Agama Bandar Lampung.
+### 🔒 Batasan & Kewajiban Hukum Ketat (Apache 2.0):
+1. **Atribusi & Retensi Berkas `NOTICE` (Section 4d):**  
+   Setiap pendistribusian ulang, modifikasi, atau pembuatan karya turunan (*derivative works*) **wajib menyertakan berkas [NOTICE](NOTICE)** dan mempertahankan identitas hak cipta atas nama **Rofid Safwanda** tanpa penghapusan atau penyembunyian.
+2. **Perlindungan Merek Dagang & Nama (Section 6 - Trademarks):**  
+   Lisensi ini **tidak memberikan izin** kepada siapa pun untuk menggunakan nama **Rofid Safwanda**, logo resmi PTWP, atau nama merek **PTWP-Hub** untuk keperluan periklanan, promosi komersial, atau dukungan publikasi (*endorsement*) instansi mana pun tanpa persetujuan tertulis resmi.
+3. **Pencatatan Modifikasi Wajib (Section 4b - State Changes):**  
+   Setiap pihak yang mengubah atau memodifikasi berkas kode sumber aplikasi ini **wajib mencantumkan catatan tertulis yang jelas (*prominent notices*)** pada berkas terkait yang menyatakan bahwa berkas tersebut telah dimodifikasi.
+4. **Perlindungan Paten & Retaliasi (Section 3 - Patent Grant & Defense):**  
+   Menjamin perlindungan silang terhadap hak paten teknologi dan otomatis membatalkan lisensi bagi pihak mana pun yang mencoba mengajukan litigasi paten terhadap pengembang asli.
 
-© 2026 **Rofid Safwanda** • PTWP Cabang Pengadilan Agama Gunung Sugih. Dikembangkan dengan ❤️ untuk kemajuan olahraga peradilan.
+### ⚖️ Dasar Hukum & Sanksi Pidana Nasional:
+Aplikasi ini berstatus sebagai **Karya Cipta Program Komputer** yang dilindungi penuh oleh:
+* **Undang-Undang Republik Indonesia Nomor 28 Tahun 2014 tentang Hak Cipta** (Pasal 40 ayat 1 huruf s).
+* **Pasal 113 UU No. 28 Tahun 2014**:
+  * Pelanggaran hak ekonomi atas program komputer tanpa hak dipidana dengan **penjara paling lama 4 (empat) tahun** dan/atau **denda paling banyak Rp 1.000.000.000,00 (satu miliar rupiah)**.
+  * Pelanggaran dalam bentuk pembajakan atau komersialisasi liar dipidana dengan **penjara paling lama 10 (sepuluh) tahun** dan/atau **denda paling banyak Rp 4.000.000.000,00 (empat miliar rupiah)**.
+
+---
+
+© 2026 **Rofid Safwanda** • PTWP Cabang Pengadilan Agama Gunung Sugih. Dikembangkan untuk kemajuan, akuntabilitas, dan modernisasi tata kelola peradilan.

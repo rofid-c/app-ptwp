@@ -2,7 +2,7 @@
   "name": "app-ptwp",
   "version": "1.0.0",
   "author": "Rofid Safwanda",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
