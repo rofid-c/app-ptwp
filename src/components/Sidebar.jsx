@@ -97,7 +97,13 @@ export default function Sidebar({
             onClick={() => handleSelectTab("dashboard")}
             aria-label="PTWP Brand Logo"
           >
-            <span className="dock-brand-letter">P</span>
+            <img
+              src="/logo-ptwp.png"
+              alt="Logo PTWP"
+              className="dock-brand-img"
+              width={40}
+              height={40}
+            />
             <span className="dock-tooltip">
               {isSuper ? "PTWP PUSAT" : isPTA ? "PTWP DAERAH PTA" : `PTWP Cabang ${satkerShort}`}
             </span>
@@ -221,7 +227,13 @@ export default function Sidebar({
       >
         <div className="mobile-drawer-header">
           <div className="mobile-drawer-brand">
-            <div className="stitch-brand-badge">P</div>
+            <div className="stitch-brand-badge">
+              <img
+                src="/logo-ptwp.png"
+                alt="Logo PTWP"
+                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+              />
+            </div>
             <div className="stitch-brand-info">
               <span className="brand-title">
                 {isSuper ? "PTWP PUSAT" : "PTWP CABANG"}

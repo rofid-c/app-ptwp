@@ -26,7 +26,9 @@ export default function NotFound() {
       <div className="ptwp-error-card">
         {/* Top Header Pill */}
         <div className="error-brand-pill">
-          <span className="error-brand-badge">P</span>
+          <span className="error-brand-badge" style={{ padding: 0, overflow: "hidden", background: "#ffffff" }}>
+            <img src="/logo-ptwp.png" alt="Logo PTWP" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </span>
           <span className="error-brand-title">PTWP SISTEM TERPADU</span>
           <span className="error-code-badge badge-404">ERROR 404</span>
         </div>

@@ -343,21 +343,26 @@ export default function AuthView({
         }}
       >
         {/* Header Logo & Title */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "8px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "10px" }}>
           <div
             style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "16px",
-              background: "linear-gradient(135deg, #16a34a 0%, #0f5132 100%)",
-              border: "2px solid rgba(234, 179, 8, 0.5)",
+              width: "78px",
+              height: "78px",
+              borderRadius: "50%",
+              background: "#ffffff",
+              border: "3px solid #eab308",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+              boxShadow: "0 10px 28px rgba(0, 0, 0, 0.4)",
+              overflow: "hidden",
             }}
           >
-            <ShieldCheck size={28} color="#fef08a" />
+            <img
+              src="/logo-ptwp.png"
+              alt="Logo PTWP"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
 
           <div>
