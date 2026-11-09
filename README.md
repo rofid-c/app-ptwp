@@ -5,6 +5,8 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![ExcelJS](https://img.shields.io/badge/ExcelJS-4.4-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white)](https://github.com/exceljs/exceljs)
 [![SheetJS](https://img.shields.io/badge/SheetJS-0.18-green?style=for-the-badge&logo=coffeescript&logoColor=white)](https://sheetjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Author](https://img.shields.io/badge/Author-Rofid%20Safwanda-blue?style=for-the-badge)](https://github.com/rofid-c)
 [![Design](https://img.shields.io/badge/Design-Google%20Stitch%20Tokens-0F5132?style=for-the-badge)](https://fonts.google.com/)
 
 > **Aplikasi Sistem Informasi Terpadu Pengelolaan Iuran, Kas, Turnamen, dan Monitoring Multi-Satker PTWP (Persatuan Tenis Warga Peradilan) Mahkamah Agung Republik Indonesia.**  
@@ -407,8 +409,15 @@ Untuk keperluan pengujian peran (*RBAC*), basis data telah dilengkapi akun bawaa
 
 ---
 
-## 📄 Lisensi & Penutup
+## 📄 Lisensi & Hak Cipta
 
-Aplikasi dikembangkan untuk mendukung transparansi, akuntabilitas, dan modernisasi tata kelola perbendaharaan pada organisasi **Persatuan Tenis Warga Peradilan (PTWP)** Cabang Pengadilan Agama Gunung Sugih dan Pengurus Daerah se-wilayah Pengadilan Tinggi Agama Bandar Lampung.
+Proyek ini dilisensikan di bawah ketentuan **[MIT License](LICENSE)** atas nama **Rofid Safwanda**.
 
-© 2026 PTWP Cabang Pengadilan Agama Gunung Sugih. Dikembangkan dengan ❤️ untuk kemajuan olahraga peradilan.
+```text
+MIT License
+Copyright (c) 2026 Rofid Safwanda
+```
+
+Aplikasi ini dikembangkan untuk mendukung transparansi, akuntabilitas, dan modernisasi tata kelola perbendaharaan pada organisasi **Persatuan Tenis Warga Peradilan (PTWP)** Cabang Pengadilan Agama Gunung Sugih dan Pengurus Daerah se-wilayah Pengadilan Tinggi Agama Bandar Lampung.
+
+© 2026 **Rofid Safwanda** • PTWP Cabang Pengadilan Agama Gunung Sugih. Dikembangkan dengan ❤️ untuk kemajuan olahraga peradilan.
