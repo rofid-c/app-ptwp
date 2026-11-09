@@ -15,6 +15,8 @@ import {
   FileText,
   Copyright,
   ShieldAlert,
+  Globe,
+  Sparkles,
 } from "lucide-react";
 
 export default function UserProfileModal({
@@ -57,7 +59,7 @@ export default function UserProfileModal({
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: "460px",
+          maxWidth: "480px",
           width: "92%",
           borderRadius: "18px",
           overflow: "hidden",
@@ -235,7 +237,7 @@ export default function UserProfileModal({
                   }}
                 >
                   <Info size={17} color="#0f5132" />
-                  <span>About & Hak Cipta Lisensi</span>
+                  <span>About</span>
                 </button>
 
                 <button
@@ -264,7 +266,7 @@ export default function UserProfileModal({
         )}
 
         {/* ====================================================================
-            TAMPILAN 2: ABOUT / HAK CIPTA & LISENSI RESMI
+            TAMPILAN 2: ABOUT / TENTANG WEB SISTEM INI & HAK CIPTA LISENSI
             ==================================================================== */}
         {view === "about" && (
           <>
@@ -326,7 +328,7 @@ export default function UserProfileModal({
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ fontSize: "16px", fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "0.3px" }}>
-                  About & Hak Cipta
+                  About Sistem
                 </h3>
                 <p style={{ fontSize: "11.5px", color: "#fef08a", margin: "2px 0 0", fontWeight: 600 }}>
                   PTWP-Hub Sistem Terpadu
@@ -356,7 +358,7 @@ export default function UserProfileModal({
               </button>
             </div>
 
-            {/* Content About: Tata Aturan, Lisensi, & Sanksi Hukum */}
+            {/* Content About: Tentang Sistem, Tata Aturan, Lisensi, & Sanksi Hukum */}
             <div
               className="modal-body"
               style={{
@@ -370,7 +372,54 @@ export default function UserProfileModal({
                 color: "var(--text-primary)",
               }}
             >
-              {/* Kartu Kepemilikan & Lisensi */}
+              {/* 1. TENTANG WEB SISTEM INI */}
+              <div
+                style={{
+                  background: "var(--bg-app)",
+                  border: "1px solid var(--border-light)",
+                  borderRadius: "12px",
+                  padding: "14px 16px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <Globe size={18} color="#0f5132" />
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--text-primary)", letterSpacing: "0.3px" }}>
+                    Tentang Web Sistem Ini
+                  </span>
+                </div>
+                <p style={{ margin: "0 0 10px", fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.6" }}>
+                  <strong>PTWP-Hub</strong> adalah sistem informasi perbendaharaan terpadu berbasis web yang dirancang khusus untuk mengelola, merekapitulasi, dan memantau tata kelola iuran serta kas operasional organisasi <strong>Persatuan Tenis Warga Peradilan (PTWP)</strong> di lingkungan Mahkamah Agung Republik Indonesia.
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "11.5px" }}>
+                    <CheckCircle2 size={15} color="#16a34a" style={{ marginTop: "2px", flexShrink: 0 }} />
+                    <div>
+                      <strong>Rekapitulasi 4 Pos Iuran Terpadu:</strong> Perhitungan dan alokasi otomatis untuk Iuran Pusat, Daerah, Cabang, dan Turnamen per aparatur peradilan sesuai jabatan secara akurat dan real-time.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "11.5px" }}>
+                    <CheckCircle2 size={15} color="#16a34a" style={{ marginTop: "2px", flexShrink: 0 }} />
+                    <div>
+                      <strong>Buku Kas & Pengeluaran Operasional:</strong> Pencatatan otomatis penerimaan iuran, mutasi belanja (lapangan, bola, konsumsi), serta pengawasan saldo kas riil.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "11.5px" }}>
+                    <CheckCircle2 size={15} color="#16a34a" style={{ marginTop: "2px", flexShrink: 0 }} />
+                    <div>
+                      <strong>Ekspor & Arsip Excel Dinas (.xlsx):</strong> Integrasi dokumen Excel fisik standar kedinasan Mahkamah Agung lengkap dengan formula matematis dan lembar pengesahan tanda tangan.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "11.5px" }}>
+                    <CheckCircle2 size={15} color="#16a34a" style={{ marginTop: "2px", flexShrink: 0 }} />
+                    <div>
+                      <strong>Monitoring Terpusat Multi-Satker:</strong> Pengawasan kepatuhan iuran dan kas 14 satuan kerja Pengadilan Agama cabang se-wilayah Pengadilan Tinggi Agama.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. KARTU KEPEMILIKAN & LISENSI */}
               <div
                 style={{
                   background: "rgba(15, 81, 50, 0.06)",
@@ -412,7 +461,7 @@ export default function UserProfileModal({
                 </div>
               </div>
 
-              {/* Dasar Hukum Perlindungan Hak Cipta */}
+              {/* 3. DASAR HUKUM PERLINDUNGAN HAK CIPTA */}
               <div
                 style={{
                   background: "var(--bg-app)",
@@ -433,7 +482,7 @@ export default function UserProfileModal({
                 </p>
               </div>
 
-              {/* Tata Aturan Penggunaan */}
+              {/* 4. TATA ATURAN PENGGUNAAN */}
               <div
                 style={{
                   background: "var(--bg-app)",
@@ -449,14 +498,14 @@ export default function UserProfileModal({
                   </span>
                 </div>
                 <ul style={{ margin: "4px 0 0", paddingLeft: "18px", color: "var(--text-muted)", fontSize: "11.5px" }}>
-                  <li>Aplikasi digunakan khusus untuk operasional organisasi PTWP kedinasan peradilan.</li>
+                  <li>Aplikasi digunakan khusus untuk tata kelola kedinasan organisasi PTWP peradilan.</li>
                   <li>Dilarang menghapus atau mengubah identitas hak cipta atas nama <strong>Rofid Safwanda</strong>.</li>
                   <li>Dilarang merekayasa balik (*reverse engineering*), membajak, atau mengklaim kepemilikan kode sumber secara sepihak.</li>
                   <li>Dilarang memperjualbelikan atau mengomersialisasi sistem tanpa izin tertulis dari pemegang hak cipta.</li>
                 </ul>
               </div>
 
-              {/* Sanksi Pidana & Hukuman Pelanggaran */}
+              {/* 5. SANKSI PIDANA & HUKUMAN PELANGGARAN */}
               <div
                 style={{
                   background: "rgba(220, 38, 38, 0.05)",
