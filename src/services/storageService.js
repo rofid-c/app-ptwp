@@ -334,18 +334,30 @@ export async function saveMembersByPeriod(period, members, satker) {
   const mm = monthNumMap[mLower] || "01";
 
   if (totalCollected > 0) {
-    const duesEntry = {
-      id: `dues_${period}`,
-      satker: targetSatker,
-      date: `${mYear}-${mm}-28`,
-      type: "in",
-      category: "Iuran Anggota",
-      amount: totalCollected,
-      description: `Penerimaan Iuran PTWP Periode ${period} (${paidMembers.length}/${cleaned.length} Pegawai Lunas)`,
-      source: "rekap_iuran",
-      period: period,
-    };
-    await addCashBookEntriesBatch([duesEntry], targetSatker);
+    // Jika periode Januari sudah memiliki entri Saldo Awal (sisa kas tahun lalu),
+    // jangan buat dobel penerimaan di buku kas agar saldo tidak melonjak ganda
+    const cashKey = `ptwp_${slug}_cashbook`;
+    const rawCash = getLocalData(cashKey, []);
+    const hasSaldoAwal = (Array.isArray(rawCash) ? rawCash : []).some(
+      (c) =>
+        (c.period?.toLowerCase() === period.toLowerCase() || c.source === "saldo_awal" || c.category === "Saldo Awal") &&
+        c.period?.toLowerCase().startsWith("januari")
+    );
+
+    if (!hasSaldoAwal || !period.toLowerCase().startsWith("januari")) {
+      const duesEntry = {
+        id: `dues_${period}`,
+        satker: targetSatker,
+        date: `${mYear}-${mm}-28`,
+        type: "in",
+        category: "Iuran Anggota",
+        amount: totalCollected,
+        description: `Penerimaan Iuran PTWP Periode ${period} (${paidMembers.length}/${cleaned.length} Pegawai Lunas)`,
+        source: "rekap_iuran",
+        period: period,
+      };
+      await addCashBookEntriesBatch([duesEntry], targetSatker);
+    }
   } else {
     // Jika 0 lunas, hapus entry kas jika ada
     const cashKey = `ptwp_${slug}_cashbook`;

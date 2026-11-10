@@ -663,6 +663,50 @@ export default function HomePage() {
   const totalCashOut = cashbook.filter((c) => c.type === "out").reduce((sum, c) => sum + Number(c.amount || 0), 0);
   const currentBalance = totalCashIn - totalCashOut;
 
+  // Helper konversi nama bulan & tahun ke integer key kronologis
+  const getPeriodKey = (pStr) => {
+    if (!pStr) return 0;
+    const months = [
+      "januari", "februari", "maret", "april", "mei", "juni",
+      "juli", "agustus", "september", "oktober", "november", "desember"
+    ];
+    const parts = String(pStr).trim().toLowerCase().split(/\s+/);
+    const mIdx = months.indexOf(parts[0]);
+    const yr = parseInt(parts[1] || "2026", 10);
+    return yr * 12 + (mIdx !== -1 ? mIdx : 0);
+  };
+
+  const getPeriodKeyFromDate = (dateStr) => {
+    if (!dateStr) return 0;
+    const parts = String(dateStr).split("-");
+    if (parts.length >= 2) {
+      const yr = parseInt(parts[0], 10);
+      const mIdx = parseInt(parts[1], 10) - 1;
+      return yr * 12 + mIdx;
+    }
+    return 0;
+  };
+
+  const activePeriodKey = getPeriodKey(period);
+
+  // 1. Saldo Kumulatif dari bulan-bulan sebelum periode aktif
+  const priorEntries = cashbook.filter((c) => {
+    const pKey = c.period ? getPeriodKey(c.period) : (c.date ? getPeriodKeyFromDate(c.date) : 0);
+    return pKey > 0 && pKey < activePeriodKey;
+  });
+
+  const priorCashIn = priorEntries.filter((c) => c.type === "in").reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const priorCashOut = priorEntries.filter((c) => c.type === "out").reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const priorCumulativeBalance = priorCashIn - priorCashOut;
+
+  // 2. Cek apakah ada entri khusus Saldo Awal di periode ini (misal Saldo Awal 2025 di Januari 2026)
+  const currentPeriodSaldoAwalEntry = cashbook.find((c) => {
+    const isThisPeriod = (c.period && c.period.toLowerCase() === period.toLowerCase());
+    return isThisPeriod && (c.source === "saldo_awal" || c.category === "Saldo Awal");
+  });
+
+  const periodSaldoAwal = priorCumulativeBalance + (currentPeriodSaldoAwalEntry ? Number(currentPeriodSaldoAwalEntry.amount || 0) : 0);
+
   // Filter pengeluaran khusus periode aktif
   // Daftar seluruh periode yang memiliki catatan pos pengeluaran/belanja
   const getPeriodsWithExpenses = () => {
@@ -722,13 +766,28 @@ export default function HomePage() {
     }).format(Number(val || 0));
   };
 
-  // Deteksi iuran masuk dari buku kas jika tabel anggota belum diisi
-  const duesInCashbookThisPeriod = cashbook
-    .filter((c) => c.type === "in" && (c.period?.toLowerCase() === period.toLowerCase() || (c.source === "rekap_iuran" && c.period === period)))
-    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
-  const effectiveUangMasuk = totalCollected > 0 ? totalCollected : duesInCashbookThisPeriod;
+  // 3. Uang Masuk Operasional Periode Aktif (tanpa entri Saldo Awal agar tidak dobel hitung dengan Saldo Awal)
+  const currentPeriodCashInEntries = cashbook.filter((c) => {
+    const isThisPeriod = (c.period && c.period.toLowerCase() === period.toLowerCase());
+    const isNotSaldoAwal = c.source !== "saldo_awal" && c.category !== "Saldo Awal";
+    return c.type === "in" && isThisPeriod && isNotSaldoAwal;
+  });
+
+  const duesInCashbookThisPeriod = currentPeriodCashInEntries.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+  // Jika periode Januari murni bersumber dari Saldo Awal kas tahun lalu (seperti di Excel bendahara), uang masuk operasional = 0
+  const isPureSaldoAwalPeriod = Boolean(currentPeriodSaldoAwalEntry && duesInCashbookThisPeriod === 0);
+  const effectiveUangMasuk = isPureSaldoAwalPeriod
+    ? 0
+    : (duesInCashbookThisPeriod > 0 ? duesInCashbookThisPeriod : totalCollected);
+
+  // 4. Uang Keluar Periode Aktif
   const totalPeriodExpenses = currentPeriodExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  const netBalance = effectiveUangMasuk - totalPeriodExpenses;
+
+  // 5. Saldo Akhir Kas Periode Aktif:
+  // Saldo Awal + Uang Masuk - Uang Keluar (identik 100% dengan running balance Excel bendahara)
+  const periodSaldoAkhir = periodSaldoAwal + effectiveUangMasuk - totalPeriodExpenses;
+  const netBalance = periodSaldoAkhir;
 
   const getExpenseCount = (cat) => {
     if (cat === "all") return currentPeriodExpenses.length;
@@ -806,9 +865,11 @@ export default function HomePage() {
       city: settings.city || "Gunung Sugih",
       treasurerName: settings.treasurerName || "Wulan Febrianti, A.Md",
       treasurerTitle: settings.treasurerTitle || "Bendahara Kantor",
+      periodSaldoAwal: periodSaldoAwal,
       effectiveUangMasuk: effectiveUangMasuk,
       totalPeriodExpenses: totalPeriodExpenses,
-      netBalance: netBalance,
+      periodSaldoAkhir: periodSaldoAkhir,
+      netBalance: periodSaldoAkhir,
     });
   };
 
@@ -1266,7 +1327,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* 2. 4 KEY METRIC CARDS: Uang Masuk - Total Saldo Kas - Uang Keluar - Saldo Bersih */}
+              {/* 2. 4 KEY METRIC CARDS (STANDAR BUKU KAS BERJALAN): Saldo Awal - Uang Masuk - Uang Keluar - Saldo Akhir */}
               <div
                 className="stitch-dash-grid"
                 style={{
@@ -1276,7 +1337,24 @@ export default function HomePage() {
                   gap: "12px",
                 }}
               >
-                {/* Card 1: Uang Masuk */}
+                {/* Card 1: Saldo Awal Kas */}
+                <div className="stitch-card">
+                  <div className="hairline-court" style={{ background: "#0284c7" }}></div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Saldo Awal Kas
+                    </span>
+                    <span style={{ fontSize: "15px" }}>🏛️</span>
+                  </div>
+                  <div className="font-mono-num" style={{ fontSize: "19px", fontWeight: 700, color: "var(--text-main)" }}>
+                    {formatRupiah(periodSaldoAwal)}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "8px", fontSize: "11.5px", color: "var(--text-muted)" }}>
+                    <span>{period.toLowerCase().startsWith("januari") ? "Sisa kas akhir tahun lalu" : `Sisa kas per 1 ${period.split(' ')[0]}`}</span>
+                  </div>
+                </div>
+
+                {/* Card 2: Uang Masuk */}
                 <div className="stitch-card">
                   <div className="hairline-court" style={{ background: "#16a34a" }}></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
@@ -1289,7 +1367,7 @@ export default function HomePage() {
                     {formatRupiah(effectiveUangMasuk)}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
-                    {totalTarget > 0 ? (
+                    {totalTarget > 0 && !isPureSaldoAwalPeriod ? (
                       <>
                         <div style={{ flex: 1, height: "6px", background: "var(--border-light)", borderRadius: "99px", overflow: "hidden" }}>
                           <div style={{ width: `${percentageCollected}%`, height: "100%", background: "#16a34a", borderRadius: "99px" }}></div>
@@ -1300,29 +1378,12 @@ export default function HomePage() {
                       <span style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>Penerimaan periode {period}</span>
                     )}
                   </div>
-                  {unpaidMembers.length > 0 && (
+                  {unpaidMembers.length > 0 && !isPureSaldoAwalPeriod && (
                     <div style={{ fontSize: "11px", color: "#d97706", fontWeight: 600, marginTop: "5px", display: "flex", alignItems: "center", gap: "4px" }}>
                       <span>⚠️ {unpaidMembers.length} belum bayar:</span>
                       <strong style={{ color: "#b45309" }}>-{formatRupiah(totalUnpaid)}</strong>
                     </div>
                   )}
-                </div>
-
-                {/* Card 2: Total Saldo Kas */}
-                <div className="stitch-card">
-                  <div className="hairline-gold"></div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Total Saldo Kas
-                    </span>
-                    <span style={{ color: "#eab308" }}>🏛️</span>
-                  </div>
-                  <div className="font-mono-num" style={{ fontSize: "19px", fontWeight: 700, color: "var(--text-main)" }}>
-                    {formatRupiah(currentBalance)}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
-                    <span style={{ color: "var(--money-in)", fontWeight: 600 }}>● Kas Operasional PTWP</span>
-                  </div>
                 </div>
 
                 {/* Card 3: Uang Keluar */}
@@ -1338,32 +1399,32 @@ export default function HomePage() {
                     {formatRupiah(totalPeriodExpenses)}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
-                    <span>{currentPeriodExpenses.length} pos belanja & pengeluaran</span>
+                    <span>{currentPeriodExpenses.length} pos belanja & setoran</span>
                   </div>
                 </div>
 
-                {/* Card 4: Saldo Bersih */}
+                {/* Card 4: Saldo Akhir Kas */}
                 <div className="stitch-card">
-                  <div className="hairline-court" style={{ background: netBalance >= 0 ? "#0284c7" : "#ea580c" }}></div>
+                  <div className="hairline-gold"></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                     <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Saldo Bersih
+                      Saldo Akhir Kas
                     </span>
-                    <Scale size={16} color={netBalance >= 0 ? "var(--money-balance)" : "var(--money-out)"} />
+                    <Scale size={16} color={periodSaldoAkhir >= 0 ? "var(--primary-700)" : "var(--money-out)"} />
                   </div>
                   <div
                     className="font-mono-num"
                     style={{
                       fontSize: "19px",
                       fontWeight: 700,
-                      color: netBalance >= 0 ? "var(--money-balance)" : "var(--money-out)",
+                      color: periodSaldoAkhir >= 0 ? "var(--text-main)" : "var(--money-out)",
                     }}
                   >
-                    {formatRupiah(netBalance)}
+                    {formatRupiah(periodSaldoAkhir)}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px", fontSize: "11.5px", color: "var(--text-muted)" }}>
-                    <span style={{ color: netBalance >= 0 ? "var(--money-balance)" : "var(--money-out)", fontWeight: 600 }}>
-                      ● {netBalance >= 0 ? "Surplus (Masuk > Keluar)" : "Defisit (Keluar > Masuk)"}
+                    <span style={{ color: periodSaldoAkhir >= 0 ? "var(--money-in)" : "var(--money-out)", fontWeight: 600 }}>
+                      ● {periodSaldoAkhir >= 0 ? "Kas Tersedia (Aman)" : "Defisit Kas"}
                     </span>
                   </div>
                 </div>

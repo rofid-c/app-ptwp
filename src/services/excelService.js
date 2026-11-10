@@ -333,8 +333,10 @@ export async function exportExpensesToExcel({
   treasurerName = "Wulan Febrianti, A.Md",
   treasurerTitle = "Bendahara Kantor",
   institution = "PENGADILAN AGAMA GUNUNG SUGIH",
+  periodSaldoAwal = 0,
   effectiveUangMasuk = 0,
   totalPeriodExpenses = 0,
+  periodSaldoAkhir = 0,
   netBalance = 0,
 }) {
   const workbook = new ExcelJS.Workbook();
@@ -437,10 +439,11 @@ export async function exportExpensesToExcel({
 
   const lastDataRow = Math.max(startDataRow, currentRowIndex - 1);
 
+  // 1. Baris Total Pengeluaran Bulan Ini
   const totalRow = worksheet.getRow(currentRowIndex);
   totalRow.height = 22;
   worksheet.mergeCells("A" + currentRowIndex + ":D" + currentRowIndex);
-  totalRow.getCell(1).value = "TOTAL PENGELUARAN BULAN INI";
+  totalRow.getCell(1).value = "TOTAL PENGELUARAN / BELANJA BULAN INI";
   totalRow.getCell(1).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF991B1B" } };
   totalRow.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
 
@@ -458,7 +461,7 @@ export async function exportExpensesToExcel({
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
     cell.border = {
       top: { style: "thin", color: { argb: "FF000000" } },
-      bottom: { style: "double", color: { argb: "FF000000" } },
+      bottom: { style: "thin", color: { argb: "FF000000" } },
       left: { style: "thin", color: { argb: "FF000000" } },
       right: { style: "thin", color: { argb: "FF000000" } },
     };
@@ -466,15 +469,18 @@ export async function exportExpensesToExcel({
 
   currentRowIndex++;
 
+  // 2. Baris Rekapitulasi Kas Berjalan (Saldo Awal + Masuk - Keluar)
+  const finalEndingBalance = periodSaldoAkhir || (Number(periodSaldoAwal || 0) + Number(effectiveUangMasuk || 0) - Number(totalPeriodExpenses || 0));
+
   const netRow = worksheet.getRow(currentRowIndex);
   netRow.height = 22;
   worksheet.mergeCells("A" + currentRowIndex + ":D" + currentRowIndex);
-  netRow.getCell(1).value = "SISA SALDO BERSIH PERIODE " + period.toUpperCase() + " (IURAN MASUK - BELANJA)";
+  netRow.getCell(1).value = "SALDO AKHIR KAS PERIODE " + period.toUpperCase() + " (SALDO AWAL + MASUK - KELUAR)";
   netRow.getCell(1).font = { name: "Arial", size: 9, bold: true, color: { argb: "FF0F5132" } };
   netRow.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
 
-  netRow.getCell(5).value = Number(netBalance || 0);
-  netRow.getCell(5).font = { name: "Arial", size: 9, bold: true, color: { argb: netBalance >= 0 ? "FF0F5132" : "FFEA580C" } };
+  netRow.getCell(5).value = Number(finalEndingBalance || 0);
+  netRow.getCell(5).font = { name: "Arial", size: 9, bold: true, color: { argb: finalEndingBalance >= 0 ? "FF0F5132" : "FFEA580C" } };
   netRow.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
   netRow.getCell(5).numFmt = "#,##0";
 
@@ -483,7 +489,7 @@ export async function exportExpensesToExcel({
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } };
     cell.border = {
       top: { style: "thin", color: { argb: "FF000000" } },
-      bottom: { style: "medium", color: { argb: "FF000000" } },
+      bottom: { style: "double", color: { argb: "FF000000" } },
       left: { style: "thin", color: { argb: "FF000000" } },
       right: { style: "thin", color: { argb: "FF000000" } },
     };
