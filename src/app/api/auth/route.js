@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { verifyPassword, hashPassword, createSessionToken } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +30,22 @@ export async function POST(request) {
     const isSuperAdmin = user.role === "super_admin" || user.level === "super_admin" || user.username.toLowerCase() === "aku admin";
     const isPusat = user.role === "pusat" || user.level === "pusat";
 
-    // 2. Verifikasi Password
-    if (isSuperAdmin) {
-      if (cleanPassword !== user.password) {
-        return NextResponse.json({ success: false, error: "Kata sandi Administrator salah. Silakan periksa kembali." });
-      }
-    } else {
-      if (cleanPassword !== user.password && cleanPassword !== "admin123" && cleanPassword !== "123") {
-        return NextResponse.json({ success: false, error: "Kata sandi yang Anda masukkan salah. Silakan periksa kembali." });
+    // 2. Verifikasi Password Secara Kriptografis (Hapus seluruh backdoor & password cadangan teks biasa)
+    const verification = verifyPassword(cleanPassword, user.password);
+    if (!verification.valid) {
+      return NextResponse.json({
+        success: false,
+        error: "Kata sandi yang Anda masukkan salah. Silakan periksa kembali."
+      });
+    }
+
+    // Jika password lama masih teks biasa, upgrade otomatis ke format hash scrypt yang aman
+    if (verification.needsUpgrade) {
+      try {
+        const secureHash = hashPassword(cleanPassword);
+        await query("UPDATE users SET password = ? WHERE id = ?", [secureHash, user.id]);
+      } catch (upgErr) {
+        console.error("[Password Upgrade Error]:", upgErr);
       }
     }
 
@@ -56,22 +65,40 @@ export async function POST(request) {
       ? (satker || "Mahkamah Agung RI")
       : (user.satker || satker || "Pengadilan Agama Gunung Sugih");
 
-    return NextResponse.json({
+    const userPayload = {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      satker: activeSatker,
+      title: user.title,
+      role: user.role,
+      roleLabel: user.role_label,
+      level: user.level,
+      status: user.status,
+    };
+
+    // 4. Terbitkan Token Sesi Aman Ber-tanda tangan HMAC SHA-256
+    const token = createSessionToken(userPayload);
+    userPayload.token = token;
+
+    const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        phone: user.phone,
-        email: user.email,
-        satker: activeSatker,
-        title: user.title,
-        role: user.role,
-        roleLabel: user.role_label,
-        level: user.level,
-        status: user.status,
-      }
+      user: userPayload,
+      token,
     });
+
+    // Simpan token juga di HTTP-Only Cookie untuk keamanan tingkat tinggi
+    response.cookies.set("ptwp_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60, // 7 hari
+    });
+
+    return response;
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

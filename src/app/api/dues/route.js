@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { enforceSatkerAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
+    const requestedSatker = searchParams.get("satker");
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "read");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+    const satker = auth.targetSatker;
     const period = searchParams.get("period") || "September 2026";
-    const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
     const getPeriods = searchParams.get("getPeriods");
 
     // Jika minta daftar periode yang memiliki data di MySQL
@@ -75,9 +83,17 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { action, period, satker, memberId, paid, memberData, membersList, periodsData } = body;
+    const { action, period, satker: requestedSatker, memberId, paid, memberData, membersList, periodsData } = body;
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "write");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+    const currentSatker = auth.targetSatker;
     const currentPeriod = period || "September 2026";
-    const currentSatker = satker || "Pengadilan Agama Gunung Sugih";
+    const actorName = auth.user.name || "Bendahara Cabang";
+    const actorRole = auth.user.roleLabel || auth.user.role || "Bendahara";
 
     // Aksi 1: Toggle bayar per anggota
     if (action === "toggle_paid") {
@@ -430,11 +446,18 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
+    const requestedSatker = searchParams.get("satker");
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "delete");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+    const satker = auth.targetSatker;
     const memberId = searchParams.get("memberId");
     const period = searchParams.get("period");
     const clearAll = searchParams.get("clearAll");
-    const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
-    const actorName = searchParams.get("userName") || "Bendahara Cabang";
+    const actorName = auth.user.name || "Bendahara Cabang";
 
     if (clearAll === "true") {
       await query("DELETE FROM dues_records WHERE satker = ?", [satker]);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { hashPassword } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -49,13 +50,14 @@ export async function PUT(request) {
         : reqData.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
 
       const userPassword = reqData.password || "123";
+      const hashedPassword = hashPassword(userPassword);
 
-      // Insert or update into users
+      // Insert or update into users dengan password ter-hash
       await query(
         `INSERT INTO users (username, password, name, phone, email, satker, title, role, role_label, level, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'anggota', 'Pegawai / Anggota Satker', 'cabang', 'active')
          ON DUPLICATE KEY UPDATE password = VALUES(password), name = VALUES(name), phone = VALUES(phone), email = VALUES(email), satker = VALUES(satker), title = VALUES(title)`,
-        [genUsername, userPassword, reqData.name, reqData.phone || "", reqData.email || "", reqData.satker || "Pengadilan Agama Gunung Sugih", reqData.title || "Pegawai"]
+        [genUsername, hashedPassword, reqData.name, reqData.phone || "", reqData.email || "", reqData.satker || "Pengadilan Agama Gunung Sugih", reqData.title || "Pegawai"]
       );
 
       return NextResponse.json({

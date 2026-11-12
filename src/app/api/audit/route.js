@@ -1,15 +1,30 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { enforceSatkerAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const satker = searchParams.get("satker");
+    const requestedSatker = searchParams.get("satker");
     const moduleFilter = searchParams.get("module");
     const search = searchParams.get("search");
     const limit = parseInt(searchParams.get("limit") || "150", 10);
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "read");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+
+    const isSuperOrPTA =
+      auth.user.role === "super_admin" ||
+      auth.user.level === "daerah" ||
+      (auth.user.satker && auth.user.satker.toLowerCase().includes("tinggi"));
+
+    // Satker cabang hanya boleh melihat log satker miliknya sendiri
+    const satker = isSuperOrPTA ? requestedSatker : auth.user.satker;
 
     let sql = "SELECT * FROM audit_logs WHERE 1=1";
     const params = [];
@@ -135,3 +150,4 @@ export async function POST(request) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { enforceSatkerAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,13 +8,16 @@ export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const satker = searchParams.get("satker");
+    const requestedSatker = searchParams.get("satker");
     const download = searchParams.get("download") === "true";
     const year = searchParams.get("year") || "2026";
 
-    if (!satker) {
-      return NextResponse.json({ success: false, error: "Parameter satker wajib diisi." }, { status: 400 });
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "read");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
     }
+    const satker = auth.targetSatker;
 
     // Ambil dokumen terbaru untuk satker & tahun bersangkutan
     const rows = await query(
@@ -71,9 +75,16 @@ export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
-    const satker = formData.get("satker") || "Pengadilan Agama Gunung Sugih";
+    const requestedSatker = formData.get("satker");
     const year = formData.get("year") || "2026";
-    const uploadedBy = formData.get("uploaded_by") || "Bendahara Cabang";
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "write");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+    const satker = auth.targetSatker;
+    const uploadedBy = auth.user.name || formData.get("uploaded_by") || "Bendahara Cabang";
 
     if (!file || typeof file === "string") {
       return NextResponse.json({ success: false, error: "Berkas Excel tidak ditemukan dalam request." }, { status: 400 });

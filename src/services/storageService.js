@@ -12,6 +12,25 @@ function isClient() {
   return typeof window !== "undefined";
 }
 
+/**
+ * Fetch wrapper yang secara otomatis menyertakan Signed Session Token
+ * untuk memastikan otorisasi dan isolasi multi-tenant satker
+ */
+export async function apiFetch(url, options = {}) {
+  if (!isClient()) return fetch(url, options);
+  const currentUser = getCurrentUser();
+  const token = currentUser?.token;
+  const headers = new Headers(options.headers || {});
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+    headers.set("x-auth-token", token);
+  }
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}
+
 // Helper pembuatan slug Satker untuk keperluan URL / identitas
 export function getSafeSatkerSlug(satker) {
   const current = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
@@ -81,7 +100,7 @@ export async function fetchMembersByPeriod(period = "September 2026", satker) {
   if (!isClient()) return [];
 
   try {
-    const res = await fetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
+    const res = await apiFetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -102,10 +121,10 @@ export async function clearPeriodData(period, satker) {
 
   try {
     await Promise.all([
-      fetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
+      apiFetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
         method: "DELETE",
       }),
-      fetch(`/api/cashbook?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
+      apiFetch(`/api/cashbook?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
         method: "DELETE",
       }),
     ]);
@@ -121,10 +140,10 @@ export async function clearAllPeriodsData(satker) {
 
   try {
     await Promise.all([
-      fetch(`/api/dues?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
+      apiFetch(`/api/dues?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
         method: "DELETE",
       }),
-      fetch(`/api/cashbook?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
+      apiFetch(`/api/cashbook?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
         method: "DELETE",
       }),
     ]);
@@ -140,7 +159,7 @@ export async function saveMembersByPeriod(period, members, satker) {
   if (!isClient()) return cleaned;
 
   try {
-    await fetch("/api/dues", {
+    await apiFetch("/api/dues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
@@ -195,7 +214,7 @@ export async function saveMultiplePeriodsData(periodsData = [], satker) {
   if (!isClient() || !Array.isArray(periodsData) || periodsData.length === 0) return [];
 
   try {
-    const res = await fetch("/api/dues", {
+    const res = await apiFetch("/api/dues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -270,7 +289,7 @@ export async function toggleMemberPaidStatus(period, memberId, satker) {
   const newStatus = targetMember ? !targetMember.paid : true;
 
   try {
-    await fetch("/api/dues", {
+    await apiFetch("/api/dues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -293,7 +312,7 @@ export async function toggleMemberPaidStatus(period, memberId, satker) {
 export async function updateSingleMember(period, memberId, updatedFields, satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   try {
-    await fetch("/api/dues", {
+    await apiFetch("/api/dues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -313,7 +332,7 @@ export async function updateSingleMember(period, memberId, updatedFields, satker
 export async function addMember(period, newMember, satker) {
   const targetSatker = satker || newMember?.satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   try {
-    await fetch("/api/dues", {
+    await apiFetch("/api/dues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -332,7 +351,7 @@ export async function addMember(period, newMember, satker) {
 export async function deleteMember(period, memberId, satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   try {
-    await fetch(`/api/dues?memberId=${encodeURIComponent(memberId)}&satker=${encodeURIComponent(targetSatker)}`, {
+    await apiFetch(`/api/dues?memberId=${encodeURIComponent(memberId)}&satker=${encodeURIComponent(targetSatker)}`, {
       method: "DELETE",
     });
   } catch (e) {
@@ -364,7 +383,7 @@ export async function refreshPeriodsWithData(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   if (!isClient()) return [];
   try {
-    const res = await fetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, {
+    const res = await apiFetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, {
       cache: "no-store",
     });
     const json = await res.json();
@@ -379,7 +398,7 @@ export async function refreshPeriodsWithData(satker) {
 export function getPeriodsWithData(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   if (isClient() && !inMemoryPeriodsWithData[targetSatker]) {
-    fetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, { cache: "no-store" })
+    apiFetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.periods)) {
@@ -405,7 +424,7 @@ export async function fetchCashBook(satker) {
   if (!isClient()) return [];
 
   try {
-    const res = await fetch(`/api/cashbook?satker=${encodeURIComponent(targetSatker)}`, {
+    const res = await apiFetch(`/api/cashbook?satker=${encodeURIComponent(targetSatker)}`, {
       cache: "no-store",
     });
     if (res.ok) {
@@ -451,7 +470,7 @@ export async function addCashBookEntry(entry, satker) {
   };
 
   try {
-    await fetch("/api/cashbook", {
+    await apiFetch("/api/cashbook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newEntry),
@@ -481,7 +500,7 @@ export async function addCashBookEntriesBatch(newEntries = [], satker) {
   });
 
   try {
-    await fetch("/api/cashbook", {
+    await apiFetch("/api/cashbook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(preparedEntries),
@@ -503,7 +522,7 @@ export async function deleteCashBookEntry(id, satker) {
   }
 
   try {
-    await fetch(`/api/cashbook?id=${encodeURIComponent(id)}&satker=${encodeURIComponent(targetSatker)}`, {
+    await apiFetch(`/api/cashbook?id=${encodeURIComponent(id)}&satker=${encodeURIComponent(targetSatker)}`, {
       method: "DELETE",
     });
   } catch (e) {
@@ -547,7 +566,7 @@ function getDefaultSettings(targetSatker) {
 export function fetchSettings(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   if (isClient()) {
-    fetch(`/api/settings?satker=${encodeURIComponent(targetSatker)}`)
+    apiFetch(`/api/settings?satker=${encodeURIComponent(targetSatker)}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
@@ -565,7 +584,7 @@ export async function saveSettings(newSettings, satker) {
 
   if (isClient()) {
     try {
-      await fetch("/api/settings", {
+      await apiFetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newSettings, satker: targetSatker }),
@@ -613,7 +632,7 @@ let inMemoryUsers = [];
 
 export function getRegisteredUsers() {
   if (isClient() && inMemoryUsers.length === 0) {
-    fetch("/api/users")
+    apiFetch("/api/users")
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {
@@ -637,7 +656,7 @@ export function getCurrentUser() {
 
 export async function verifyCredentials(selectedSatker, identifier, password) {
   try {
-    const res = await fetch("/api/auth", {
+    const res = await apiFetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ satker: selectedSatker, identifier, password }),
@@ -660,7 +679,7 @@ export function loginUser(userData, password, selectedSatker) {
 
 export async function registerUser(userData) {
   try {
-    const res = await fetch("/api/requests", {
+    const res = await apiFetch("/api/requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
@@ -683,7 +702,7 @@ let inMemoryRequests = [];
 
 export function getAccountRequests() {
   if (isClient() && inMemoryRequests.length === 0) {
-    fetch("/api/requests")
+    apiFetch("/api/requests")
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {
@@ -701,7 +720,7 @@ export async function saveAccountRequests(requests) {
 
 export async function approveAccountRequest(requestId, initialPassword = "123") {
   try {
-    const res = await fetch("/api/requests", {
+    const res = await apiFetch("/api/requests", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: requestId, action: "approve" }),
@@ -714,7 +733,7 @@ export async function approveAccountRequest(requestId, initialPassword = "123") 
 
 export async function rejectAccountRequest(requestId) {
   try {
-    const res = await fetch("/api/requests", {
+    const res = await apiFetch("/api/requests", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: requestId, action: "reject" }),
@@ -727,7 +746,7 @@ export async function rejectAccountRequest(requestId) {
 
 export async function deleteAccountRequest(requestId) {
   try {
-    const res = await fetch(`/api/requests?id=${encodeURIComponent(requestId)}`, {
+    const res = await apiFetch(`/api/requests?id=${encodeURIComponent(requestId)}`, {
       method: "DELETE",
     });
     return await res.json();
@@ -738,7 +757,7 @@ export async function deleteAccountRequest(requestId) {
 
 export async function deleteRegisteredUser(username) {
   try {
-    const res = await fetch(`/api/users?username=${encodeURIComponent(username)}`, {
+    const res = await apiFetch(`/api/users?username=${encodeURIComponent(username)}`, {
       method: "DELETE",
     });
     return await res.json();
@@ -749,7 +768,7 @@ export async function deleteRegisteredUser(username) {
 
 export async function addDirectUser(userData) {
   try {
-    const res = await fetch("/api/users", {
+    const res = await apiFetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
@@ -773,7 +792,7 @@ export async function fetchAuditLogs({ satker = "ALL", module = "ALL", search = 
     if (search && search.trim()) params.append("search", search.trim());
     params.append("limit", String(limit));
 
-    const res = await fetch(`/api/audit?${params.toString()}`, { cache: "no-store" });
+    const res = await apiFetch(`/api/audit?${params.toString()}`, { cache: "no-store" });
     if (res.ok) {
       const json = await res.json();
       if (json.success) {
@@ -805,7 +824,7 @@ export async function addAuditLog(entry = {}) {
       ipAddress: "127.0.0.1",
     };
 
-    await fetch("/api/audit", {
+    await apiFetch("/api/audit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

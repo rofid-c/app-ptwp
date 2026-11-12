@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { enforceSatkerAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
+    const requestedSatker = searchParams.get("satker");
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "read");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+    const satker = auth.targetSatker;
 
     const rows = await query("SELECT * FROM settings WHERE satker = ?", [satker]);
     const r = rows && rows.length > 0 ? rows[0] : {};
@@ -44,7 +52,17 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const satker = body.satker || "Pengadilan Agama Gunung Sugih";
+    const requestedSatker = body.satker;
+
+    // Otorisasi & Penegakan Isolasi Satker
+    const auth = enforceSatkerAccess(request, requestedSatker, "write");
+    if (!auth.authorized) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    }
+    const satker = auth.targetSatker;
+    const actorName = auth.user.name || "Bendahara Cabang";
+    const actorRole = auth.user.roleLabel || auth.user.role || "Bendahara";
+
     const institution = body.institution || satker.toUpperCase();
     const branch = body.branch || `CABANG ${satker.toUpperCase()}`;
     const city = body.city || "";
@@ -76,6 +94,22 @@ export async function POST(request) {
          bank_holder = VALUES(bank_holder)`,
       [satker, institution, branch, city, treasurerName, treasurerNip, treasurerTitle, chairpersonName, chairpersonNip, chairpersonTitle, bankName, bankAccount, bankHolder]
     );
+
+    // Rekam jejak audit pengaturan
+    try {
+      await query(
+        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+         VALUES (?, ?, ?, 'UPDATE_SETTINGS', 'Pengaturan', ?, NULL, NULL, ?, ?)`,
+        [
+          satker,
+          actorName,
+          actorRole,
+          `settings_${satker}`,
+          JSON.stringify({ treasurer: treasurerName, chairperson: chairpersonName, bank: bankName }),
+          `Pembaruan data pengaturan satker, pejabat penandatangan, dan rekening bank untuk ${satker}.`,
+        ]
+      );
+    } catch (e) {}
 
     return NextResponse.json({ success: true });
   } catch (err) {
