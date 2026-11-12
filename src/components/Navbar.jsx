@@ -14,6 +14,7 @@ import {
   TrendingUp,
   LayoutDashboard,
   ReceiptText,
+  History,
 } from "lucide-react";
 
 export default function Navbar({
@@ -131,7 +132,7 @@ export default function Navbar({
 
       {/* =====================================================================
           2. PULAU TENGAH:
-          - Halaman Monitoring Cabang: 2 Menu (Dashboard & Rekap Pengeluaran)
+          - Halaman Monitoring Cabang: 3 Menu (Dashboard, Rekap Pengeluaran, Audit Trail)
           - Halaman Selain Monitoring: Search + Cetak PDF
           ===================================================================== */}
       {activeTab === "monitoring" ? (
@@ -154,6 +155,15 @@ export default function Navbar({
             >
               <ReceiptText size={14} />
               <span>Rekap Pengeluaran</span>
+            </button>
+            <button
+              type="button"
+              className={`monitoring-segment-btn ${monitoringSubTab === "audit" ? "active" : ""}`}
+              onClick={() => onMonitoringSubTabChange && onMonitoringSubTabChange("audit")}
+              title="Tampilkan Jejak Rekam & Audit Trail Terpadu"
+            >
+              <History size={14} />
+              <span>Audit Trail</span>
             </button>
           </div>
         </div>

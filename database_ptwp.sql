@@ -108,7 +108,10 @@ CREATE TABLE `dues_records` (
   `member_id` VARCHAR(100) NOT NULL,
   `paid` TINYINT(1) DEFAULT 1,
   `paid_date` VARCHAR(50) DEFAULT NULL,
+  `created_by` VARCHAR(150) DEFAULT 'Sistem',
+  `updated_by` VARCHAR(150) DEFAULT 'Sistem',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `unique_period_member` (`period`, `satker`, `member_id`),
   INDEX `idx_satker_period` (`satker`, `period`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -154,6 +157,7 @@ INSERT INTO `settings` (`satker`, `institution`, `branch`, `treasurer_name`, `tr
 
 -- 8. TABEL ARSIP BERKAS EXCEL ASLI PENGELUARAN CABANG (EXPENSE_DOCUMENTS)
 -- Menyimpan dokumen Excel murni (.xlsx) asli yang diunggah oleh bendahara cabang
+-- created_at dipertahankan permanen sebagai waktu unggah awal, updated_at untuk perubahan
 DROP TABLE IF EXISTS `expense_documents`;
 CREATE TABLE `expense_documents` (
   `id` VARCHAR(100) PRIMARY KEY,
@@ -164,8 +168,32 @@ CREATE TABLE `expense_documents` (
   `mime_type` VARCHAR(100) DEFAULT 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   `year` VARCHAR(10) DEFAULT '2026',
   `uploaded_by` VARCHAR(150) DEFAULT '',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_satker` (`satker`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. TABEL JEJAK REKAM AUDIT TERPADU (AUDIT_LOGS)
+-- Merekam seluruh riwayat kronologis perubahan data iuran, kas, dokumen, dan pengaturan (Append-Only)
+DROP TABLE IF EXISTS `audit_logs`;
+CREATE TABLE `audit_logs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `satker` VARCHAR(255) NOT NULL,
+  `user_id` INT DEFAULT NULL,
+  `user_name` VARCHAR(255) NOT NULL,
+  `user_role` VARCHAR(100) DEFAULT 'Bendahara',
+  `action` VARCHAR(50) NOT NULL,
+  `module` VARCHAR(100) NOT NULL,
+  `entity_id` VARCHAR(100) DEFAULT NULL,
+  `period` VARCHAR(50) DEFAULT NULL,
+  `old_value` JSON DEFAULT NULL,
+  `new_value` JSON DEFAULT NULL,
+  `description` TEXT NOT NULL,
+  `ip_address` VARCHAR(50) DEFAULT '127.0.0.1',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_audit_satker` (`satker`),
+  INDEX `idx_audit_module` (`module`),
+  INDEX `idx_audit_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- SELESAI

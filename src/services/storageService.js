@@ -264,6 +264,7 @@ export async function saveMultiplePeriodsData(periodsData = [], satker) {
 
 export async function toggleMemberPaidStatus(period, memberId, satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  const user = getCurrentUser();
   const members = await fetchMembersByPeriod(period, targetSatker);
   const targetMember = members.find((m) => String(m.id) === String(memberId));
   const newStatus = targetMember ? !targetMember.paid : true;
@@ -278,6 +279,8 @@ export async function toggleMemberPaidStatus(period, memberId, satker) {
         period,
         memberId,
         paid: newStatus,
+        userName: user?.name || "Bendahara Cabang",
+        userRole: user?.roleLabel || user?.role || "Bendahara",
       }),
     });
   } catch (e) {
@@ -754,5 +757,60 @@ export async function addDirectUser(userData) {
     return await res.json();
   } catch (e) {
     return { success: false, error: e.message };
+  }
+}
+
+// ==========================================
+// 5. JEJAK REKAM AUDIT TERPADU (AUDIT TRAIL)
+// ==========================================
+
+export async function fetchAuditLogs({ satker = "ALL", module = "ALL", search = "", limit = 150 } = {}) {
+  if (!isClient()) return { success: true, data: [], stats: {} };
+  try {
+    const params = new URLSearchParams();
+    if (satker && satker !== "ALL" && satker !== "Semua Satker") params.append("satker", satker);
+    if (module && module !== "ALL" && module !== "Semua Modul") params.append("module", module);
+    if (search && search.trim()) params.append("search", search.trim());
+    params.append("limit", String(limit));
+
+    const res = await fetch(`/api/audit?${params.toString()}`, { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success) {
+        return json;
+      }
+    }
+  } catch (e) {
+    console.error("[StorageService] Gagal fetch audit logs dari MySQL:", e);
+  }
+  return { success: false, data: [], stats: {} };
+}
+
+export async function addAuditLog(entry = {}) {
+  if (!isClient()) return;
+  try {
+    const currentUser = getCurrentUser();
+    const payload = {
+      satker: entry.satker || currentUser?.satker || "Pengadilan Agama Gunung Sugih",
+      userId: currentUser?.id || null,
+      userName: entry.userName || currentUser?.name || "Pengguna Sistem",
+      userRole: entry.userRole || currentUser?.roleLabel || currentUser?.role || "Bendahara",
+      action: entry.action || "UPDATE",
+      module: entry.module || "Umum",
+      entityId: entry.entityId || null,
+      period: entry.period || null,
+      oldValue: entry.oldValue || null,
+      newValue: entry.newValue || null,
+      description: entry.description || "",
+      ipAddress: "127.0.0.1",
+    };
+
+    await fetch("/api/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal merekam audit log:", e);
   }
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import DashboardView from "@/components/DashboardView";
+import MonitoringAuditTrailView from "@/components/MonitoringAuditTrailView";
 import {
   fetchMembersByPeriod,
   fetchCashBook,
@@ -549,6 +550,13 @@ export default function MonitoringCabangView({
             onOpenAddCash={() => {}}
             onOpenExport={() => {}}
             onOpenPeriodPicker={() => {}}
+          />
+        ) : monitoringSubTab === "audit" ? (
+          /* Tampilan Jejak Rekam & Audit Trail Terpadu */
+          <MonitoringAuditTrailView
+            selectedBranch={selectedBranch}
+            onSelectBranch={setSelectedBranch}
+            currentUser={currentUser}
           />
         ) : (
           /* Tampilan Rincian Rekap Belanja & Dokumen Cabang Sesuai Permintaan */

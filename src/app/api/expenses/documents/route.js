@@ -88,6 +88,7 @@ export async function POST(request) {
     const fileSize = buffer.length;
 
     // Simpan atau perbarui dokumen di database (REPLACE / INSERT ... ON DUPLICATE KEY UPDATE)
+    // Pertahankan created_at asli sebagai waktu unggah awal, hanya perbarui updated_at
     await query(
       `INSERT INTO expense_documents (id, satker, filename, file_data, file_size, mime_type, year, uploaded_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -97,9 +98,28 @@ export async function POST(request) {
          file_size = VALUES(file_size),
          mime_type = VALUES(mime_type),
          uploaded_by = VALUES(uploaded_by),
-         created_at = CURRENT_TIMESTAMP`,
+         updated_at = CURRENT_TIMESTAMP`,
       [docId, satker, filename, buffer, fileSize, mimeType, year, uploadedBy]
     );
+
+    // Rekam Jejak Audit (Audit Trail)
+    try {
+      await query(
+        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+         VALUES (?, ?, ?, 'UPLOAD_DOCUMENT', 'Dokumen Belanja', ?, ?, NULL, ?, ?)`,
+        [
+          satker,
+          uploadedBy || "Bendahara Cabang",
+          "Bendahara",
+          docId,
+          year,
+          JSON.stringify({ filename, fileSize, year }),
+          `Unggah berkas Excel asli pengeluaran: ${filename} (${Math.round(fileSize / 1024)} KB) tahun anggaran ${year}.`,
+        ]
+      );
+    } catch (auditErr) {
+      console.error("[Audit Trail Log Error]:", auditErr.message);
+    }
 
     return NextResponse.json({
       success: true,

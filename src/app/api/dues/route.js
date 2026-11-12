@@ -83,21 +83,57 @@ export async function POST(request) {
     if (action === "toggle_paid") {
       const isPaid = paid ? 1 : 0;
       const paidDate = paid ? new Date().toISOString().split("T")[0] : null;
+      const actorName = body.userName || body.user_name || "Bendahara Cabang";
+      const actorRole = body.userRole || body.user_role || "Bendahara";
 
-      // Update di tabel members
+      // 1. Ambil nama & status lama anggota untuk audit trail
+      const existingRows = await query(
+        `SELECT name, paid, paid_date FROM members WHERE satker = ? AND period = ? AND id = ?`,
+        [currentSatker, currentPeriod, String(memberId)]
+      );
+      const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+      const memberName = existing?.name || `Pegawai #${memberId}`;
+      const oldPaid = Boolean(existing?.paid);
+      const oldDate = existing?.paid_date || null;
+
+      // 2. Update di tabel members
       await query(
         `UPDATE members SET paid = ?, paid_date = ? 
          WHERE satker = ? AND period = ? AND id = ?`,
         [isPaid, paidDate, currentSatker, currentPeriod, String(memberId)]
       );
 
-      // Sinkronkan ke tabel dues_records
+      // 3. Sinkronkan ke tabel dues_records (dengan created_by & updated_by)
       await query(
-        `INSERT INTO dues_records (period, satker, member_id, paid, paid_date)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE paid = VALUES(paid), paid_date = VALUES(paid_date)`,
-        [currentPeriod, currentSatker, String(memberId), isPaid, paidDate]
+        `INSERT INTO dues_records (period, satker, member_id, paid, paid_date, created_by, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE 
+           paid = VALUES(paid), 
+           paid_date = VALUES(paid_date), 
+           updated_by = VALUES(updated_by), 
+           updated_at = CURRENT_TIMESTAMP`,
+        [currentPeriod, currentSatker, String(memberId), isPaid, paidDate, actorName, actorName]
       );
+
+      // 4. Rekam jejak audit di tabel audit_logs
+      try {
+        await query(
+          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+           VALUES (?, ?, ?, 'TOGGLE_PAID', 'Iuran Anggota', ?, ?, ?, ?, ?)`,
+          [
+            currentSatker,
+            actorName,
+            actorRole,
+            String(memberId),
+            currentPeriod,
+            JSON.stringify({ paid: oldPaid, paid_date: oldDate }),
+            JSON.stringify({ paid: Boolean(isPaid), paid_date: paidDate }),
+            `Perubahan status iuran pegawai "${memberName}" (${currentPeriod}) menjadi ${isPaid ? "Lunas" : "Belum Bayar"}.`,
+          ]
+        );
+      } catch (auditErr) {
+        console.error("[Audit Trail Log Error]:", auditErr.message);
+      }
 
       return NextResponse.json({ success: true });
     }
@@ -170,12 +206,35 @@ export async function POST(request) {
         const flatValues = chunk.flat();
 
         await query(
-          `INSERT INTO dues_records (period, satker, member_id, paid, paid_date)
+          `INSERT INTO dues_records (period, satker, member_id, paid, paid_date, created_by, updated_by)
            VALUES ${placeholders}
-           ON DUPLICATE KEY UPDATE paid = VALUES(paid), paid_date = VALUES(paid_date)`,
+           ON DUPLICATE KEY UPDATE 
+             paid = VALUES(paid), 
+             paid_date = VALUES(paid_date),
+             updated_by = VALUES(updated_by),
+             updated_at = CURRENT_TIMESTAMP`,
           flatValues
         );
       }
+
+      // Rekam audit trail
+      try {
+        const actorName = body.userName || body.user_name || "Bendahara Cabang";
+        const actorRole = body.userRole || body.user_role || "Bendahara";
+        await query(
+          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+           VALUES (?, ?, ?, 'IMPORT_EXCEL', 'Iuran Anggota', ?, ?, NULL, ?, ?)`,
+          [
+            currentSatker,
+            actorName,
+            actorRole,
+            `import_${currentPeriod}`,
+            currentPeriod,
+            JSON.stringify({ count: membersList.length }),
+            `Import / pembaruan data rekapitulasi iuran periode ${currentPeriod} sebanyak ${membersList.length} pegawai.`,
+          ]
+        );
+      } catch (e) {}
 
       return NextResponse.json({ success: true, count: membersList.length });
     }
@@ -254,13 +313,35 @@ export async function POST(request) {
           });
 
           await query(
-            `INSERT INTO dues_records (period, satker, member_id, paid, paid_date)
-             VALUES ${placeholders}
-             ON DUPLICATE KEY UPDATE paid = VALUES(paid), paid_date = VALUES(paid_date)`,
+            `INSERT INTO dues_records (period, satker, member_id, paid, paid_date, created_by, updated_by)
+             VALUES ${placeholders.replace(/\(\?, \?, \?, \?, \?\)/g, "(?, ?, ?, ?, ?, 'Sistem', 'Sistem')")}
+             ON DUPLICATE KEY UPDATE 
+               paid = VALUES(paid), 
+               paid_date = VALUES(paid_date),
+               updated_by = 'Sistem',
+               updated_at = CURRENT_TIMESTAMP`,
             flatValues
           );
         }
       }
+
+      // Rekam jejak audit multi-periode
+      try {
+        const actorName = body.userName || body.user_name || "Bendahara Cabang";
+        const actorRole = body.userRole || body.user_role || "Bendahara";
+        await query(
+          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+           VALUES (?, ?, ?, 'IMPORT_MULTI_EXCEL', 'Iuran Anggota', ?, NULL, NULL, ?, ?)`,
+          [
+            currentSatker,
+            actorName,
+            actorRole,
+            `multi_import_${Date.now()}`,
+            JSON.stringify({ periods: periodsData.map((p) => p.period) }),
+            `Import multi-sheet iuran tahunan (${periodsData.length} bulan) untuk ${currentSatker}.`,
+          ]
+        );
+      } catch (e) {}
 
       return NextResponse.json({
         success: true,
@@ -273,6 +354,8 @@ export async function POST(request) {
       const id = String(memberData.id || `M-${Date.now()}`);
       const isPaid = memberData.paid ? 1 : 0;
       const pDate = memberData.paid ? (memberData.paidDate || new Date().toISOString().split("T")[0]) : null;
+      const actorName = body.userName || body.user_name || "Bendahara Cabang";
+      const actorRole = body.userRole || body.user_role || "Bendahara";
 
       await query(
         `INSERT INTO members (id, satker, period, nip, name, title, category, pusat, daerah, cabang, tournamen, paid, paid_date, phone)
@@ -308,11 +391,32 @@ export async function POST(request) {
       );
 
       await query(
-        `INSERT INTO dues_records (period, satker, member_id, paid, paid_date)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE paid = VALUES(paid), paid_date = VALUES(paid_date)`,
-        [currentPeriod, currentSatker, id, isPaid, pDate]
+        `INSERT INTO dues_records (period, satker, member_id, paid, paid_date, created_by, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE 
+           paid = VALUES(paid), 
+           paid_date = VALUES(paid_date),
+           updated_by = VALUES(updated_by),
+           updated_at = CURRENT_TIMESTAMP`,
+        [currentPeriod, currentSatker, id, isPaid, pDate, actorName, actorName]
       );
+
+      // Rekam audit trail
+      try {
+        await query(
+          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+           VALUES (?, ?, ?, 'UPSERT_MEMBER', 'Iuran Anggota', ?, ?, NULL, ?, ?)`,
+          [
+            currentSatker,
+            actorName,
+            actorRole,
+            id,
+            currentPeriod,
+            JSON.stringify({ name: memberData.name, title: memberData.title, category: memberData.category }),
+            `Simpan/perbarui data pegawai "${memberData.name}" (${memberData.title || "Pegawai"}) pada periode ${currentPeriod}.`,
+          ]
+        );
+      } catch (e) {}
 
       return NextResponse.json({ success: true, id });
     }
@@ -330,16 +434,35 @@ export async function DELETE(request) {
     const period = searchParams.get("period");
     const clearAll = searchParams.get("clearAll");
     const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
+    const actorName = searchParams.get("userName") || "Bendahara Cabang";
 
     if (clearAll === "true") {
       await query("DELETE FROM dues_records WHERE satker = ?", [satker]);
       await query("DELETE FROM members WHERE satker = ?", [satker]);
+
+      try {
+        await query(
+          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+           VALUES (?, ?, 'Bendahara', 'DELETE_ALL', 'Iuran Anggota', 'all', NULL, NULL, NULL, ?)`,
+          [satker, actorName, `Pengosongan seluruh data rekapitulasi iuran untuk ${satker}.`]
+        );
+      } catch (e) {}
+
       return NextResponse.json({ success: true, message: `Seluruh data iuran ${satker} berhasil dikosongkan.` });
     }
 
     if (period) {
       await query("DELETE FROM dues_records WHERE satker = ? AND period = ?", [satker, period]);
       await query("DELETE FROM members WHERE satker = ? AND period = ?", [satker, period]);
+
+      try {
+        await query(
+          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+           VALUES (?, ?, 'Bendahara', 'DELETE_PERIOD', 'Iuran Anggota', ?, ?, NULL, NULL, ?)`,
+          [satker, actorName, period, period, `Pengosongan data iuran periode ${period} (${satker}).`]
+        );
+      } catch (e) {}
+
       return NextResponse.json({ success: true, message: `Data iuran periode ${period} berhasil dikosongkan.` });
     }
 
@@ -347,6 +470,14 @@ export async function DELETE(request) {
 
     await query("DELETE FROM dues_records WHERE member_id = ? AND satker = ?", [memberId, satker]);
     await query("DELETE FROM members WHERE id = ? AND satker = ?", [memberId, satker]);
+
+    try {
+      await query(
+        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
+         VALUES (?, ?, 'Bendahara', 'DELETE_MEMBER', 'Iuran Anggota', ?, NULL, NULL, NULL, ?)`,
+        [satker, actorName, memberId, `Penghapusan data anggota ID ${memberId} dari satuan kerja ${satker}.`]
+      );
+    } catch (e) {}
 
     return NextResponse.json({ success: true });
   } catch (err) {
