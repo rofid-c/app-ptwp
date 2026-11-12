@@ -1005,21 +1005,23 @@ export default function AdminView({ currentUser }) {
 
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span style={{ fontFamily: "monospace", fontSize: "12px" }}>
-                            {isVisiblePassword ? (u.password || "admin123") : "••••••••"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setShowPasswordMap((prev) => ({
-                                ...prev,
-                                [u.username]: !prev[u.username],
-                              }))
-                            }
-                            style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: "2px" }}
+                          <span
+                            style={{
+                              fontFamily: "monospace",
+                              fontSize: "11px",
+                              color: "#059669",
+                              background: "#ecfdf5",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              fontWeight: 600,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
                           >
-                            {isVisiblePassword ? <EyeOff size={13} /> : <Eye size={13} />}
-                          </button>
+                            <ShieldCheck size={12} />
+                            Terenkripsi (scrypt)
+                          </span>
                         </div>
                       </td>
 

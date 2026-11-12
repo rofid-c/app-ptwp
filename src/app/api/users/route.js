@@ -38,16 +38,35 @@ export async function POST(request) {
     const body = await request.json();
     const { username, password, name, phone, email, satker, title, role, role_label } = body;
 
-    const hashedPassword = hashPassword(password || "123");
+    if (!username || !name || !satker) {
+      return NextResponse.json({ success: false, error: "Username, Nama, dan Satker wajib diisi." }, { status: 400 });
+    }
 
-    await query(
-      `INSERT INTO users (username, password, name, phone, email, satker, title, role, role_label, level, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'cabang', 'active')
-       ON DUPLICATE KEY UPDATE password = VALUES(password), name = VALUES(name), phone = VALUES(phone), email = VALUES(email), satker = VALUES(satker), title = VALUES(title), role = VALUES(role), role_label = VALUES(role_label)`,
-      [username, hashedPassword, name, phone || "", email || "", satker, title || "Pegawai", role || "anggota", role_label || "Pegawai / Anggota Satker"]
-    );
+    // Periksa apakah pengguna sudah ada
+    const existing = await query("SELECT id, password FROM users WHERE username = ?", [username]);
+    const userExists = existing && existing.length > 0;
 
-    return NextResponse.json({ success: true, message: "Pengguna berhasil disimpan dengan kata sandi terenkripsi." });
+    if (!userExists && (!password || password.trim().length < 6)) {
+      return NextResponse.json({ success: false, error: "Kata sandi wajib diisi minimal 6 karakter untuk akun baru." }, { status: 400 });
+    }
+
+    if (password && password.trim().length >= 6) {
+      const hashedPassword = hashPassword(password.trim());
+      await query(
+        `INSERT INTO users (username, password, name, phone, email, satker, title, role, role_label, level, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'cabang', 'active')
+         ON DUPLICATE KEY UPDATE password = VALUES(password), name = VALUES(name), phone = VALUES(phone), email = VALUES(email), satker = VALUES(satker), title = VALUES(title), role = VALUES(role), role_label = VALUES(role_label)`,
+        [username, hashedPassword, name, phone || "", email || "", satker, title || "Pegawai", role || "anggota", role_label || "Pegawai / Anggota Satker"]
+      );
+    } else {
+      // Perbarui profil pengguna tanpa menimpa kata sandi yang sudah ada
+      await query(
+        `UPDATE users SET name = ?, phone = ?, email = ?, satker = ?, title = ?, role = ?, role_label = ? WHERE username = ?`,
+        [name, phone || "", email || "", satker, title || "Pegawai", role || "anggota", role_label || "Pegawai / Anggota Satker", username]
+      );
+    }
+
+    return NextResponse.json({ success: true, message: "Data pengguna berhasil disimpan secara aman." });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

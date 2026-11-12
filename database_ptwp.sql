@@ -51,11 +51,8 @@ CREATE TABLE `users` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `users` (`username`, `password`, `name`, `phone`, `email`, `satker`, `title`, `role`, `role_label`, `level`) VALUES
-('Aku admin', '$scrypt$b38cb8ad300371fac3d68585674c67ae$d6b5a006f79f607060c9b088ebb7adc1583c92c16ac1532ecae268f173ed4ba26d10fb1e8fb912807a1ae2d1be2be5b73b30da6ee1295ec6cb1ba8ee0e52856f', 'Super Administrator PTWP', '081299998888', 'superadmin@mahkamahagung.go.id', 'Mahkamah Agung RI', 'Super Administrator Pusat', 'super_admin', 'Super Administrator Pusat', 'super_admin'),
-('user test', '$scrypt$0f1a1c471c2fcffdfed6ef7cfd8b3e70$1e120b346f2cdfa9bae19289fe8476562781a1b60320235ae585c97a0f97ced0f7442682cdaf053553a07f61dd1105d931935d8fc205cadeddf1408f062555cf', 'User Test PA Gunung Sugih', '081234567890', 'test@pags.go.id', 'Pengadilan Agama Gunung Sugih', 'Bendahara Cabang', 'bendahara', 'Bendahara Pengeluaran', 'cabang'),
-('bendahara_metro', '$scrypt$4b7ca1e5fdc7f6ca5457932d3aae0d60$0835fa03a56cc35582416abe0f8f2267ffda7cc69d5b9b5c7b7da8a1518ce0c58fda9bbd00d49d702c143ac1d041db482aa95628806e38bf61d4d2bca6ca5c2f', 'Bendahara PA Metro', '081211112222', 'bendahara@pametro.go.id', 'Pengadilan Agama Metro', 'Bendahara Pengeluaran', 'bendahara', 'Bendahara Pengeluaran', 'cabang'),
-('bendahara_pta', '$scrypt$7ba8b3a7e3b22550f71dcb38e46c9b5e$c19becbc39eff680016fab66ac04d427238b49f18f14097c9297288a32099ead45fb214993f7e92eba6a4a889fe263226255b3f22a42d3f4d9f7c46eb8c77040', 'Bendahara PTA Bandar Lampung', '081233334444', 'bendahara@ptabdl.go.id', 'Pengadilan Tinggi Agama Bandar Lampung', 'Bendahara Pengurus Daerah', 'bendahara', 'Bendahara Daerah', 'daerah');
+-- Catatan Keamanan: Kredensial default tidak ditanam di berkas SQL publik.
+-- Jalankan `npm run init-admin` untuk membuat akun administrator pertama kali secara aman.
 
 -- 3. TABEL PERMOHONAN AKUN (ACCOUNT_REQUESTS)
 DROP TABLE IF EXISTS `account_requests`;

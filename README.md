@@ -374,16 +374,20 @@ Aplikasi siap diakses pada:
 
 ---
 
-## 🔑 Akun Pengujian Bawaan (Default Credentials)
+## 🔑 Inisialisasi Akun Administrator (Setup Keamanan)
 
-Untuk keperluan pengujian peran (*RBAC*), basis data telah dilengkapi akun bawaan:
+Untuk menjaga keamanan sistem peradilan, basis data **tidak menyediakan kata sandi default di berkas repositori publik**.
 
-| Role / Hak Akses | Username | Password | Satuan Kerja Asal | Keterangan |
-| :--- | :--- | :--- | :--- | :--- |
-| **Super Admin** | `Aku admin` | `Adminbaik123.com` | Mahkamah Agung RI | Akses penuh seluruh cabang & admin view |
-| **Bendahara Cabang** | `user test` | `admin123` | Pengadilan Agama Gunung Sugih | Kelola rekap iuran, kas, dan setting PA GS |
-| **Bendahara Daerah** | `bendahara_pta` | `admin123` | PTA Bandar Lampung | Akses menu Monitoring Cabang se-Lampung |
-| **Bendahara Cabang Lain**| `bendahara_metro`| `admin123` | Pengadilan Agama Metro | Data terisolasi khusus cabang PA Metro |
+Setelah basis data diimpor, jalankan perintah CLI berikut di server untuk membuat atau mereset akun Super Administrator pertama kali:
+
+```bash
+npm run init-admin
+```
+
+Skrip ini akan meminta Anda memasukkan username dan kata sandi baru yang aman. Kata sandi akan otomatis di-hash menggunakan algoritma kriptografi standar industri (`scrypt` dengan random salt 16-byte) sebelum disimpan ke basis data MySQL.
+
+> [!IMPORTANT]
+> **Kebijakan Keamanan:** Jangan pernah membagikan atau mendokumentasikan kata sandi riil di repositori Git publik. Gunakan fitur *Ganti Kata Sandi* pada menu Pengaturan akun di dalam aplikasi untuk melakukan rotasi berkala.
 
 ---
 
