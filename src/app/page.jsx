@@ -52,6 +52,7 @@ import {
   deleteMember,
   getAvailablePeriods,
   getPeriodsWithData,
+  refreshPeriodsWithData,
   fetchCashBook,
   addCashBookEntry,
   addCashBookEntriesBatch,
@@ -173,6 +174,7 @@ export default function HomePage() {
       setIsAuthView(false);
 
       const activeSatker = user.satker || "Pengadilan Agama Gunung Sugih";
+      await refreshPeriodsWithData(activeSatker);
       const periods = getAvailablePeriods(activeSatker);
       setAvailablePeriods(periods);
 
@@ -434,11 +436,6 @@ export default function HomePage() {
         if (!updatedAvailable.includes(p)) updatedAvailable.push(p);
       });
       setAvailablePeriods(updatedAvailable);
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("ptwp_available_periods", JSON.stringify(updatedAvailable));
-        } catch (e) {}
-      }
 
       // Prioritaskan September jika ada di dalam bulan yang diimpor
       const septPeriod = newPeriods.find((p) => p.toLowerCase().includes("september"));
@@ -458,14 +455,15 @@ export default function HomePage() {
       // Import banyak bulan sekaligus
       await saveMultiplePeriodsData(importedData, activeSatker);
 
+      await refreshPeriodsWithData(activeSatker);
       const allNewPeriods = importedData.map((d) => d.period);
       const updatedAvailable = getAvailablePeriods(activeSatker);
       setAvailablePeriods(updatedAvailable);
 
-      // Prioritaskan September jika ada, atau targetPeriod, atau bulan terakhir
+      // Prioritaskan targetPeriod jika valid, atau September jika ada, atau bulan terakhir
       const finalPeriod =
+        (targetPeriod && allNewPeriods.includes(targetPeriod) ? targetPeriod : null) ||
         allNewPeriods.find((p) => p.toLowerCase().includes("september")) ||
-        targetPeriod ||
         allNewPeriods[allNewPeriods.length - 1] ||
         period;
 
@@ -484,7 +482,7 @@ export default function HomePage() {
       setTimeout(() => {
         alert(
           `✅ Berhasil mengimpor ${importedData.length} lembar bulan iuran PTWP!\n\n` +
-          `• Data rekap iuran ${allNewPeriods.join(', ')} telah tersimpan rapi ke sistem & database MySQL.\n` +
+          `• Data rekap iuran ${allNewPeriods.join(', ')} telah tersimpan rapi ke database MySQL.\n` +
           `• Seluruh penerimaan iuran berhasil dicatat ke Buku Kas.\n` +
           `• Periode aktif diarahkan ke ${finalPeriod}.`
         );
@@ -494,6 +492,7 @@ export default function HomePage() {
       const finalPeriod = targetPeriod || period;
       await saveMembersByPeriod(finalPeriod, importedData, activeSatker);
 
+      await refreshPeriodsWithData(activeSatker);
       if (finalPeriod !== period) {
         if (!availablePeriods.includes(finalPeriod)) {
           setAvailablePeriods((prev) => [finalPeriod, ...prev]);
@@ -506,7 +505,7 @@ export default function HomePage() {
       setTimeout(() => {
         alert(
           `✅ Berhasil mengimpor data iuran periode "${finalPeriod}"!\n\n` +
-          `• Data anggota & status iuran berhasil disimpan ke sistem & database MySQL.\n` +
+          `• Data anggota & status iuran berhasil disimpan ke database MySQL.\n` +
           `• Rekap iuran masuk telah dicatatkan ke Buku Kas.`
         );
       }, 300);
@@ -556,7 +555,10 @@ export default function HomePage() {
   // Tambah Kas Manual
   const handleAddCashEntry = async (entry) => {
     const activeSatker = currentUser?.satker || "Pengadilan Agama Gunung Sugih";
-    const updated = await addCashBookEntry(entry, activeSatker);
+    const updated = await addCashBookEntry({
+      ...entry,
+      period: entry.period || period,
+    }, activeSatker);
     setCashbook(updated);
   };
 
@@ -699,9 +701,27 @@ export default function HomePage() {
   const priorCashOut = priorEntries.filter((c) => c.type === "out").reduce((sum, c) => sum + Number(c.amount || 0), 0);
   const priorCumulativeBalance = priorCashIn - priorCashOut;
 
+  // Helper pencocokan entri kas dengan periode tertentu (berdasarkan period atau tanggal)
+  const isEntryInPeriod = (entry, targetPeriod) => {
+    if (!entry || !targetPeriod) return false;
+    if (entry.period && entry.period.toLowerCase() === targetPeriod.toLowerCase()) return true;
+    if (entry.date) {
+      const pLower = targetPeriod.toLowerCase();
+      const monthNames = [
+        { name: "januari", num: "01" }, { name: "februari", num: "02" }, { name: "maret", num: "03" },
+        { name: "april", num: "04" }, { name: "mei", num: "05" }, { name: "juni", num: "06" },
+        { name: "juli", num: "07" }, { name: "agustus", num: "08" }, { name: "september", num: "09" },
+        { name: "oktober", num: "10" }, { name: "november", num: "11" }, { name: "desember", num: "12" }
+      ];
+      const found = monthNames.find((m) => pLower.includes(m.name));
+      if (found && entry.date.includes(`-${found.num}-`)) return true;
+    }
+    return false;
+  };
+
   // 2. Cek apakah ada entri khusus Saldo Awal di periode ini (misal Saldo Awal 2025 di Januari 2026)
   const currentPeriodSaldoAwalEntry = cashbook.find((c) => {
-    const isThisPeriod = (c.period && c.period.toLowerCase() === period.toLowerCase());
+    const isThisPeriod = isEntryInPeriod(c, period);
     return isThisPeriod && (c.source === "saldo_awal" || c.category === "Saldo Awal");
   });
 
@@ -736,21 +756,7 @@ export default function HomePage() {
   // Filter pengeluaran khusus periode aktif
   const currentPeriodExpenses = cashbook.filter((c) => {
     if (c.type !== "out") return false;
-    if (c.period) {
-      return c.period.toLowerCase() === period.toLowerCase();
-    }
-    if (c.date) {
-      const pLower = period.toLowerCase();
-      const monthNames = [
-        { name: "januari", num: "01" }, { name: "februari", num: "02" }, { name: "maret", num: "03" },
-        { name: "april", num: "04" }, { name: "mei", num: "05" }, { name: "juni", num: "06" },
-        { name: "juli", num: "07" }, { name: "agustus", num: "08" }, { name: "september", num: "09" },
-        { name: "oktober", num: "10" }, { name: "november", num: "11" }, { name: "desember", num: "12" }
-      ];
-      const found = monthNames.find((m) => pLower.includes(m.name));
-      if (found && c.date.includes(`-${found.num}-`)) return true;
-    }
-    return false;
+    return isEntryInPeriod(c, period);
   });
 
   const hakimCount = members.filter((m) => m.category === "Hakim").length;
@@ -768,7 +774,7 @@ export default function HomePage() {
 
   // 3. Uang Masuk Operasional Periode Aktif (tanpa entri Saldo Awal agar tidak dobel hitung dengan Saldo Awal)
   const currentPeriodCashInEntries = cashbook.filter((c) => {
-    const isThisPeriod = (c.period && c.period.toLowerCase() === period.toLowerCase());
+    const isThisPeriod = isEntryInPeriod(c, period);
     const isNotSaldoAwal = c.source !== "saldo_awal" && c.category !== "Saldo Awal";
     return c.type === "in" && isThisPeriod && isNotSaldoAwal;
   });
@@ -1157,7 +1163,9 @@ export default function HomePage() {
                     <RotateCcw size={13} />
                     <span>Reset Semua</span>
                     <span className="rekap-action-badge">
-                      {duesSubTab === "in" ? (getPeriodsWithData().length > 0 ? `${getPeriodsWithData().length} Bln` : "9 Bln") : `${cashbook.filter(c => c.type === 'out').length} Pos`}
+                      {duesSubTab === "in"
+                        ? `${getPeriodsWithData(currentUser?.satker || settings.institution).length} Bln`
+                        : `${cashbook.filter((c) => c.type === "out").length} Pos`}
                     </span>
                   </button>
                 </div>

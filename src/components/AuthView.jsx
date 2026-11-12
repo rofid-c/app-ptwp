@@ -127,7 +127,7 @@ export default function AuthView({
 
     // Simpan ke MySQL via API
     try {
-      await fetch("/api/requests", {
+      const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -140,30 +140,13 @@ export default function AuthView({
           note: reqNote.trim(),
         }),
       });
+      if (!res.ok) {
+        throw new Error("Gagal mengirim permohonan ke database");
+      }
     } catch (err) {
       console.error("API submit request error:", err);
-    }
-
-    if (typeof window !== "undefined") {
-      try {
-        const existingReqs = JSON.parse(localStorage.getItem("ptwp_account_requests") || "[]");
-        const newReq = {
-          id: `REQ-${Date.now()}`,
-          name: reqName.trim(),
-          email: reqEmail.trim(),
-          satker: reqSatker,
-          phone: reqPhone.trim(),
-          title: reqTitle,
-          password: reqPassword.trim(),
-          note: reqNote.trim(),
-          createdAt: new Date().toISOString(),
-          status: "pending",
-        };
-        existingReqs.unshift(newReq);
-        localStorage.setItem("ptwp_account_requests", JSON.stringify(existingReqs));
-      } catch (err) {
-        console.error("Failed to save account request:", err);
-      }
+      setErrorMsg("Gagal menyimpan permohonan ke database server MySQL. Pastikan Laragon aktif.");
+      return;
     }
 
     setReqSubmitted(true);
@@ -184,7 +167,7 @@ export default function AuthView({
       return;
     }
 
-    // 1. Coba verifikasi via MySQL Database API
+    // Verifikasi murni via MySQL Database API
     try {
       const res = await fetch("/api/auth", {
         method: "POST",
@@ -208,24 +191,13 @@ export default function AuthView({
           if (json.registeredSatker) setTargetSatker(json.registeredSatker);
           return;
         }
+      } else {
+        setErrorMsg("Koneksi ke database MySQL Laragon terputus. Pastikan MySQL di Laragon aktif.");
       }
     } catch (err) {
-      console.warn("Database API unavailable, using offline fallback.", err);
+      console.error("Database API error:", err);
+      setErrorMsg("Gagal terhubung ke database server MySQL. Pastikan Laragon aktif.");
     }
-
-    // 2. Fallback Validasi Kredensial & RBAC (Offline LocalStorage)
-    const verification = verifyCredentials(loginSatker, loginIdentifier, loginPassword);
-    if (!verification.success) {
-      setErrorMsg(verification.error);
-      if (verification.registeredSatker) setTargetSatker(verification.registeredSatker);
-      return;
-    }
-
-    const userData = verification.user;
-    setSuccessMsg(`Berhasil masuk ke ${userData.satker}! Mengarahkan ke dashboard...`);
-    setTimeout(() => {
-      onLoginSuccess && onLoginSuccess(userData);
-    }, 350);
   };
 
 

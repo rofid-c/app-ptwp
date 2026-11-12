@@ -52,11 +52,10 @@ export default function AdminView({ currentUser }) {
   });
 
   const loadData = async () => {
-    let loadedFromApi = false;
     try {
       const [resReq, resUsers] = await Promise.all([
-        fetch("/api/requests"),
-        fetch("/api/users"),
+        fetch("/api/requests", { cache: "no-store" }),
+        fetch("/api/users", { cache: "no-store" }),
       ]);
       if (resReq.ok && resUsers.ok) {
         const jsonReq = await resReq.json();
@@ -67,15 +66,10 @@ export default function AdminView({ currentUser }) {
         if (jsonUsers.success && Array.isArray(jsonUsers.data)) {
           setUsers(jsonUsers.data);
         }
-        loadedFromApi = true;
       }
     } catch (err) {
-      console.warn("API load failed, using local storage fallback", err);
-    }
-
-    if (!loadedFromApi && typeof window !== "undefined") {
-      setRequests(getAccountRequests());
-      setUsers(getRegisteredUsers());
+      console.error("Gagal memuat data dari API MySQL:", err);
+      showToast("Gagal terhubung ke MySQL Laragon.", "error");
     }
   };
 
@@ -111,56 +105,44 @@ export default function AdminView({ currentUser }) {
           });
           showToast(`Akses berhasil diizinkan untuk ${req.name}!`, "success");
           return;
+        } else {
+          showToast(json.error || "Gagal mengizinkan permohonan.", "error");
         }
       }
     } catch (e) {
-      console.warn("API approve failed, falling back to local storage", e);
-    }
-
-    // Fallback Offline
-    const result = approveAccountRequest(req.id, passwordToUse);
-    if (result.success) {
-      loadData();
-      setApprovedModalData({
-        name: req.name,
-        username: result.user.username,
-        password: result.user.password,
-        satker: req.satker,
-        phone: req.phone,
-        email: req.email,
-        isSelfPassword: Boolean(req.password),
-      });
-      showToast(`Akses berhasil diizinkan untuk ${req.name}!`, "success");
-    } else {
-      showToast(result.error || "Gagal mengizinkan akun", "error");
+      showToast("Gagal memproses permohonan ke MySQL.", "error");
     }
   };
 
   const handleReject = async (id, name) => {
     if (confirm(`Yakin ingin menolak permohonan akun untuk "${name}"?`)) {
       try {
-        await fetch("/api/requests", {
+        const res = await fetch("/api/requests", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, action: "reject" }),
         });
-      } catch (e) {}
-
-      rejectAccountRequest(id);
-      loadData();
-      showToast(`Permohonan ${name} ditolak.`, "info");
+        if (res.ok) {
+          await loadData();
+          showToast(`Permohonan ${name} berhasil ditolak.`, "info");
+        }
+      } catch (e) {
+        showToast("Gagal menolak permohonan.", "error");
+      }
     }
   };
 
   const handleDeleteRequest = async (id) => {
     if (confirm("Hapus catatan permohonan ini dari daftar?")) {
       try {
-        await fetch(`/api/requests?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      } catch (e) {}
-
-      deleteAccountRequest(id);
-      loadData();
-      showToast("Data permohonan berhasil dihapus.", "info");
+        const res = await fetch(`/api/requests?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        if (res.ok) {
+          await loadData();
+          showToast("Data permohonan berhasil dihapus dari database.", "info");
+        }
+      } catch (e) {
+        showToast("Gagal menghapus data permohonan.", "error");
+      }
     }
   };
 
@@ -171,15 +153,13 @@ export default function AdminView({ currentUser }) {
     }
     if (confirm(`PENTING: Apakah Anda yakin ingin MENCABUT HAK AKSES akun "${name}" (${username})? Pengguna ini tidak akan bisa login lagi.`)) {
       try {
-        await fetch(`/api/users?username=${encodeURIComponent(username)}`, { method: "DELETE" });
-      } catch (e) {}
-
-      const result = deleteRegisteredUser(username);
-      if (result.success) {
-        loadData();
-        showToast(`Hak akses akun "${name}" berhasil dicabut & dihapus.`, "success");
-      } else {
-        showToast(result.error, "error");
+        const res = await fetch(`/api/users?username=${encodeURIComponent(username)}`, { method: "DELETE" });
+        if (res.ok) {
+          await loadData();
+          showToast(`Hak akses akun "${name}" berhasil dicabut dari database MySQL.`, "success");
+        }
+      } catch (e) {
+        showToast("Gagal mencabut hak akses pengguna.", "error");
       }
     }
   };
@@ -192,30 +172,31 @@ export default function AdminView({ currentUser }) {
     }
 
     try {
-      await fetch("/api/users", {
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newUser),
       });
-    } catch (e) {}
-
-    const res = addDirectUser(newUser);
-    if (res.success) {
-      loadData();
-      showToast(`Akun "${newUser.name}" berhasil dibuat & langsung aktif!`, "success");
-      setNewUser({
-        name: "",
-        username: "",
-        password: "123",
-        satker: SAMPLE_SATKER[0] || "Pengadilan Agama Gunung Sugih",
-        phone: "",
-        email: "",
-        role: "anggota",
-        title: "Pegawai",
-      });
-      setActiveSubTab("users");
-    } else {
-      showToast(res.error || "Gagal menambahkan akun.", "error");
+      if (res.ok) {
+        await loadData();
+        showToast(`Akun "${newUser.name}" berhasil dibuat & langsung aktif di MySQL!`, "success");
+        setNewUser({
+          name: "",
+          username: "",
+          password: "123",
+          satker: SAMPLE_SATKER[0] || "Pengadilan Agama Gunung Sugih",
+          phone: "",
+          email: "",
+          role: "anggota",
+          title: "Pegawai",
+        });
+        setActiveSubTab("users");
+      } else {
+        const json = await res.json();
+        showToast(json.error || "Gagal menambahkan akun.", "error");
+      }
+    } catch (e) {
+      showToast("Gagal menghubungi server database.", "error");
     }
   };
 

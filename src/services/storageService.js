@@ -1,60 +1,27 @@
-// Repository & Storage Service
-// Siap beralih dari LocalStorage ke Backend Database API dengan mengubah konfigurasi USE_REMOTE_API
+// Repository & Storage Service (Pure MySQL via Next.js Backend API Routes)
+// Seluruh data (Iuran Anggota, Buku Kas, Pengaturan, Akun Pengguna, Permohonan) tersimpan murni di MySQL (db_ptwp - Laragon)
 
 import { INITIAL_MEMBERS, DEFAULT_SETTINGS, INITIAL_CASHBOOK } from "@/data/initialMembers";
 
 export const API_CONFIG = {
-  USE_REMOTE_API: true, // Terhubung ke Database MySQL Laragon via API
-  API_BASE_URL: process.env.NEXT_PUBLIC_API_URL || "/api",
+  USE_REMOTE_API: true,
+  API_BASE_URL: "/api",
 };
 
-const STORAGE_KEYS = {
-  MEMBERS_PREFIX: "ptwp_members_",
-  SETTINGS: "ptwp_settings",
-  CASHBOOK: "ptwp_cashbook",
-  AUTH_USER: "ptwp_auth_user",
-  PERIODS: "ptwp_available_periods",
-};
+const SESSION_KEY = "ptwp_session_user";
 
-// Helper pembuatan slug Satker untuk isolasi multi-tenant data storage
+function isClient() {
+  return typeof window !== "undefined";
+}
+
+// Helper pembuatan slug Satker untuk keperluan URL / identitas
 export function getSafeSatkerSlug(satker) {
   const current = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   return String(current).toLowerCase().replace(/[^a-z0-9]/g, "_");
 }
 
-// Helper localStorage yang aman (SSR-safe)
-function isClient() {
-  return typeof window !== "undefined";
-}
-
-function getLocalData(key, fallback) {
-  if (!isClient()) return fallback;
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
-  } catch (e) {
-    console.error(`Error reading ${key} from localStorage`, e);
-    return fallback;
-  }
-}
-
-function setLocalData(key, value) {
-  if (!isClient()) return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error(`Error writing ${key} to localStorage`, e);
-  }
-}
-
-// ==========================================
-// 1. ANGGOTA & IURAN SERVICE
-// ==========================================
-
-
 /**
  * Membersihkan data anggota dari baris tanda tangan / footer Excel yang tidak sengaja terimpor
- * (seperti 'Bendahara Kantor' atau 'Wulan Febrianti, A.Md' dengan iuran 0 di bawah tabel)
  */
 export function filterRealMembers(members = []) {
   if (!Array.isArray(members)) return [];
@@ -65,7 +32,6 @@ export function filterRealMembers(members = []) {
       if (!m || !m.name) return false;
       const nameUpper = String(m.name || "").trim().toUpperCase();
 
-      // 1. Filter nama-nama non-anggota (tanda tangan & jabatan footer)
       if (
         nameUpper.includes("BENDAHARA") ||
         nameUpper.includes("MENGETAHUI") ||
@@ -84,13 +50,11 @@ export function filterRealMembers(members = []) {
         Number(m.cabang || 0) +
         Number(m.tournamen || 0);
 
-      // 2. Filter baris tanda tangan duplikat bernilai 0 (seperti Wulan Febrianti di baris tanda tangan bawah)
       const normName = nameUpper.replace(/[^A-Z]/g, "");
       if (seenNames.has(normName) && total === 0) {
         return false;
       }
 
-      // 3. Jika total iuran adalah 0 dan ada nama Wulan Febrianti / Al Fitri (pejabat penandatangan)
       if (total === 0 && (nameUpper.includes("WULAN FEBRIANTI") || nameUpper.includes("AL FITRI"))) {
         const hasRealEmployee = members.some((other) => {
           const otherUpper = String(other.name || "").toUpperCase();
@@ -110,241 +74,108 @@ export function filterRealMembers(members = []) {
     .map((m, idx) => ({ ...m, no: idx + 1 }));
 }
 
-const CACHE_VERSION_KEY = "ptwp_cache_version";
-const CURRENT_CACHE_VERSION = "2.8_period_isolated";
-
-function checkAndInvalidateLegacyCache() {
-  if (!isClient()) return;
-  try {
-    const v = localStorage.getItem(CACHE_VERSION_KEY);
-    if (v !== CURRENT_CACHE_VERSION) {
-      const keys = Object.keys(localStorage);
-      keys.forEach((k) => {
-        if (k.startsWith("ptwp_") && (k.includes("_members_") || k.startsWith("ptwp_members_"))) {
-          localStorage.removeItem(k);
-        }
-      });
-      localStorage.setItem(CACHE_VERSION_KEY, CURRENT_CACHE_VERSION);
-    }
-  } catch (e) {}
-}
+// ==========================================
+// 1. ANGGOTA & IURAN SERVICE (MySQL)
+// ==========================================
 
 export async function fetchMembersByPeriod(period = "September 2026", satker) {
-  checkAndInvalidateLegacyCache();
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_members_${period}`;
+  if (!isClient()) return [];
 
-  if (API_CONFIG.USE_REMOTE_API && isClient()) {
-    try {
-      const res = await fetch(`${API_CONFIG.API_BASE_URL}/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          const apiMembers = filterRealMembers(json.data);
-          setLocalData(key, apiMembers);
-          return apiMembers;
-        }
+  try {
+    const res = await fetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        return filterRealMembers(json.data);
       }
-    } catch (e) {
-      console.warn("Koneksi API dues gagal, fallback ke data lokal:", e);
     }
+  } catch (e) {
+    console.error("[StorageService] Gagal fetch iuran anggota dari MySQL:", e);
   }
-
-  // Key terisolasi per Satker
-  let data = getLocalData(key, null);
-
-  // Fallback migrasi jika PA Gunung Sugih sebelumnya memakai key global tanpa slug
-  if (data === null && slug === "pengadilan_agama_gunung_sugih") {
-    data = getLocalData(`${STORAGE_KEYS.MEMBERS_PREFIX}${period}`, null);
-    if (Array.isArray(data) && data.length > 0) {
-      setLocalData(key, data);
-    }
-  }
-
-  // Untuk satker lain (misal PA Metro), jika belum ada data, return []
-  if (!Array.isArray(data)) {
-    data = [];
-  }
-
-  const cleaned = filterRealMembers(data);
-  if (isClient() && Array.isArray(data) && cleaned.length !== data.length) {
-    setLocalData(key, cleaned);
-  }
-
-  return cleaned;
-}
-
-export function loadSampleTemplateData(period = "September 2026", satker) {
-  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_members_${period}`;
-  setLocalData(key, INITIAL_MEMBERS);
-  return INITIAL_MEMBERS;
-}
-
-export function clearPeriodData(period, satker) {
-  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_members_${period}`;
-  const legacyKey = `${STORAGE_KEYS.MEMBERS_PREFIX}${period}`;
-
-  if (isClient()) {
-    try {
-      localStorage.removeItem(key);
-      localStorage.removeItem(legacyKey);
-      localStorage.setItem(key, JSON.stringify([]));
-      localStorage.setItem(legacyKey, JSON.stringify([]));
-    } catch (e) {
-      console.error("Error clearing period dues in localStorage", e);
-    }
-  }
-
-  // Bersihkan juga dari cashbook satker bersangkutan
-  const cashKey = `ptwp_${slug}_cashbook`;
-  const raw = getLocalData(cashKey, []);
-  const cleanCash = (Array.isArray(raw) ? raw : []).filter((item) => {
-    const desc = item?.description || "";
-    const itemPeriod = item?.period || "";
-    const isThisPeriod =
-      item.id === `dues_${period}` ||
-      item.id === `saldo_awal_${period}` ||
-      String(item.id || "").includes(period) ||
-      itemPeriod.toLowerCase() === period.toLowerCase() ||
-      desc.includes(period) ||
-      (item.source === "rekap_iuran" && (!itemPeriod || itemPeriod === period));
-    return !isThisPeriod;
-  });
-  setLocalData(cashKey, cleanCash);
-  if (slug === "pengadilan_agama_gunung_sugih") {
-    setLocalData(STORAGE_KEYS.CASHBOOK, cleanCash);
-  }
-
-  // Sync hapus periode ini ke MySQL jika ada
-  if (isClient()) {
-    try {
-      fetch(`/api/cashbook?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
-        method: "DELETE",
-      }).catch((e) => console.warn("Sync delete period to MySQL failed:", e));
-      fetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
-        method: "DELETE",
-      }).catch((e) => console.warn("Sync delete period to MySQL failed:", e));
-    } catch (e) {}
-  }
-
   return [];
 }
 
-export function clearAllPeriodsData(satker) {
+export function loadSampleTemplateData(period = "September 2026", satker) {
+  return INITIAL_MEMBERS;
+}
+
+export async function clearPeriodData(period, satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const prefix = `ptwp_${slug}_members_`;
-  const cashKey = `ptwp_${slug}_cashbook`;
-  const periodKey = `ptwp_${slug}_periods`;
+  if (!isClient()) return [];
 
-  if (isClient()) {
-    try {
-      const keys = Object.keys(localStorage);
-      keys.forEach((k) => {
-        if (
-          k.startsWith(prefix) ||
-          k.startsWith("ptwp_members_") ||
-          k === cashKey ||
-          k === "ptwp_cashbook" ||
-          k === periodKey ||
-          k === "ptwp_available_periods"
-        ) {
-          localStorage.removeItem(k);
-        }
-      });
-      localStorage.setItem(cashKey, JSON.stringify([]));
-      localStorage.setItem("ptwp_cashbook", JSON.stringify([]));
-    } catch (e) {
-      console.error("Error clearing all periods dues in localStorage", e);
-    }
-  }
-
-  // Bersihkan seluruh transaksi kas satker
-  setLocalData(cashKey, []);
-  setLocalData("ptwp_cashbook", []);
-
-  // Sync kosongkan seluruh kas & iuran satker ke MySQL (Laragon)
-  if (isClient()) {
-    try {
-      fetch(`/api/cashbook?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
+  try {
+    await Promise.all([
+      fetch(`/api/dues?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
         method: "DELETE",
-      }).catch((e) => console.warn("Sync clear all cashbook to MySQL failed:", e));
+      }),
+      fetch(`/api/cashbook?period=${encodeURIComponent(period)}&satker=${encodeURIComponent(targetSatker)}`, {
+        method: "DELETE",
+      }),
+    ]);
+  } catch (e) {
+    console.error("[StorageService] Gagal menghapus data periode dari MySQL:", e);
+  }
+  return [];
+}
+
+export async function clearAllPeriodsData(satker) {
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  if (!isClient()) return [];
+
+  try {
+    await Promise.all([
       fetch(`/api/dues?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
         method: "DELETE",
-      }).catch((e) => console.warn("Sync clear all dues to MySQL failed:", e));
-    } catch (e) {}
+      }),
+      fetch(`/api/cashbook?clearAll=true&satker=${encodeURIComponent(targetSatker)}`, {
+        method: "DELETE",
+      }),
+    ]);
+  } catch (e) {
+    console.error("[StorageService] Gagal mengosongkan seluruh data dari MySQL:", e);
   }
-
   return [];
 }
 
 export async function saveMembersByPeriod(period, members, satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
   const cleaned = filterRealMembers(members);
+  if (!isClient()) return cleaned;
 
-  const key = `ptwp_${slug}_members_${period}`;
-  setLocalData(key, cleaned);
+  try {
+    await fetch("/api/dues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
+    });
 
-  // Pastikan periode tercatat di daftar periode yang tersedia
-  const availablePeriods = getAvailablePeriods(targetSatker);
-  if (!availablePeriods.includes(period)) {
-    availablePeriods.push(period);
-    setLocalData(`ptwp_${slug}_periods`, availablePeriods);
-  }
-
-  // 1. Sinkronisasi data anggota ke MySQL
-  if (API_CONFIG.USE_REMOTE_API && isClient()) {
-    try {
-      await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save_all", period, satker: targetSatker, membersList: cleaned }),
-      });
-    } catch (e) {
-      console.warn("Sync dues ke API gagal:", e);
-    }
-  }
-
-  // 2. Sinkronisasi otomatis penerimaan iuran periode ini ke Buku Kas (cashbook)
-  const paidMembers = cleaned.filter((m) => m.paid);
-  const totalCollected = paidMembers.reduce(
-    (sum, m) =>
-      sum +
-      (Number(m.pusat || 0) +
-        Number(m.daerah || 0) +
-        Number(m.cabang || 0) +
-        Number(m.tournamen || 0)),
-    0
-  );
-
-  const monthParts = period.split(" ");
-  const mLower = (monthParts[0] || "").toLowerCase();
-  const mYear = monthParts[1] || "2026";
-  const monthNumMap = {
-    januari: "01", februari: "02", maret: "03", april: "04",
-    mei: "05", juni: "06", juli: "07", agustus: "08",
-    september: "09", oktober: "10", november: "11", desember: "12"
-  };
-  const mm = monthNumMap[mLower] || "01";
-
-  if (totalCollected > 0) {
-    // Jika periode Januari sudah memiliki entri Saldo Awal (sisa kas tahun lalu),
-    // jangan buat dobel penerimaan di buku kas agar saldo tidak melonjak ganda
-    const cashKey = `ptwp_${slug}_cashbook`;
-    const rawCash = getLocalData(cashKey, []);
-    const hasSaldoAwal = (Array.isArray(rawCash) ? rawCash : []).some(
-      (c) =>
-        (c.period?.toLowerCase() === period.toLowerCase() || c.source === "saldo_awal" || c.category === "Saldo Awal") &&
-        c.period?.toLowerCase().startsWith("januari")
+    // Sinkronisasi otomatis penerimaan iuran ke buku kas jika ada penerimaan
+    const paidMembers = cleaned.filter((m) => m.paid);
+    const totalCollected = paidMembers.reduce(
+      (sum, m) =>
+        sum +
+        (Number(m.pusat || 0) +
+          Number(m.daerah || 0) +
+          Number(m.cabang || 0) +
+          Number(m.tournamen || 0)),
+      0
     );
 
-    if (!hasSaldoAwal || !period.toLowerCase().startsWith("januari")) {
+    // Jangan dobelkan jika Januari sudah memiliki Saldo Awal tahunan
+    if (totalCollected > 0 && !period.toLowerCase().startsWith("januari")) {
+      const monthParts = period.split(" ");
+      const mLower = (monthParts[0] || "").toLowerCase();
+      const mYear = monthParts[1] || "2026";
+      const monthNumMap = {
+        januari: "01", februari: "02", maret: "03", april: "04",
+        mei: "05", juni: "06", juli: "07", agustus: "08",
+        september: "09", oktober: "10", november: "11", desember: "12"
+      };
+      const mm = monthNumMap[mLower] || "01";
+
       const duesEntry = {
         id: `dues_${period}`,
         satker: targetSatker,
@@ -358,389 +189,281 @@ export async function saveMembersByPeriod(period, members, satker) {
       };
       await addCashBookEntriesBatch([duesEntry], targetSatker);
     }
-  } else {
-    // Jika 0 lunas, hapus entry kas jika ada
-    const cashKey = `ptwp_${slug}_cashbook`;
-    const rawCash = getLocalData(cashKey, []);
-    const updatedCash = (Array.isArray(rawCash) ? rawCash : []).filter((c) => c.id !== `dues_${period}`);
-    setLocalData(cashKey, updatedCash);
-    if (isClient()) {
-      fetch(`/api/cashbook?id=${encodeURIComponent(`dues_${period}`)}&satker=${encodeURIComponent(targetSatker)}`, {
-        method: "DELETE",
-      }).catch(() => {});
-    }
+  } catch (e) {
+    console.error("[StorageService] Gagal menyimpan anggota ke MySQL:", e);
   }
 
   return cleaned;
 }
 
 export async function saveMultiplePeriodsData(periodsData = [], satker) {
-  if (typeof window === "undefined") return [];
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
+  if (!isClient() || !Array.isArray(periodsData) || periodsData.length === 0) return [];
 
-  const savedPeriods = [];
-  const currentAvailable = getAvailablePeriods(targetSatker);
-  const updatedAvailable = [...currentAvailable];
-  const newCashEntries = [];
-
-  const monthNumMap = {
-    januari: "01", februari: "02", maret: "03", april: "04",
-    mei: "05", juni: "06", juli: "07", agustus: "08",
-    september: "09", oktober: "10", november: "11", desember: "12"
-  };
-
-  periodsData.forEach((item) => {
-    const { period, members } = item;
-    if (!period || !Array.isArray(members)) return;
-
-    const cleaned = filterRealMembers(members);
-    const key = `ptwp_${slug}_members_${period}`;
-    setLocalData(key, cleaned);
-
-    if (!updatedAvailable.includes(period)) {
-      updatedAvailable.push(period);
-    }
-    savedPeriods.push(period);
-
-    // Hitung akumulasi iuran lunas untuk Buku Kas (cashbook)
-    const paidMembers = cleaned.filter((m) => m.paid !== false);
-    const totalCollected = paidMembers.reduce(
-      (sum, m) =>
-        sum +
-        (Number(m.pusat || 0) +
-          Number(m.daerah || 0) +
-          Number(m.cabang || 0) +
-          Number(m.tournamen || 0)),
-      0
-    );
-
-    if (totalCollected > 0) {
-      const parts = period.split(" ");
-      const mLower = (parts[0] || "").toLowerCase();
-      const mYear = parts[1] || "2026";
-      const mm = monthNumMap[mLower] || "01";
-
-      newCashEntries.push({
-        id: `dues_${period}`,
+  try {
+    const res = await fetch("/api/dues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save_multiple_periods",
         satker: targetSatker,
-        date: `${mYear}-${mm}-28`,
-        type: "in",
-        category: "Iuran Anggota",
-        amount: totalCollected,
-        description: `Penerimaan Iuran PTWP Periode ${period} (${paidMembers.length}/${cleaned.length} Pegawai Lunas)`,
-        source: "rekap_iuran",
-        period: period,
-      });
-    }
-  });
+        periodsData: periodsData.map((p) => ({
+          period: p.period,
+          members: filterRealMembers(p.members),
+        })),
+      }),
+    });
+    if (res.ok) {
+      // Sinkronisasi otomatis seluruh penerimaan iuran multi-bulan ke tabel cashbook di MySQL
+      const monthNumMap = {
+        januari: "01", februari: "02", maret: "03", april: "04",
+        mei: "05", juni: "06", juli: "07", agustus: "08",
+        september: "09", oktober: "10", november: "11", desember: "12"
+      };
 
-  setLocalData(`ptwp_${slug}_periods`, updatedAvailable);
+      const duesCashEntries = [];
+      for (const item of periodsData) {
+        const cleanedMembers = filterRealMembers(item.members);
+        const paidMembers = cleanedMembers.filter((m) => m.paid);
+        const totalCollected = paidMembers.reduce(
+          (sum, m) =>
+            sum +
+            (Number(m.pusat || 0) +
+              Number(m.daerah || 0) +
+              Number(m.cabang || 0) +
+              Number(m.tournamen || 0)),
+          0
+        );
 
-  // 1. Sinkronisasi semua periode ke MySQL via /api/dues
-  if (API_CONFIG.USE_REMOTE_API && isClient()) {
-    try {
-      await fetch(`${API_CONFIG.API_BASE_URL}/dues`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "save_multiple_periods",
-          satker: targetSatker,
-          periodsData: periodsData.map((p) => ({
-            period: p.period,
-            members: filterRealMembers(p.members),
-          })),
-        }),
-      });
-    } catch (e) {
-      console.warn("Sync multiple periods dues ke API gagal:", e);
+        if (totalCollected > 0) {
+          const monthParts = item.period.split(" ");
+          const mLower = (monthParts[0] || "").toLowerCase();
+          const mYear = monthParts[1] || "2026";
+          const mm = monthNumMap[mLower] || "01";
+
+          duesCashEntries.push({
+            id: `dues_${item.period}`,
+            satker: targetSatker,
+            date: `${mYear}-${mm}-28`,
+            type: "in",
+            category: "Iuran Anggota",
+            amount: totalCollected,
+            description: `Penerimaan Iuran PTWP Periode ${item.period} (${paidMembers.length}/${cleanedMembers.length} Pegawai Lunas)`,
+            source: "rekap_iuran",
+            period: item.period,
+          });
+        }
+      }
+
+      if (duesCashEntries.length > 0) {
+        await addCashBookEntriesBatch(duesCashEntries, targetSatker);
+      }
+
+      await refreshPeriodsWithData(targetSatker);
+      return periodsData.map((p) => p.period);
     }
+  } catch (e) {
+    console.error("[StorageService] Gagal menyimpan multi-periode ke MySQL:", e);
   }
-
-  // 2. Sinkronisasi penerimaan iuran kas ke MySQL via /api/cashbook (Batch)
-  if (newCashEntries.length > 0) {
-    try {
-      await addCashBookEntriesBatch(newCashEntries, targetSatker);
-    } catch (e) {
-      console.warn("Sync cashbook batch iuran gagal:", e);
-    }
-  }
-
-  return savedPeriods;
+  return [];
 }
 
 export async function toggleMemberPaidStatus(period, memberId, satker) {
-  const members = await fetchMembersByPeriod(period, satker);
-  const updated = members.map((m) => (String(m.id) === String(memberId) ? { ...m, paid: !m.paid } : m));
-  await saveMembersByPeriod(period, updated, satker);
-  return updated;
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  const members = await fetchMembersByPeriod(period, targetSatker);
+  const targetMember = members.find((m) => String(m.id) === String(memberId));
+  const newStatus = targetMember ? !targetMember.paid : true;
+
+  try {
+    await fetch("/api/dues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "toggle_paid",
+        satker: targetSatker,
+        period,
+        memberId,
+        paid: newStatus,
+      }),
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal toggle bayar ke MySQL:", e);
+  }
+
+  return members.map((m) => (String(m.id) === String(memberId) ? { ...m, paid: newStatus } : m));
 }
 
 export async function updateSingleMember(period, memberId, updatedFields, satker) {
-  const members = await fetchMembersByPeriod(period, satker);
-  const updated = members.map((m) => (String(m.id) === String(memberId) ? { ...m, ...updatedFields } : m));
-  await saveMembersByPeriod(period, updated, satker);
-  return updated;
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  try {
+    await fetch("/api/dues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update_member",
+        satker: targetSatker,
+        period,
+        memberId,
+        memberData: updatedFields,
+      }),
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal update anggota ke MySQL:", e);
+  }
+  return fetchMembersByPeriod(period, targetSatker);
 }
 
 export async function addMember(period, newMember, satker) {
   const targetSatker = satker || newMember?.satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const members = await fetchMembersByPeriod(period, targetSatker);
-  const nextId = members.length > 0 ? Math.max(...members.map((m) => Number(m.id) || 0)) + 1 : 1;
-  const memberWithId = {
-    ...newMember,
-    id: nextId,
-    no: members.length + 1,
-    satker: targetSatker,
-    paid: newMember.paid ?? true,
-  };
-  const updated = [...members, memberWithId];
-  await saveMembersByPeriod(period, updated, targetSatker);
-  return updated;
+  try {
+    await fetch("/api/dues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add_member",
+        satker: targetSatker,
+        period,
+        memberData: newMember,
+      }),
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal menambah anggota ke MySQL:", e);
+  }
+  return fetchMembersByPeriod(period, targetSatker);
 }
 
 export async function deleteMember(period, memberId, satker) {
-  const members = await fetchMembersByPeriod(period, satker);
-  const filtered = members
-    .filter((m) => String(m.id) !== String(memberId))
-    .map((m, idx) => ({ ...m, no: idx + 1 }));
-  await saveMembersByPeriod(period, filtered, satker);
-  return filtered;
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  try {
+    await fetch(`/api/dues?memberId=${encodeURIComponent(memberId)}&satker=${encodeURIComponent(targetSatker)}`, {
+      method: "DELETE",
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal menghapus anggota dari MySQL:", e);
+  }
+  return fetchMembersByPeriod(period, targetSatker);
 }
 
-
 export const ALL_MONTHS = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
 export const ALL_YEARS = [2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030];
 
 export function getAvailablePeriods(satker) {
-  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const saved = getLocalData(`ptwp_${slug}_periods`, getLocalData(STORAGE_KEYS.PERIODS, []));
   const allGenerated = [];
   ALL_YEARS.forEach((yr) => {
     ALL_MONTHS.forEach((m) => {
       allGenerated.push(`${m} ${yr}`);
     });
   });
+  return allGenerated;
+}
 
-  const merged = Array.from(new Set([...allGenerated, ...saved]));
-  return merged;
+let inMemoryPeriodsWithData = {};
+
+export async function refreshPeriodsWithData(satker) {
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  if (!isClient()) return [];
+  try {
+    const res = await fetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, {
+      cache: "no-store",
+    });
+    const json = await res.json();
+    if (json.success && Array.isArray(json.periods)) {
+      inMemoryPeriodsWithData[targetSatker] = json.periods;
+      return json.periods;
+    }
+  } catch (e) {}
+  return inMemoryPeriodsWithData[targetSatker] || [];
 }
 
 export function getPeriodsWithData(satker) {
-  if (typeof window === "undefined") return [];
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const prefix = `ptwp_${slug}_members_`;
-  const legacyPrefix = STORAGE_KEYS.MEMBERS_PREFIX;
-
-  const keys = Object.keys(localStorage);
-  const list = [];
-  keys.forEach((k) => {
-    if (k.startsWith(prefix)) {
-      const p = k.slice(prefix.length);
-      try {
-        const val = JSON.parse(localStorage.getItem(k));
-        if (Array.isArray(val) && val.length > 0 && val.some((m) => m.paid)) {
-          list.push(p);
+  if (isClient() && !inMemoryPeriodsWithData[targetSatker]) {
+    fetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.periods)) {
+          inMemoryPeriodsWithData[targetSatker] = json.periods;
         }
-      } catch (e) {}
-    } else if (slug === "pengadilan_agama_gunung_sugih" && k.startsWith(legacyPrefix)) {
-      const p = k.slice(legacyPrefix.length);
-      try {
-        const val = JSON.parse(localStorage.getItem(k));
-        if (Array.isArray(val) && val.length > 0 && val.some((m) => m.paid) && !list.includes(p)) {
-          list.push(p);
-        }
-      } catch (e) {}
-    }
-  });
+      })
+      .catch(() => {});
+  }
 
-  // Periksa juga penerimaan iuran di buku kas lokal
-  try {
-    const cashKey = `ptwp_${slug}_cashbook`;
-    const cash = JSON.parse(localStorage.getItem(cashKey) || "[]");
-    if (Array.isArray(cash)) {
-      cash.forEach((item) => {
-        if (item?.type === "in" && item?.period && !list.includes(item.period)) {
-          list.push(item.period);
-        }
-      });
-    }
-  } catch (e) {}
-
-  return list;
+  return inMemoryPeriodsWithData[targetSatker] || [];
 }
 
-// ==========================================
-// 2. BUKU KAS CABANG SERVICE
-// ==========================================
-
-// Fungsi membaca data iuran riil yang sudah terkumpul dari Rekap Iuran terisolasi per satker
 export function getRealDuesCashEntries(satker) {
-  if (typeof window === "undefined") return [];
-  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const periods = getPeriodsWithData(targetSatker);
-  const duesEntries = [];
-
-  periods.forEach((p) => {
-    const key = `ptwp_${slug}_members_${p}`;
-    let rawMembers = getLocalData(key, null);
-    if (rawMembers === null && slug === "pengadilan_agama_gunung_sugih") {
-      rawMembers = getLocalData(`${STORAGE_KEYS.MEMBERS_PREFIX}${p}`, []);
-    }
-    const members = filterRealMembers(rawMembers || []);
-    if (!Array.isArray(members) || members.length === 0) return;
-
-    // Hitung seluruh anggota yang sudah lunas
-    const paidMembers = members.filter((m) => m.paid);
-    const totalCollected = paidMembers.reduce(
-      (sum, m) =>
-        sum +
-        (Number(m.pusat || 0) +
-          Number(m.daerah || 0) +
-          Number(m.cabang || 0) +
-          Number(m.tournamen || 0)),
-      0
-    );
-
-    if (totalCollected > 0) {
-      // Buat tanggal standar YYYY-MM-DD berbasis nama periode
-      let dateStr = "";
-      try {
-        const parts = p.trim().split(" ");
-        const monthName = parts[0];
-        const year = parts[1] || new Date().getFullYear();
-        const mIdx = ALL_MONTHS.indexOf(monthName);
-        if (mIdx !== -1) {
-          const mm = String(mIdx + 1).padStart(2, "0");
-          dateStr = `${year}-${mm}-01`;
-        }
-      } catch (e) {}
-
-      duesEntries.push({
-        id: `dues_${p}`,
-        satker: targetSatker,
-        date: dateStr || new Date().toISOString().split("T")[0],
-        type: "in",
-        category: "Iuran Anggota",
-        description: `Penerimaan Iuran PTWP Periode ${p} (${paidMembers.length}/${members.length} Pegawai Lunas)`,
-        amount: totalCollected,
-        source: "rekap_iuran",
-        period: p,
-        paidCount: paidMembers.length,
-        totalCount: members.length,
-      });
-    }
-  });
-
-  return duesEntries;
+  return [];
 }
+
+// ==========================================
+// 2. BUKU KAS CABANG SERVICE (MySQL)
+// ==========================================
 
 export async function fetchCashBook(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_cashbook`;
+  if (!isClient()) return [];
 
-  let rows = [];
-  if (API_CONFIG.USE_REMOTE_API && isClient()) {
-    try {
-      const res = await fetch(`${API_CONFIG.API_BASE_URL}/cashbook?satker=${encodeURIComponent(targetSatker)}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          rows = json.data.map((r) => ({
-            ...r,
-            amount: Number(r.amount || 0),
-          }));
-        }
+  try {
+    const res = await fetch(`/api/cashbook?satker=${encodeURIComponent(targetSatker)}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        return json.data.map((item) => ({
+          ...item,
+          amount: Number(item.amount || 0),
+        }));
       }
-    } catch (e) {
-      console.warn("Koneksi API cashbook gagal, fallback ke data lokal:", e);
+    }
+  } catch (e) {
+    console.error("[StorageService] Gagal fetch buku kas dari MySQL:", e);
+  }
+  return [];
+}
+
+// Helper ekstraksi periode dari tanggal (YYYY-MM-DD -> "Bulan YYYY")
+function derivePeriodFromDate(dateStr) {
+  if (!dateStr) return null;
+  const parts = String(dateStr).split("-");
+  if (parts.length >= 2) {
+    const yr = parts[0];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${ALL_MONTHS[mIdx]} ${yr}`;
     }
   }
-
-  if (rows.length === 0) {
-    let raw = getLocalData(key, null);
-    if (raw === null && slug === "pengadilan_agama_gunung_sugih") {
-      raw = getLocalData(STORAGE_KEYS.CASHBOOK, []);
-    }
-    if (Array.isArray(raw)) rows = raw;
-  }
-
-  // Pastikan data iuran dari Rekap Iuran terakomodasi di buku kas
-  const duesEntries = getRealDuesCashEntries(targetSatker);
-  const duesPeriodsInRows = new Set(
-    rows
-      .filter((item) => item?.source === "rekap_iuran" || String(item?.id).startsWith("dues_"))
-      .map((d) => d.period)
-  );
-
-  const missingDuesEntries = duesEntries.filter((d) => !duesPeriodsInRows.has(d.period));
-
-  const cleanManual = rows.filter((item) => {
-    return true;
-  });
-
-  const combined = [...missingDuesEntries, ...cleanManual];
-  combined.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
-  setLocalData(key, combined);
-
-  // Jika ada missingDuesEntries dan API aktif, sinkronkan ke MySQL di background
-  if (isClient() && API_CONFIG.USE_REMOTE_API && missingDuesEntries.length > 0) {
-    fetch("/api/cashbook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(missingDuesEntries),
-    }).catch(() => {});
-  }
-
-  return combined;
+  return null;
 }
 
 export async function addCashBookEntry(entry, satker) {
   const targetSatker = satker || entry?.satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_cashbook`;
+  const entryDate = entry.date || new Date().toISOString().split("T")[0];
+  const derivedPeriod = entry.period || derivePeriodFromDate(entryDate);
 
-  const raw = getLocalData(key, []);
-  const nextId = raw.length > 0 ? Math.max(...raw.map((c) => Number(c.id) || 0), 0) + 1 : 1;
   const newEntry = {
     ...entry,
-    id: entry.id || nextId,
+    period: derivedPeriod || null,
     satker: targetSatker,
-    date: entry.date || new Date().toISOString().split("T")[0],
+    date: entryDate,
     source: entry.source || "manual",
   };
-  const updated = [newEntry, ...(Array.isArray(raw) ? raw : [])];
-  setLocalData(key, updated);
 
-  if (isClient()) {
-    try {
-      fetch("/api/cashbook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newEntry),
-      }).catch((e) => console.warn("Sync to DB failed:", e));
-    } catch (e) {}
+  try {
+    await fetch("/api/cashbook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newEntry),
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal simpan mutasi kas ke MySQL:", e);
   }
 
+  await refreshPeriodsWithData(targetSatker);
   return fetchCashBook(targetSatker);
 }
 
@@ -748,510 +471,294 @@ export async function addCashBookEntriesBatch(newEntries = [], satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   if (!Array.isArray(newEntries) || newEntries.length === 0) return fetchCashBook(targetSatker);
 
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_cashbook`;
-
-  const raw = getLocalData(key, []);
-  let maxId = raw.length > 0 ? Math.max(...raw.map((c) => Number(c.id) || 0), 0) : 0;
-
   const preparedEntries = newEntries.map((entry) => {
-    maxId++;
+    const entryDate = entry.date || new Date().toISOString().split("T")[0];
+    const derivedPeriod = entry.period || derivePeriodFromDate(entryDate);
     return {
       ...entry,
-      id: entry.id || `CB-${Date.now()}-${maxId}`,
+      period: derivedPeriod || null,
       satker: targetSatker,
-      date: entry.date || new Date().toISOString().split("T")[0],
+      date: entryDate,
       source: entry.source || "manual",
     };
   });
 
-  // Deduplikasi berdasarkan id agar tidak dobel saat re-import
-  const existingMap = new Map();
-  if (Array.isArray(raw)) {
-    raw.forEach((item) => {
-      if (item && item.id) existingMap.set(String(item.id), item);
+  try {
+    await fetch("/api/cashbook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(preparedEntries),
     });
-  }
-  preparedEntries.forEach((item) => {
-    existingMap.set(String(item.id), item);
-  });
-  const updated = Array.from(existingMap.values());
-  setLocalData(key, updated);
-
-  if (isClient()) {
-    try {
-      await fetch("/api/cashbook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(preparedEntries),
-      });
-    } catch (e) {
-      console.warn("Sync batch to DB failed:", e);
-    }
+  } catch (e) {
+    console.error("[StorageService] Gagal simpan batch kas ke MySQL:", e);
   }
 
+  await refreshPeriodsWithData(targetSatker);
   return fetchCashBook(targetSatker);
 }
 
 export async function deleteCashBookEntry(id, satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_cashbook`;
 
   if (String(id).startsWith("dues_")) {
     const targetPeriod = String(id).replace("dues_", "");
-    clearPeriodData(targetPeriod, targetSatker);
+    await clearPeriodData(targetPeriod, targetSatker);
   }
 
-  const raw = getLocalData(key, []);
-  const updated = (Array.isArray(raw) ? raw : []).filter((c) => String(c.id) !== String(id));
-  setLocalData(key, updated);
-  if (slug === "pengadilan_agama_gunung_sugih") {
-    setLocalData(STORAGE_KEYS.CASHBOOK, updated);
-  }
-
-  if (isClient()) {
-    try {
-      fetch(`/api/cashbook?id=${encodeURIComponent(id)}&satker=${encodeURIComponent(targetSatker)}`, {
-        method: "DELETE",
-      }).catch((e) => console.warn("Sync delete to DB failed:", e));
-    } catch (e) {}
+  try {
+    await fetch(`/api/cashbook?id=${encodeURIComponent(id)}&satker=${encodeURIComponent(targetSatker)}`, {
+      method: "DELETE",
+    });
+  } catch (e) {
+    console.error("[StorageService] Gagal hapus mutasi kas dari MySQL:", e);
   }
 
   return fetchCashBook(targetSatker);
 }
 
-// Fallback aman untuk kompabilitas modul turnamen
 export async function fetchTournaments() {
   return [];
 }
 
-
 // ==========================================
-// 4. PENGATURAN INSTANSI & TTD
+// 3. PENGATURAN SATKER & PEJABAT (MySQL)
 // ==========================================
 
-export function fetchSettings(satker) {
-  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_settings`;
-  let data = getLocalData(key, null);
+let inMemorySettings = {};
 
-  // Fallback data lama Gunung Sugih
-  if (data === null && slug === "pengadilan_agama_gunung_sugih") {
-    data = getLocalData(STORAGE_KEYS.SETTINGS, null);
-    if (data) {
-      setLocalData(key, data);
-    }
-  }
-
-  if (data) return data;
-
-  const defaultCity = targetSatker.replace("Pengadilan Agama ", "").replace("Pengadilan Tinggi Agama ", "").trim();
-  const def = {
-    ...DEFAULT_SETTINGS,
+function getDefaultSettings(targetSatker) {
+  const defaultCity = targetSatker.replace("Pengadilan Agama ", "").replace("Pengadilan Tinggi Agama ", "").trim() || "Gunung Sugih";
+  return {
     satker: targetSatker,
     institution: targetSatker.toUpperCase(),
     branch: `CABANG ${targetSatker.toUpperCase()}`,
-    city: defaultCity || "Indonesia",
-    treasurerName: `Bendahara ${targetSatker.replace("Pengadilan Agama ", "PA ").replace("Pengadilan Tinggi Agama ", "PTA ")}`,
-    treasurerTitle: "Bendahara Cabang",
-    chairmanName: `Ketua ${targetSatker.replace("Pengadilan Agama ", "PA ").replace("Pengadilan Tinggi Agama ", "PTA ")}`,
+    city: defaultCity,
+    treasurerName: "Wulan Febrianti, A.Md",
+    treasurer_name: "Wulan Febrianti, A.Md",
+    treasurerTitle: "Bendahara Kantor",
+    treasurer_title: "Bendahara Kantor",
+    chairmanName: "Dr. H. Al Fitri",
+    chairperson_name: "Dr. H. Al Fitri",
     chairmanTitle: "Ketua Cabang PTWP",
+    chairperson_title: "Ketua Cabang PTWP",
     bank_name: "Bank Syariah Indonesia (BSI)",
     bank_account: "",
     bank_holder: `PTWP Cabang ${targetSatker}`,
   };
-  return def;
 }
 
-export function saveSettings(newSettings, satker) {
-  const targetSatker = satker || newSettings?.satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  const slug = getSafeSatkerSlug(targetSatker);
-  const key = `ptwp_${slug}_settings`;
-  setLocalData(key, newSettings);
-  if (slug === "pengadilan_agama_gunung_sugih") {
-    setLocalData(STORAGE_KEYS.SETTINGS, newSettings);
+export function fetchSettings(satker) {
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  if (isClient()) {
+    fetch(`/api/settings?satker=${encodeURIComponent(targetSatker)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          inMemorySettings[targetSatker] = json.data;
+        }
+      })
+      .catch(() => {});
   }
-  return newSettings;
+  return inMemorySettings[targetSatker] || getDefaultSettings(targetSatker);
+}
+
+export async function saveSettings(newSettings, satker) {
+  const targetSatker = satker || newSettings?.satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  inMemorySettings[targetSatker] = { ...newSettings, satker: targetSatker };
+
+  if (isClient()) {
+    try {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newSettings, satker: targetSatker }),
+      });
+    } catch (e) {
+      console.error("[StorageService] Gagal menyimpan pengaturan ke MySQL:", e);
+    }
+  }
+
+  return inMemorySettings[targetSatker];
 }
 
 // ==========================================
-// 5. AUTENTIKASI (LOGIN & REGISTRASI)
+// 4. AUTENTIKASI & PENGGUNA (MySQL)
 // ==========================================
 
 export const INITIAL_USERS = [
   {
     username: "user test",
-    phone: "08111222333",
-    password: "admin123",
-    name: "user test",
-    role: "pegawai",
-    roleLabel: "Pegawai PA Gunung Sugih",
-    title: "Pegawai",
+    name: "User Test PA Gunung Sugih",
     satker: "Pengadilan Agama Gunung Sugih",
-    level: "cabang",
+    role: "bendahara",
   },
   {
     username: "bendahara",
-    phone: "08123456789",
-    password: "123",
     name: "Bendahara PA Gunung Sugih",
-    role: "bendahara",
-    roleLabel: "Bendahara Cabang PA Gunung Sugih",
-    title: "Bendahara",
     satker: "Pengadilan Agama Gunung Sugih",
-    level: "cabang",
-  },
-  {
-    username: "bendahara_metro",
-    phone: "08129876543",
-    password: "admin123",
-    name: "Rudi Hermawan, S.E.",
     role: "bendahara",
-    roleLabel: "Bendahara Cabang PA Metro",
-    title: "Bendahara Cabang",
-    satker: "Pengadilan Agama Metro",
-    level: "cabang",
-  },
-  {
-    username: "admin_pusat",
-    phone: "08119876543",
-    password: "admin123",
-    name: "Dr. H. Pengurus Pusat, S.H., M.H.",
-    role: "pusat",
-    roleLabel: "Pengurus Pusat PTWP MA-RI",
-    title: "Pengurus Pusat",
-    satker: "Mahkamah Agung RI",
-    level: "pusat",
-  },
-  {
-    username: "Aku admin",
-    phone: "081199998888",
-    password: "Adminbaik123.com",
-    name: "Super Administrator PTWP",
-    role: "super_admin",
-    roleLabel: "Super Administrator Sistem",
-    title: "Administrator Utama",
-    satker: "Seluruh Satuan Kerja",
-    level: "super_admin",
   },
   {
     username: "bendahara_pta",
-    phone: "08117200001",
-    password: "123",
     name: "Tata Usaha PTA",
-    role: "bendahara",
-    roleLabel: "Bendahara PTWP Daerah PTA Bandar Lampung",
-    title: "Bendahara Daerah",
     satker: "Pengadilan Tinggi Agama Bandar Lampung",
-    level: "daerah",
+    role: "bendahara",
   },
   {
-    username: "pta_bandarlampung",
-    phone: "08117200002",
-    password: "123",
-    name: "Pengurus PTA Bandar Lampung",
-    role: "pimpinan",
-    roleLabel: "Pengurus PTWP Daerah PTA Bandar Lampung",
-    title: "Pimpinan Daerah",
-    satker: "Pengadilan Tinggi Agama Bandar Lampung",
-    level: "daerah",
+    username: "Aku admin",
+    name: "Super Administrator PTWP",
+    satker: "Mahkamah Agung RI",
+    role: "super_admin",
   },
 ];
 
+let inMemoryUsers = [];
+
 export function getRegisteredUsers() {
-  const stored = getLocalData("ptwp_registered_users", []);
-  const storedList = Array.isArray(stored) ? stored : [];
-
-  // Merge INITIAL_USERS ensuring designated satker & password exist
-  const mergedMap = new Map();
-
-  INITIAL_USERS.forEach((initUser) => {
-    mergedMap.set(initUser.username.toLowerCase(), { ...initUser });
-  });
-
-  storedList.forEach((user) => {
-    if (user && user.username) {
-      const key = user.username.toLowerCase();
-      const existing = mergedMap.get(key);
-      mergedMap.set(key, {
-        ...(existing || {}),
-        ...user,
-        // Pastikan satker tidak kosong
-        satker: user.satker || (existing ? existing.satker : "Pengadilan Agama Gunung Sugih"),
-      });
-    }
-  });
-
-  return Array.from(mergedMap.values());
+  if (isClient() && inMemoryUsers.length === 0) {
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) {
+          inMemoryUsers = json.data;
+        }
+      })
+      .catch(() => {});
+  }
+  return inMemoryUsers.length > 0 ? inMemoryUsers : INITIAL_USERS;
 }
 
 export function getCurrentUser() {
   if (!isClient()) return null;
   try {
-    const sessionUser = sessionStorage.getItem(STORAGE_KEYS.AUTH_USER);
-    if (sessionUser) {
-      const parsed = JSON.parse(sessionUser);
-      if (parsed && parsed.name && parsed.name.includes("Wulan Febrianti")) {
-        return null;
-      }
-      return parsed;
-    }
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch (e) {
-    console.error("Error reading session user", e);
+    return null;
   }
-  return null;
 }
 
-/**
- * Verifikasi kredensial login dengan RBAC (Role-Based Access Control) & Satker Authorization
- * Pengguna hanya diizinkan masuk jika username & password cocok serta terdaftar pada Satker yang dipilih.
- */
-export function verifyCredentials(selectedSatker, identifier, password) {
-  const users = getRegisteredUsers();
-  const cleanId = String(identifier || "").trim().toLowerCase();
-  const cleanPassword = String(password || "").trim();
-
-  // 1. Cari pengguna berdasarkan username, nomor WhatsApp, atau nama lengkap
-  const user = users.find(
-    (u) =>
-      String(u.username || "").toLowerCase() === cleanId ||
-      String(u.phone || "") === cleanId ||
-      String(u.email || "").toLowerCase() === cleanId ||
-      String(u.name || "").toLowerCase() === cleanId
-  );
-
-  if (!user) {
-    return {
-      success: false,
-      error: "Akun tidak terdaftar. Pastikan Username, NIP, atau Satuan Kerja yang dipilih sudah benar.",
-    };
+export async function verifyCredentials(selectedSatker, identifier, password) {
+  try {
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ satker: selectedSatker, identifier, password }),
+    });
+    const json = await res.json();
+    return json;
+  } catch (e) {
+    return { success: false, error: "Gagal terhubung ke server database." };
   }
-
-  // 2. Verifikasi Password
-  const isSuperAdmin = user.role === "super_admin" || user.level === "super_admin";
-  const expectedPassword = user.password || "admin123";
-
-  if (isSuperAdmin) {
-    if (cleanPassword !== expectedPassword) {
-      return {
-        success: false,
-        error: "Kata sandi Administrator salah. Silakan periksa kembali.",
-      };
-    }
-  } else {
-    if (
-      cleanPassword !== expectedPassword &&
-      cleanPassword !== "admin123" &&
-      cleanPassword !== "123"
-    ) {
-      return {
-        success: false,
-        error: "Kata sandi yang Anda masukkan salah. Silakan periksa kembali.",
-      };
-    }
-  }
-
-  // 3. Verifikasi Satker
-  const isPusat = user.role === "pusat" || user.level === "pusat";
-  const userSatker = user.satker || "Pengadilan Agama Gunung Sugih";
-
-  if (!isSuperAdmin && !isPusat && selectedSatker) {
-    const normUserSatker = String(userSatker || "").trim().toLowerCase();
-    const normSelectedSatker = String(selectedSatker || "").trim().toLowerCase();
-
-    if (normSelectedSatker && normUserSatker !== normSelectedSatker) {
-      return {
-        success: false,
-        error: `Akun ini terdaftar pada ${userSatker}. Silakan pilih Satuan Kerja yang sesuai.`,
-        registeredSatker: userSatker,
-      };
-    }
-  }
-
-  const activeSatker = isSuperAdmin
-    ? "Seluruh Satuan Kerja (Super Admin)"
-    : isPusat
-    ? (selectedSatker || "Mahkamah Agung RI")
-    : (userSatker || selectedSatker || "Pengadilan Agama Gunung Sugih");
-
-  return {
-    success: true,
-    user: {
-      ...user,
-      satker: activeSatker,
-    },
-  };
 }
 
-export function loginUser(identifier, password, selectedSatker) {
-  let user = null;
-  // Jika identifier sudah merupakan object user yang terverifikasi
-  if (typeof identifier === "object" && identifier !== null) {
-    user = identifier;
-  } else {
-    const verification = verifyCredentials(selectedSatker, identifier, password);
-    if (verification.success) {
-      user = verification.user;
-    }
-  }
-
-  if (user) {
-    if (isClient()) {
-      try {
-        sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(user));
-        sessionStorage.setItem("ptwp_session_active", "true");
-        localStorage.removeItem("ptwp_is_logged_out");
-      } catch (e) {}
-    }
-    return user;
-  }
-  return null;
+export function loginUser(userData, password, selectedSatker) {
+  if (!isClient()) return userData;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+  } catch (e) {}
+  return userData;
 }
 
-export function registerUser(userData) {
-  const users = getRegisteredUsers();
-  const newUser = {
-    username: userData.username || userData.name.toLowerCase().replace(/\s+/g, "_"),
-    phone: userData.phone || "",
-    password: userData.password || "admin123",
-    name: userData.name,
-    title: userData.title || "Staf",
-    role: userData.role || "anggota",
-    roleLabel: userData.role === "bendahara" ? "Bendahara Kantor" : "Pegawai / Anggota",
-    satker: userData.satker || "Pengadilan Agama Gunung Sugih",
-    level: userData.level || "cabang",
-  };
-
-  const updatedUsers = [...users.filter((u) => u.username !== newUser.username), newUser];
-  setLocalData("ptwp_registered_users", updatedUsers);
-  if (isClient()) {
-    try {
-      sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(newUser));
-      sessionStorage.setItem("ptwp_session_active", "true");
-    } catch (e) {}
+export async function registerUser(userData) {
+  try {
+    const res = await fetch("/api/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: "Gagal mengirim pendaftaran ke server." };
   }
-  return newUser;
 }
 
 export function logoutUser() {
-  if (isClient()) {
-    try {
-      sessionStorage.removeItem(STORAGE_KEYS.AUTH_USER);
-      sessionStorage.removeItem("ptwp_session_active");
-    } catch (e) {}
-    localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
-    localStorage.setItem("ptwp_is_logged_out", "true");
-  }
+  if (!isClient()) return;
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch (e) {}
 }
 
-
-
-// ==========================================
-// 6. MANAJEMEN PENGAJUAN AKUN & PENGGUNA (SUPER ADMIN)
-// ==========================================
+let inMemoryRequests = [];
 
 export function getAccountRequests() {
-  return getLocalData("ptwp_account_requests", []);
+  if (isClient() && inMemoryRequests.length === 0) {
+    fetch("/api/requests")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) {
+          inMemoryRequests = json.data;
+        }
+      })
+      .catch(() => {});
+  }
+  return inMemoryRequests;
 }
 
-export function saveAccountRequests(requests) {
-  setLocalData("ptwp_account_requests", requests);
+export async function saveAccountRequests(requests) {
   return requests;
 }
 
-export function approveAccountRequest(requestId, initialPassword = "123") {
-  const requests = getAccountRequests();
-  const req = requests.find((r) => r.id === requestId);
-  if (!req) return { success: false, error: "Permohonan tidak ditemukan." };
-
-  req.status = "approved";
-  req.approvedAt = new Date().toISOString();
-  saveAccountRequests(requests);
-
-  const generatedUsername = req.email
-    ? req.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_")
-    : req.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
-
-  // Utamakan kata sandi yang telah ditentukan sendiri oleh pemohon
-  const userPassword = (req.password && String(req.password).trim()) ? String(req.password).trim() : initialPassword;
-
-  const newUser = {
-    username: generatedUsername,
-    password: userPassword,
-    name: req.name,
-    phone: req.phone || "",
-    email: req.email || "",
-    satker: req.satker || "Pengadilan Agama Gunung Sugih",
-    title: req.title || "Pegawai",
-    role: "anggota",
-    roleLabel: "Pegawai / Anggota Satker",
-    level: "cabang",
-    status: "active",
-    createdAt: new Date().toISOString(),
-  };
-
-  const users = getRegisteredUsers();
-  const updatedUsers = [...users.filter((u) => u.username.toLowerCase() !== generatedUsername.toLowerCase()), newUser];
-  setLocalData("ptwp_registered_users", updatedUsers);
-
-  return { success: true, user: newUser, request: req };
-}
-
-export function rejectAccountRequest(requestId) {
-  const requests = getAccountRequests();
-  const req = requests.find((r) => r.id === requestId);
-  if (!req) return { success: false, error: "Permohonan tidak ditemukan." };
-
-  req.status = "rejected";
-  req.rejectedAt = new Date().toISOString();
-  saveAccountRequests(requests);
-  return { success: true, request: req };
-}
-
-export function deleteAccountRequest(requestId) {
-  const requests = getAccountRequests();
-  const updated = requests.filter((r) => r.id !== requestId);
-  saveAccountRequests(updated);
-  return { success: true };
-}
-
-export function deleteRegisteredUser(username) {
-  const users = getRegisteredUsers();
-  const clean = String(username || "").toLowerCase();
-  if (clean === "aku admin") {
-    return { success: false, error: "Akun Super Administrator tidak dapat dihapus." };
+export async function approveAccountRequest(requestId, initialPassword = "123") {
+  try {
+    const res = await fetch("/api/requests", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: requestId, action: "approve" }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
   }
-  const updated = users.filter((u) => u.username.toLowerCase() !== clean);
-  setLocalData("ptwp_registered_users", updated);
-  return { success: true };
 }
 
-export function addDirectUser(userData) {
-  const users = getRegisteredUsers();
-  const cleanUname = (userData.username || "").trim().toLowerCase();
-  if (!cleanUname) return { success: false, error: "Username wajib diisi." };
+export async function rejectAccountRequest(requestId) {
+  try {
+    const res = await fetch("/api/requests", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: requestId, action: "reject" }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
 
-  const existing = users.find((u) => u.username.toLowerCase() === cleanUname);
-  if (existing) return { success: false, error: "Username sudah terdaftar." };
+export async function deleteAccountRequest(requestId) {
+  try {
+    const res = await fetch(`/api/requests?id=${encodeURIComponent(requestId)}`, {
+      method: "DELETE",
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
 
-  const newUser = {
-    username: userData.username.trim(),
-    password: userData.password || "admin123",
-    name: userData.name || userData.username,
-    phone: userData.phone || "",
-    email: userData.email || "",
-    satker: userData.satker || "Pengadilan Agama Gunung Sugih",
-    title: userData.title || "Staf",
-    role: userData.role || "anggota",
-    roleLabel: userData.role === "bendahara" ? "Bendahara Cabang" : "Pegawai / Anggota Satker",
-    level: "cabang",
-    status: "active",
-    createdAt: new Date().toISOString(),
-  };
+export async function deleteRegisteredUser(username) {
+  try {
+    const res = await fetch(`/api/users?username=${encodeURIComponent(username)}`, {
+      method: "DELETE",
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
 
-  const updatedUsers = [...users, newUser];
-  setLocalData("ptwp_registered_users", updatedUsers);
-  return { success: true, user: newUser };
+export async function addDirectUser(userData) {
+  try {
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }

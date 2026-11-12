@@ -8,6 +8,18 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "September 2026";
     const satker = searchParams.get("satker") || "Pengadilan Agama Gunung Sugih";
+    const getPeriods = searchParams.get("getPeriods");
+
+    // Jika minta daftar periode yang memiliki data di MySQL
+    if (getPeriods === "true") {
+      const rows = await query(
+        `SELECT DISTINCT period FROM members WHERE satker = ?
+         UNION
+         SELECT DISTINCT period FROM cashbook WHERE satker = ? AND period IS NOT NULL`,
+        [satker, satker]
+      );
+      return NextResponse.json({ success: true, periods: rows.map((r) => r.period).filter(Boolean) });
+    }
 
     // 1. Query members spesifik untuk Satker dan Periode bulan ini
     let members = await query(
@@ -169,7 +181,7 @@ export async function POST(request) {
     }
 
     // Aksi 3: Simpan Banyak Periode Sekaligus (Import Multi-Sheet 9-12 Bulan)
-    if (action === "save_multiple_periods" && Array.isArray(periodsData)) {
+    if ((action === "save_multiple_periods" || action === "save_multi_periods") && Array.isArray(periodsData)) {
       if (periodsData.length === 0) return NextResponse.json({ success: true, count: 0 });
 
       const chunkSize = 50;
@@ -225,18 +237,21 @@ export async function POST(request) {
         }
 
         // 2. Simpan dues_records untuk periode ini
-        const duesRecords = list.map((m, idx) => [
-          p,
-          currentSatker,
-          String(m.id || m.no || idx + 1),
-          typeof m.paid !== "undefined" ? (m.paid ? 1 : 0) : 1,
-          m.paid ? (m.paidDate || new Date().toISOString().split("T")[0]) : null,
-        ]);
-
-        for (let i = 0; i < duesRecords.length; i += chunkSize) {
-          const chunk = duesRecords.slice(i, i + chunkSize);
+        for (let i = 0; i < list.length; i += chunkSize) {
+          const chunk = list.slice(i, i + chunkSize);
           const placeholders = chunk.map(() => "(?, ?, ?, ?, ?)").join(", ");
-          const flatValues = chunk.flat();
+          const flatValues = chunk.flatMap((m, idx) => {
+            const mId = String(m.id || m.no || (i + idx + 1));
+            const isPaid = typeof m.paid !== "undefined" ? (m.paid ? 1 : 0) : 1;
+            const pDate = m.paid ? (m.paidDate || new Date().toISOString().split("T")[0]) : null;
+            return [
+              p,
+              currentSatker,
+              mId,
+              isPaid,
+              pDate,
+            ];
+          });
 
           await query(
             `INSERT INTO dues_records (period, satker, member_id, paid, paid_date)

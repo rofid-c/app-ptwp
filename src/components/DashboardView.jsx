@@ -297,24 +297,6 @@ export default function DashboardView({
     ? members
     : cachedPeriodMembers[inspectedPeriod];
 
-  if (!inspectedMembers) {
-    if (typeof window !== "undefined") {
-      try {
-        const targetSatker = currentUser?.satker || "Pengadilan Agama Gunung Sugih";
-        const slug = targetSatker.toLowerCase().replace(/[^a-z0-9]/g, "_");
-        const raw =
-          localStorage.getItem(`ptwp_${slug}_members_${inspectedPeriod}`) ||
-          localStorage.getItem(`ptwp_members_${inspectedPeriod}`);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            inspectedMembers = parsed;
-          }
-        }
-      } catch (e) {}
-    }
-  }
-
   // Fallback: Jika belum ada rekap khusus untuk bulan ini, gunakan master anggota
   // TETAP simpan nominal tagihan riil dari master (jangan di-nol-kan!) agar target grup tetap akurat
   if (!inspectedMembers || inspectedMembers.length === 0) {

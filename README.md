@@ -10,7 +10,7 @@
 [![Design](https://img.shields.io/badge/Design-Google%20Stitch%20Tokens-0F5132?style=for-the-badge)](https://fonts.google.com/)
 
 > **Aplikasi Sistem Informasi Terpadu Pengelolaan Iuran, Kas, Turnamen, dan Monitoring Multi-Satker PTWP (Persatuan Tenis Warga Peradilan) Mahkamah Agung Republik Indonesia.**  
-> Dirancang responsif (*mobile-first & desktop-optimized*) dengan arsitektur hybrid (*Next.js App Router + MySQL Backend + Offline-First Local Cache*) serta integrasi Ekspor/Impor Microsoft Excel otomatis sesuai standar resmi kedinasan peradilan.
+> Dirancang responsif (*mobile-first & desktop-optimized*) dengan arsitektur murni terpusat (*Next.js App Router + MySQL Database Backend di Laragon*) serta integrasi Ekspor/Impor Microsoft Excel otomatis sesuai standar resmi kedinasan peradilan.
 
 ---
 
@@ -46,34 +46,35 @@ Dalam operasional perbendaharaan pada satuan kerja tingkat cabang maupun daerah 
 
 ## 🛠️ Arsitektur Sistem & Teknologi
 
-PTWP-Hub dibangun dengan arsitektur **Hybrid Dual-Engine** yang menjamin aplikasi tetap berkinerja tinggi, responsif, dan tahan terhadap gangguan koneksi:
+PTWP-Hub dibangun dengan arsitektur **Pure MySQL Database Backend** yang terhubung langsung ke mesin basis data MySQL di Laragon:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       Client Layer                          │
 │   Next.js 14 (React 18) SPA • Google Stitch Design Tokens   │
 │   Desktop Smart Table View • Mobile Adaptive Card View      │
-└──────────────┬──────────────────────────────┬───────────────┘
-               │                              │
-     (Local Cache / Offline-First)    (REST API Fetch / JSON)
-               │                              │
-               ▼                              ▼
-┌─────────────────────────────┐  ┌────────────────────────────┐
-│   Browser Local Storage     │  │   Next.js App Router API   │
-│  - Instant UI Response      │  │  - /api/dues               │
-│  - Offline Session Data     │  │  - /api/cashbook           │
-│  - Fallback Redundancy      │  │  - /api/users & /api/auth  │
-└─────────────────────────────┘  │  - /api/satker & /settings │
-                                 └──────────────┬─────────────┘
-                                                │ (mysql2 pool)
-                                                ▼
-                                 ┌────────────────────────────┐
-                                 │     MySQL Database Engine  │
-                                 │      `db_ptwp` (Laragon)   │
-                                 │  - Multi-tenant Satker     │
-                                 │  - Composite Primary Keys  │
-                                 │  - Audit Timestamp Logs    │
-                                 └────────────────────────────┘
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                    (REST API Fetch / JSON)
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Next.js App Router API                    │
+│   - /api/dues (Iuran & Anggota) • /api/cashbook (Buku Kas)  │
+│   - /api/users & /api/auth • /api/satker & /api/settings    │
+│   - /api/requests (Pengajuan Akun) • /api/status            │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                        (mysql2 pool)
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   MySQL Database Engine                     │
+│                    `db_ptwp` (Laragon)                      │
+│   - Multi-tenant Satker Isolation (14 Satker Cabang + PTA)  │
+│   - Composite Primary Keys: PRIMARY KEY (satker, period, id)│
+│   - Audit Timestamp Logs & Auto Sync Transactional Data     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 - **Framework**: [Next.js 14 (App Router)](https://nextjs.org/) — Menghadirkan performa render kilat, arsitektur modular, dan API routes terpadu.
