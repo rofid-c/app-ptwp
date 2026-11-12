@@ -4,6 +4,72 @@ import { enforceSatkerAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Sinkronisasi otomatis penerimaan iuran suatu periode ke tabel cashbook di database MySQL.
+ * Menghitung ulang total anggota, total lunas, dan total nominal yang terkumpul.
+ */
+async function syncPeriodDuesToCashbook(satker, period, actorName = "Sistem") {
+  if (!satker || !period) return;
+
+  const rows = await query(
+    `SELECT 
+       COUNT(*) AS total_members,
+       COALESCE(SUM(CASE WHEN COALESCE(d.paid, m.paid, 0) = 1 THEN 1 ELSE 0 END), 0) AS paid_count,
+       COALESCE(SUM(CASE WHEN COALESCE(d.paid, m.paid, 0) = 1 THEN (m.pusat + m.daerah + m.cabang + m.tournamen) ELSE 0 END), 0) AS total_collected
+     FROM members m
+     LEFT JOIN dues_records d ON m.id = d.member_id AND d.period = m.period AND d.satker = m.satker
+     WHERE m.satker = ? AND m.period = ?`,
+    [satker, period]
+  );
+
+  const stats = rows && rows.length > 0 ? rows[0] : null;
+  const totalMembers = Number(stats?.total_members || 0);
+  const paidCount = Number(stats?.paid_count || 0);
+  const totalCollected = Number(stats?.total_collected || 0);
+  const duesId = `dues_${period}`;
+
+  if (totalMembers === 0) {
+    await query(`DELETE FROM cashbook WHERE satker = ? AND id = ?`, [satker, duesId]);
+    return;
+  }
+
+  const monthNumMap = {
+    januari: "01", februari: "02", maret: "03", april: "04",
+    mei: "05", juni: "06", juli: "07", agustus: "08",
+    september: "09", oktober: "10", november: "11", desember: "12"
+  };
+  const parts = period.split(" ");
+  const mLower = (parts[0] || "").toLowerCase();
+  const mYear = parts[1] || new Date().getFullYear();
+  const mm = monthNumMap[mLower] || "01";
+  const defaultDate = `${mYear}-${mm}-28`;
+
+  const existingCb = await query(
+    `SELECT date, amount FROM cashbook WHERE satker = ? AND id = ?`,
+    [satker, duesId]
+  );
+  const entryDate = existingCb && existingCb.length > 0 && existingCb[0].date ? existingCb[0].date : defaultDate;
+
+  if (totalCollected > 0) {
+    const description = `Penerimaan Iuran PTWP Periode ${period} (${paidCount}/${totalMembers} Pegawai Lunas)`;
+    await query(
+      `INSERT INTO cashbook (id, satker, date, type, category, amount, description, source, period)
+       VALUES (?, ?, ?, 'in', 'Iuran Anggota', ?, ?, 'rekap_iuran', ?)
+       ON DUPLICATE KEY UPDATE 
+         amount = VALUES(amount),
+         description = VALUES(description),
+         source = VALUES(source),
+         period = VALUES(period),
+         type = 'in',
+         category = 'Iuran Anggota'`,
+      [duesId, satker, entryDate, totalCollected, description, period]
+    );
+  } else {
+    // Jika tidak ada iuran terkumpul sama sekali (0 pegawai lunas), hapus baris pemasukan dari buku kas
+    await query(`DELETE FROM cashbook WHERE satker = ? AND id = ?`, [satker, duesId]);
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -151,6 +217,9 @@ export async function POST(request) {
         console.error("[Audit Trail Log Error]:", auditErr.message);
       }
 
+      // 5. Sinkronisasi otomatis penerimaan iuran ke tabel buku kas (cashbook)
+      await syncPeriodDuesToCashbook(currentSatker, currentPeriod, actorName);
+
       return NextResponse.json({ success: true });
     }
 
@@ -251,6 +320,9 @@ export async function POST(request) {
           ]
         );
       } catch (e) {}
+
+      // 3. Sinkronisasi otomatis penerimaan iuran ke tabel buku kas (cashbook)
+      await syncPeriodDuesToCashbook(currentSatker, currentPeriod, actorName);
 
       return NextResponse.json({ success: true, count: membersList.length });
     }
@@ -359,6 +431,13 @@ export async function POST(request) {
         );
       } catch (e) {}
 
+      // 3. Sinkronisasi otomatis penerimaan iuran setiap periode ke tabel cashbook
+      for (const item of periodsData) {
+        if (item.period) {
+          await syncPeriodDuesToCashbook(currentSatker, item.period, actorName);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         periodsCount: periodsData.length,
@@ -366,7 +445,7 @@ export async function POST(request) {
     }
 
     // Aksi 4: Tambah / Update 1 anggota
-    if (action === "upsert_member" && memberData) {
+    if ((action === "upsert_member" || action === "update_member" || action === "add_member") && memberData) {
       const id = String(memberData.id || `M-${Date.now()}`);
       const isPaid = memberData.paid ? 1 : 0;
       const pDate = memberData.paid ? (memberData.paidDate || new Date().toISOString().split("T")[0]) : null;
@@ -434,6 +513,9 @@ export async function POST(request) {
         );
       } catch (e) {}
 
+      // Sinkronisasi otomatis penerimaan iuran ke tabel buku kas (cashbook)
+      await syncPeriodDuesToCashbook(currentSatker, currentPeriod, actorName);
+
       return NextResponse.json({ success: true, id });
     }
 
@@ -462,6 +544,7 @@ export async function DELETE(request) {
     if (clearAll === "true") {
       await query("DELETE FROM dues_records WHERE satker = ?", [satker]);
       await query("DELETE FROM members WHERE satker = ?", [satker]);
+      await query("DELETE FROM cashbook WHERE satker = ? AND source = 'rekap_iuran'", [satker]);
 
       try {
         await query(
@@ -477,6 +560,7 @@ export async function DELETE(request) {
     if (period) {
       await query("DELETE FROM dues_records WHERE satker = ? AND period = ?", [satker, period]);
       await query("DELETE FROM members WHERE satker = ? AND period = ?", [satker, period]);
+      await query("DELETE FROM cashbook WHERE satker = ? AND (period = ? OR id = ?) AND source = 'rekap_iuran'", [satker, period, `dues_${period}`]);
 
       try {
         await query(
@@ -491,6 +575,10 @@ export async function DELETE(request) {
 
     if (!memberId) return NextResponse.json({ success: false, error: "memberId wajib diisi." });
 
+    // Ambil periode anggota sebelum dihapus agar dapat menyinkronkan cashbook
+    const memberRows = await query("SELECT period FROM members WHERE id = ? AND satker = ?", [memberId, satker]);
+    const affectedPeriods = [...new Set(memberRows.map((r) => r.period).filter(Boolean))];
+
     await query("DELETE FROM dues_records WHERE member_id = ? AND satker = ?", [memberId, satker]);
     await query("DELETE FROM members WHERE id = ? AND satker = ?", [memberId, satker]);
 
@@ -501,6 +589,11 @@ export async function DELETE(request) {
         [satker, actorName, memberId, `Penghapusan data anggota ID ${memberId} dari satuan kerja ${satker}.`]
       );
     } catch (e) {}
+
+    // Sinkronkan cashbook untuk setiap periode yang terdampak oleh penghapusan anggota
+    for (const p of affectedPeriods) {
+      await syncPeriodDuesToCashbook(satker, p, actorName);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

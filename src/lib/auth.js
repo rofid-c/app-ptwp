@@ -230,3 +230,4 @@ export function enforceSatkerAccess(request, requestedSatker, action = "read") {
     targetSatker: user.satker,
   };
 }
+

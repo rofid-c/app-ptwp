@@ -302,7 +302,7 @@ export default function HomePage() {
     const activeSatker = currentUser?.satker || "Pengadilan Agama Gunung Sugih";
     const updated = await toggleMemberPaidStatus(period, memberId, activeSatker);
     setMembers(updated);
-    reloadCashbook(activeSatker);
+    await reloadCashbook(activeSatker);
   };
 
   // Tambah / Update Member
@@ -316,7 +316,7 @@ export default function HomePage() {
       const updated = await addMember(period, memberData, activeSatker);
       setMembers(updated);
     }
-    reloadCashbook(activeSatker);
+    await reloadCashbook(activeSatker);
   };
 
   const handleEditClick = (member) => {
