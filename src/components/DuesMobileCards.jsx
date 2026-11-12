@@ -14,7 +14,6 @@ export default function DuesMobileCards({
   enableWhatsAppReminder = false, // Sesuai arahan: jadikan opsi/toggleable
   onOpenImport,
   onOpenAdd,
-  onLoadSample,
 }) {
   const formatNumber = (num) => {
     return new Intl.NumberFormat("id-ID").format(Number(num || 0));

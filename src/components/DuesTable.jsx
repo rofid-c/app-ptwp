@@ -13,7 +13,6 @@ export default function DuesTable({
   isAdmin = true,
   onOpenImport,
   onOpenAdd,
-  onLoadSample,
 }) {
   const formatNumber = (num) => {
     return new Intl.NumberFormat("id-ID").format(Number(num || 0));

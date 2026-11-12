@@ -63,7 +63,6 @@ import {
   loginUser,
   registerUser,
   logoutUser,
-  loadSampleTemplateData,
   clearPeriodData,
   clearAllPeriodsData,
   saveMultiplePeriodsData,
@@ -510,13 +509,6 @@ export default function HomePage() {
         );
       }, 300);
     }
-  };
-
-  const handleLoadSample = async () => {
-    const activeSatker = currentUser?.satker || "Pengadilan Agama Gunung Sugih";
-    const sample = loadSampleTemplateData(period, activeSatker);
-    setMembers(sample);
-    await reloadCashbook(activeSatker);
   };
 
   const handleClearData = async () => {
@@ -1456,7 +1448,6 @@ export default function HomePage() {
                       setEditingMember(null);
                       setIsMemberFormOpen(true);
                     }}
-                    onLoadSample={handleLoadSample}
                   />
 
                   <DuesMobileCards

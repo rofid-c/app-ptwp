@@ -1,8 +1,6 @@
 // Repository & Storage Service (Pure MySQL via Next.js Backend API Routes)
 // Seluruh data (Iuran Anggota, Buku Kas, Pengaturan, Akun Pengguna, Permohonan) tersimpan murni di MySQL (db_ptwp - Laragon)
 
-import { INITIAL_MEMBERS, DEFAULT_SETTINGS, INITIAL_CASHBOOK } from "@/data/initialMembers";
-
 export const API_CONFIG = {
   USE_REMOTE_API: true,
   API_BASE_URL: "/api",
@@ -96,10 +94,6 @@ export async function fetchMembersByPeriod(period = "September 2026", satker) {
     console.error("[StorageService] Gagal fetch iuran anggota dari MySQL:", e);
   }
   return [];
-}
-
-export function loadSampleTemplateData(period = "September 2026", satker) {
-  return INITIAL_MEMBERS;
 }
 
 export async function clearPeriodData(period, satker) {
