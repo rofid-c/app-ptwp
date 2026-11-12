@@ -105,16 +105,18 @@ export default function Navbar({
             <span>Portal Super Admin</span>
           </div>
         ) : activeTab === "monitoring" ? (
-          /* Khusus Monitoring Cabang: Cetak PDF di Kiri Atas */
-          <button
-            type="button"
-            className="island-print-btn"
-            onClick={onPrint}
-            title="Cetak Laporan Resmi (PDF/Print)"
-          >
-            <Printer size={15} color="#0f5132" />
-            <span className="tool-text">Cetak PDF</span>
-          </button>
+          /* Khusus Monitoring Cabang: Cetak PDF di Kiri Atas (disembunyikan pada Audit Trail) */
+          monitoringSubTab === "audit" ? null : (
+            <button
+              type="button"
+              className="island-print-btn"
+              onClick={onPrint}
+              title="Cetak Laporan Resmi (PDF/Print)"
+            >
+              <Printer size={15} color="#0f5132" />
+              <span className="tool-text">Cetak PDF</span>
+            </button>
+          )
         ) : (
           /* Halaman Selain Monitoring: Kalender di Kiri */
           <button

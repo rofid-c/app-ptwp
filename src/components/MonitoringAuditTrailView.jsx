@@ -8,7 +8,6 @@ import {
   Filter,
   RefreshCw,
   Building2,
-  Calendar,
   User,
   Clock,
   ArrowRight,
@@ -19,11 +18,7 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  Download,
-  Printer,
-  CheckCircle2,
   Layers,
-  Sparkles,
 } from "lucide-react";
 import { fetchAuditLogs } from "@/services/storageService";
 import { PA_BRANCHES } from "@/components/MonitoringCabangView";
@@ -170,110 +165,43 @@ export default function MonitoringAuditTrailView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
-      {/* 1. HEADER CARD: JUDUL, DESKRIPSI & AKSI */}
+      {/* 1. HEADER CARD: JUDUL */}
       <div
         className="stitch-card"
         style={{
           background: "var(--bg-surface, #ffffff)",
           border: "1px solid var(--border-color, #e2e8f0)",
           borderRadius: "16px",
-          padding: "20px 24px",
+          padding: "16px 20px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: "16px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          gap: "12px",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div
             style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "14px",
+              width: "40px",
+              height: "40px",
+              borderRadius: "12px",
               background: "linear-gradient(135deg, #0f5132 0%, #198754 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff",
-              boxShadow: "0 4px 12px rgba(15, 81, 50, 0.25)",
+              boxShadow: "0 2px 8px rgba(15, 81, 50, 0.2)",
             }}
           >
-            <ShieldCheck size={26} />
+            <ShieldCheck size={22} />
           </div>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <h2 style={{ fontSize: "19px", fontWeight: "700", color: "var(--text-main, #0f172a)", margin: 0 }}>
-                Jejak Rekam & Audit Trail Terpadu
-              </h2>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: "700",
-                  padding: "3px 8px",
-                  borderRadius: "20px",
-                  background: "var(--status-success-bg, #dcfce7)",
-                  color: "var(--status-success, #16a34a)",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                IMMUTABLE LOGS
-              </span>
-            </div>
-            <p style={{ fontSize: "13px", color: "var(--text-muted, #64748b)", margin: "4px 0 0 0" }}>
-              Pengawasan transparansi dan riwayat perubahan data iuran, kas, dan dokumen belanja 14 PA Cabang se-Wilayah PTA Bandar Lampung.
-            </p>
+            <h2 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main, #0f172a)", margin: 0 }}>
+              Audit Trail Terpadu
+            </h2>
           </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <button
-            type="button"
-            onClick={loadLogs}
-            disabled={loading}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "9px 16px",
-              borderRadius: "10px",
-              border: "1px solid var(--border-color, #cbd5e1)",
-              background: "var(--bg-surface, #ffffff)",
-              color: "var(--text-main, #1e293b)",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-            title="Muat ulang jejak audit terkini"
-          >
-            <RefreshCw size={15} className={loading ? "spin-animation" : ""} />
-            <span>Segarkan</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.print()}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "9px 16px",
-              borderRadius: "10px",
-              border: "none",
-              background: "var(--primary-700, #0f5132)",
-              color: "#ffffff",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(15, 81, 50, 0.2)",
-            }}
-            title="Cetak laporan jejak audit"
-          >
-            <Printer size={15} />
-            <span>Cetak Log</span>
-          </button>
         </div>
       </div>
 
@@ -281,7 +209,7 @@ export default function MonitoringAuditTrailView({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: "14px",
         }}
       >
@@ -306,9 +234,6 @@ export default function MonitoringAuditTrailView({
           <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-main, #0f172a)", marginTop: "8px" }}>
             {stats.total.toLocaleString("id-ID")}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-muted, #64748b)", marginTop: "4px" }}>
-            Terekam permanen di basis data
-          </div>
         </div>
 
         <div
@@ -331,9 +256,6 @@ export default function MonitoringAuditTrailView({
           </div>
           <div style={{ fontSize: "24px", fontWeight: "800", color: "#15803d", marginTop: "8px" }}>
             {stats.iuran.toLocaleString("id-ID")}
-          </div>
-          <div style={{ fontSize: "11px", color: "var(--text-muted, #64748b)", marginTop: "4px" }}>
-            Status bayar, import & anggota
           </div>
         </div>
 
@@ -358,9 +280,6 @@ export default function MonitoringAuditTrailView({
           <div style={{ fontSize: "24px", fontWeight: "800", color: "#0284c7", marginTop: "8px" }}>
             {stats.kas.toLocaleString("id-ID")}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-muted, #64748b)", marginTop: "4px" }}>
-            Penerimaan & pengeluaran kas
-          </div>
         </div>
 
         <div
@@ -383,9 +302,6 @@ export default function MonitoringAuditTrailView({
           </div>
           <div style={{ fontSize: "24px", fontWeight: "800", color: "#ca8a04", marginTop: "8px" }}>
             {stats.docs.toLocaleString("id-ID")}
-          </div>
-          <div style={{ fontSize: "11px", color: "var(--text-muted, #64748b)", marginTop: "4px" }}>
-            Arsip berkas belanja cabang
           </div>
         </div>
 
@@ -410,9 +326,6 @@ export default function MonitoringAuditTrailView({
           <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed", marginTop: "8px" }}>
             {stats.today.toLocaleString("id-ID")}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-muted, #64748b)", marginTop: "4px" }}>
-            Perubahan dalam 24 jam terakhir
-          </div>
         </div>
       </div>
 
@@ -431,38 +344,7 @@ export default function MonitoringAuditTrailView({
           gap: "12px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", flex: 1 }}>
-          {/* Dropdown Filter Satker */}
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Building2 size={15} color="var(--text-muted, #64748b)" />
-            <select
-              value={satkerFilter}
-              onChange={(e) => setSatkerFilter(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                border: "1px solid var(--border-color, #cbd5e1)",
-                background: "var(--bg-surface, #ffffff)",
-                color: "var(--text-main, #0f172a)",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: "pointer",
-                outline: "none",
-                minWidth: "220px",
-              }}
-            >
-              <option value="ALL">🏛️ Seluruh Satuan Kerja (14 PA + PTA)</option>
-              <option value="Pengadilan Tinggi Agama Bandar Lampung">🏢 Pengadilan Tinggi Agama Bandar Lampung</option>
-              <optgroup label="Pengadilan Agama Cabang:">
-                {PA_BRANCHES.map((b) => (
-                  <option key={b.id} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           {/* Dropdown Filter Modul */}
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <Filter size={15} color="var(--text-muted, #64748b)" />
@@ -688,11 +570,6 @@ export default function MonitoringAuditTrailView({
                           <div style={{ fontSize: "13px", color: "var(--text-main, #0f172a)", lineHeight: "1.4" }}>
                             {item.description}
                           </div>
-                          {item.ipAddress && (
-                            <div style={{ fontSize: "10.5px", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                              IP: {item.ipAddress} • Ref ID: {item.entityId || "-"}
-                            </div>
-                          )}
                         </td>
 
                         {/* 6. Nilai Diff (Tombol Expand) */}
