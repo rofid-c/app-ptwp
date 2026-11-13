@@ -214,13 +214,27 @@ export default function MonitoringCabangView({
   const [hasOriginalDoc, setHasOriginalDoc] = useState(false);
   const [originalDocInfo, setOriginalDocInfo] = useState(null);
 
+  // Parse Periode aktif (e.g. "September 2026")
+  const { currentMonthIdx, currentYear } = useMemo(() => {
+    const parts = period.split(" ");
+    const mName = parts[0] || "September";
+    const yr = parseInt(parts[1], 10) || 2026;
+    const idx = MONTH_NAMES.findIndex(
+      (m) => m.toLowerCase() === mName.toLowerCase()
+    );
+    return {
+      currentMonthIdx: idx !== -1 ? idx : 8,
+      currentYear: yr,
+    };
+  }, [period]);
+
   // Periksa apakah cabang ini memiliki berkas Excel asli di MySQL
   useEffect(() => {
     let isMounted = true;
     async function checkDoc() {
       try {
         const res = await fetch(
-          `/api/expenses/documents?satker=${encodeURIComponent(selectedBranch)}&download=false`
+          `/api/expenses/documents?satker=${encodeURIComponent(selectedBranch)}&year=${currentYear}&download=false`
         );
         if (!isMounted) return;
         if (res.ok) {
@@ -244,7 +258,7 @@ export default function MonitoringCabangView({
     return () => {
       isMounted = false;
     };
-  }, [selectedBranch]);
+  }, [selectedBranch, currentYear]);
 
   // Sinkronkan daftar periode yang memiliki data riil untuk satker terpilih
   useEffect(() => {
@@ -283,20 +297,6 @@ export default function MonitoringCabangView({
       window.removeEventListener("ptwp-periods-updated", handlePeriodsEvent);
     };
   }, [selectedBranch, currentUser]);
-
-  // Parse Periode aktif (e.g. "September 2026")
-  const { currentMonthIdx, currentYear } = useMemo(() => {
-    const parts = period.split(" ");
-    const mName = parts[0] || "September";
-    const yr = parseInt(parts[1], 10) || 2026;
-    const idx = MONTH_NAMES.findIndex(
-      (m) => m.toLowerCase() === mName.toLowerCase()
-    );
-    return {
-      currentMonthIdx: idx !== -1 ? idx : 8,
-      currentYear: yr,
-    };
-  }, [period]);
 
   // Muat data untuk cabang yang dipilih
   useEffect(() => {
@@ -484,7 +484,7 @@ export default function MonitoringCabangView({
       setIsExporting("expenses");
 
       // 1. Coba unduh berkas fisik Excel asli yang diunggah oleh cabang dari MySQL
-      const downloadUrl = `/api/expenses/documents?satker=${encodeURIComponent(selectedBranch)}&download=true`;
+      const downloadUrl = `/api/expenses/documents?satker=${encodeURIComponent(selectedBranch)}&year=${currentYear}&download=true`;
       const res = await fetch(downloadUrl);
 
       if (res.ok) {
