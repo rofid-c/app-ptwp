@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { enforceSatkerAccess } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -96,20 +97,16 @@ export async function POST(request) {
     );
 
     // Rekam jejak audit pengaturan
-    try {
-      await query(
-        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-         VALUES (?, ?, ?, 'UPDATE_SETTINGS', 'Pengaturan', ?, NULL, NULL, ?, ?)`,
-        [
-          satker,
-          actorName,
-          actorRole,
-          `settings_${satker}`,
-          JSON.stringify({ treasurer: treasurerName, chairperson: chairpersonName, bank: bankName }),
-          `Pembaruan data pengaturan satker, pejabat penandatangan, dan rekening bank untuk ${satker}.`,
-        ]
-      );
-    } catch (e) {}
+    await recordAuditLog({
+      request,
+      user: auth.user,
+      satker,
+      action: "UPDATE_SETTINGS",
+      module: "Pengaturan",
+      entityId: `settings_${satker}`,
+      newValue: { treasurer: treasurerName, chairperson: chairpersonName, bank: bankName },
+      description: `Pembaruan data pengaturan satker, pejabat penandatangan, dan rekening bank untuk ${satker}.`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

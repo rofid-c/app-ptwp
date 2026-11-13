@@ -813,31 +813,3 @@ export async function fetchAuditLogs({ satker = "ALL", module = "ALL", search = 
   return { success: false, data: [], stats: {} };
 }
 
-export async function addAuditLog(entry = {}) {
-  if (!isClient()) return;
-  try {
-    const currentUser = getCurrentUser();
-    const payload = {
-      satker: entry.satker || currentUser?.satker || "Pengadilan Agama Gunung Sugih",
-      userId: currentUser?.id || null,
-      userName: entry.userName || currentUser?.name || "Pengguna Sistem",
-      userRole: entry.userRole || currentUser?.roleLabel || currentUser?.role || "Bendahara",
-      action: entry.action || "UPDATE",
-      module: entry.module || "Umum",
-      entityId: entry.entityId || null,
-      period: entry.period || null,
-      oldValue: entry.oldValue || null,
-      newValue: entry.newValue || null,
-      description: entry.description || "",
-      ipAddress: "127.0.0.1",
-    };
-
-    await apiFetch("/api/audit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch (e) {
-    console.error("[StorageService] Gagal merekam audit log:", e);
-  }
-}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { hashPassword, getAuthenticatedUser } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -213,22 +214,16 @@ export async function PUT(request) {
       );
 
       // Rekam jejak audit (Audit Trail)
-      try {
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'APPROVE_ACCOUNT', 'Pengguna', ?, NULL, NULL, ?, ?)`,
-          [
-            reqData.satker,
-            user.name || "Administrator",
-            user.roleLabel || user.role || "Administrator",
-            genUsername,
-            JSON.stringify({ name: reqData.name, username: genUsername, email: reqData.email }),
-            `Pemberian izin dan penerbitan akun untuk ${reqData.name} (${genUsername}) pada ${reqData.satker}.`,
-          ]
-        );
-      } catch (auditErr) {
-        console.error("[Audit Trail Log Error]:", auditErr.message);
-      }
+      await recordAuditLog({
+        request,
+        user,
+        satker: reqData.satker,
+        action: "APPROVE_ACCOUNT",
+        module: "Pengguna",
+        entityId: genUsername,
+        newValue: { name: reqData.name, username: genUsername, email: reqData.email },
+        description: `Pemberian izin dan penerbitan akun untuk ${reqData.name} (${genUsername}) pada ${reqData.satker}.`,
+      });
 
       // PENTING: Password TIDAK PERNAH dikembalikan dalam response JSON!
       return NextResponse.json({
@@ -247,21 +242,15 @@ export async function PUT(request) {
       await query("UPDATE account_requests SET status = 'rejected', rejected_at = NOW() WHERE id = ?", [id]);
 
       // Rekam jejak audit (Audit Trail)
-      try {
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'REJECT_ACCOUNT', 'Pengguna', ?, NULL, NULL, NULL, ?)`,
-          [
-            reqData.satker,
-            user.name || "Administrator",
-            user.roleLabel || user.role || "Administrator",
-            id,
-            `Penolakan permohonan akun untuk ${reqData.name} pada ${reqData.satker}.`,
-          ]
-        );
-      } catch (auditErr) {
-        console.error("[Audit Trail Log Error]:", auditErr.message);
-      }
+      await recordAuditLog({
+        request,
+        user,
+        satker: reqData.satker,
+        action: "REJECT_ACCOUNT",
+        module: "Pengguna",
+        entityId: id,
+        description: `Penolakan permohonan akun untuk ${reqData.name} pada ${reqData.satker}.`,
+      });
 
       return NextResponse.json({ success: true, message: `Permohonan akun ${reqData.name} telah ditolak.` });
     }

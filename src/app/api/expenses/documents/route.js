@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { enforceSatkerAccess } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -222,23 +223,17 @@ export async function POST(request) {
     );
 
     // 7. Rekam Jejak Audit (Audit Trail)
-    try {
-      await query(
-        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-         VALUES (?, ?, ?, 'UPLOAD_DOCUMENT', 'Dokumen Belanja', ?, ?, NULL, ?, ?)`,
-        [
-          satker,
-          uploadedBy || "Bendahara Cabang",
-          "Bendahara",
-          docId,
-          year,
-          JSON.stringify({ filename, fileSize, year }),
-          `Unggah berkas Excel asli pengeluaran: ${filename} (${Math.round(fileSize / 1024)} KB) tahun anggaran ${year}.`,
-        ]
-      );
-    } catch (auditErr) {
-      console.error("[Audit Trail Log Error]:", auditErr.message);
-    }
+    await recordAuditLog({
+      request,
+      user: auth.user,
+      satker,
+      action: "UPLOAD_DOCUMENT",
+      module: "Dokumen Belanja",
+      entityId: docId,
+      period: year,
+      newValue: { filename, fileSize, year },
+      description: `Unggah berkas Excel asli pengeluaran: ${filename} (${Math.round(fileSize / 1024)} KB) tahun anggaran ${year}.`,
+    });
 
     return NextResponse.json({
       success: true,

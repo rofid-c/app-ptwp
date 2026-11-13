@@ -140,6 +140,22 @@ export function getAuthenticatedUser(request) {
 }
 
 /**
+ * Ekstraksi alamat IP client yang aman dari request headers
+ */
+export function getClientIp(request) {
+  if (!request) return "127.0.0.1";
+  try {
+    const xForwardedFor = request.headers.get("x-forwarded-for");
+    if (xForwardedFor) return xForwardedFor.split(",")[0].trim();
+    const xRealIp = request.headers.get("x-real-ip");
+    if (xRealIp) return xRealIp.trim();
+    const cfConnectingIp = request.headers.get("cf-connecting-ip");
+    if (cfConnectingIp) return cfConnectingIp.trim();
+  } catch (e) {}
+  return "127.0.0.1";
+}
+
+/**
  * Multi-Tenant Satker Enforcement:
  * Menjamin isolasi ketat antar cabang:
  * - Super Admin: Akses penuh ke seluruh satker.

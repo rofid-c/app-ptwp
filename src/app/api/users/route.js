@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { hashPassword, getAuthenticatedUser } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,17 @@ export async function POST(request) {
       );
     }
 
+    await recordAuditLog({
+      request,
+      user,
+      satker,
+      action: userExists ? "UPDATE_USER" : "CREATE_USER",
+      module: "Akun Pengguna",
+      entityId: username,
+      newValue: { username, name, role: role || "anggota", satker },
+      description: `${userExists ? "Pembaruan" : "Pembuatan"} akun pengguna "${name}" (${username}) pada ${satker}.`,
+    });
+
     return NextResponse.json({ success: true, message: "Data pengguna berhasil disimpan secara aman." });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -93,6 +105,17 @@ export async function DELETE(request) {
     }
 
     await query("DELETE FROM users WHERE LOWER(username) = ?", [username.toLowerCase()]);
+
+    await recordAuditLog({
+      request,
+      user,
+      satker: "PTWP",
+      action: "DELETE_USER",
+      module: "Akun Pengguna",
+      entityId: username,
+      description: `Penghapusan akun pengguna "${username}".`,
+    });
+
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

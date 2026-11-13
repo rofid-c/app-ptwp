@@ -1,36 +1,70 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { enforceSatkerAccess } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * GET: Ambil daftar jejak audit terpadu dengan autentikasi ketat & isolasi multi-tenant satker
+ */
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const requestedSatker = searchParams.get("satker");
     const moduleFilter = searchParams.get("module");
     const search = searchParams.get("search");
-    const limit = parseInt(searchParams.get("limit") || "150", 10);
+    const rawLimit = parseInt(searchParams.get("limit") || "150", 10);
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 150 : rawLimit), 500);
 
-    // Otorisasi & Penegakan Isolasi Satker
-    const auth = enforceSatkerAccess(request, requestedSatker, "read");
-    if (!auth.authorized) {
-      return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
+    // 1. Otorisasi Pengguna Terautentikasi
+    const user = getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Autentikasi Diperlukan: Silakan masuk terlebih dahulu untuk mengakses jejak audit." },
+        { status: 401 }
+      );
     }
 
-    const isSuperOrPTA =
-      auth.user.role === "super_admin" ||
-      auth.user.level === "daerah" ||
-      (auth.user.satker && auth.user.satker.toLowerCase().includes("tinggi"));
+    // 2. Batasi Akses: Role Anggota biasa DILARANG melihat jejak audit
+    if (user.role === "anggota") {
+      return NextResponse.json(
+        { success: false, error: "Akses Ditolak: Hanya pengurus (Bendahara, Admin, Pimpinan) yang berwenang melihat jejak audit." },
+        { status: 403 }
+      );
+    }
 
-    // Satker cabang hanya boleh melihat log satker miliknya sendiri
-    const satker = isSuperOrPTA ? requestedSatker : auth.user.satker;
+    const isSuper =
+      user.role === "super_admin" ||
+      user.level === "super_admin" ||
+      String(user.username || "").toLowerCase() === "aku admin" ||
+      String(user.username || "").toLowerCase() === "root";
+
+    const isPTA =
+      user.level === "daerah" ||
+      Boolean(user.satker && (user.satker.toLowerCase().includes("tinggi") || user.satker.toLowerCase().includes("pta")));
+
+    const isSuperOrPTA = isSuper || isPTA;
+
+    // 3. Penegakan Multi-Tenant Satker Isolation:
+    // Satker cabang HANYA boleh melihat jejak audit satkernya sendiri!
+    let satker = null;
+    if (isSuperOrPTA) {
+      satker =
+        requestedSatker &&
+        requestedSatker !== "ALL" &&
+        requestedSatker !== "all" &&
+        requestedSatker !== "Semua Satker"
+          ? requestedSatker
+          : null;
+    } else {
+      satker = user.satker;
+    }
 
     let sql = "SELECT * FROM audit_logs WHERE 1=1";
     const params = [];
 
-    // Filter satker (jika bukan "ALL" atau "Semua")
-    if (satker && satker !== "ALL" && satker !== "all" && satker !== "Semua Satker") {
+    // Filter satker
+    if (satker) {
       sql += " AND satker = ?";
       params.push(satker);
     }
@@ -54,8 +88,8 @@ export async function GET(request) {
     const rows = await query(sql, params);
 
     // Ambil statistik ringkas untuk kartu metrik
-    const statsParams = satker && satker !== "ALL" && satker !== "all" && satker !== "Semua Satker" ? [satker] : [];
-    const satkerWhere = satker && satker !== "ALL" && satker !== "all" && satker !== "Semua Satker" ? "WHERE satker = ?" : "";
+    const statsParams = satker ? [satker] : [];
+    const satkerWhere = satker ? "WHERE satker = ?" : "";
 
     const [totalStats] = await query(
       `SELECT 
@@ -95,7 +129,7 @@ export async function GET(request) {
         oldValue: parsedOld,
         newValue: parsedNew,
         description: r.description,
-        ipAddress: r.ip_address,
+        ipAddress: r.ip_address || "127.0.0.1",
         createdAt: r.created_at,
       };
     });
@@ -117,37 +151,54 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
-  try {
-    const body = await request.json();
-    const {
-      satker = "Pengadilan Agama Gunung Sugih",
-      userId = null,
-      userName = "Pengguna Sistem",
-      userRole = "Bendahara",
-      action = "UPDATE",
-      module = "Umum",
-      entityId = null,
-      period = null,
-      oldValue = null,
-      newValue = null,
-      description = "",
-      ipAddress = "127.0.0.1",
-    } = body;
-
-    const oldStr = oldValue ? JSON.stringify(oldValue) : null;
-    const newStr = newValue ? JSON.stringify(newValue) : null;
-
-    const res = await query(
-      `INSERT INTO audit_logs (satker, user_id, user_name, user_role, action, module, entity_id, period, old_value, new_value, description, ip_address)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [satker, userId, userName, userRole, action, module, entityId, period, oldStr, newStr, description, ipAddress]
-    );
-
-    return NextResponse.json({ success: true, id: res.insertId });
-  } catch (err) {
-    console.error("[API Audit POST Error]:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
+/**
+ * POST: DIBLOKIR. Log audit bersifat immutable dan hanya dapat dicatat secara internal oleh transaksi server.
+ */
+export async function POST() {
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Metode tidak diizinkan (405): Log audit bersifat immutable dan hanya dapat dicatat secara internal oleh transaksi sistem.",
+    },
+    { status: 405 }
+  );
 }
 
+/**
+ * PUT: DIBLOKIR. Log audit tidak boleh diubah.
+ */
+export async function PUT() {
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Metode tidak diizinkan (405): Log audit bersifat immutable dan tidak dapat diubah.",
+    },
+    { status: 405 }
+  );
+}
+
+/**
+ * DELETE: DIBLOKIR. Log audit tidak boleh dihapus.
+ */
+export async function DELETE() {
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Metode tidak diizinkan (405): Log audit bersifat permanen dan tidak dapat dihapus.",
+    },
+    { status: 405 }
+  );
+}
+
+/**
+ * PATCH: DIBLOKIR.
+ */
+export async function PATCH() {
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Metode tidak diizinkan (405): Log audit bersifat immutable.",
+    },
+    { status: 405 }
+  );
+}

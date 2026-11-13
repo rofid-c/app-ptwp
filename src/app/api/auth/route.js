@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { verifyPassword, hashPassword, createSessionToken } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,17 @@ export async function POST(request) {
     // 4. Terbitkan Token Sesi Aman Ber-tanda tangan HMAC SHA-256
     const token = createSessionToken(userPayload);
     userPayload.token = token;
+
+    // Rekam jejak audit login
+    await recordAuditLog({
+      request,
+      user: userPayload,
+      satker: user.satker || "PTWP",
+      action: "LOGIN",
+      module: "Autentikasi",
+      entityId: user.username,
+      description: `Pengguna "${user.name}" (${user.username}) berhasil masuk ke sistem.`,
+    });
 
     const response = NextResponse.json({
       success: true,

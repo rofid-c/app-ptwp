@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { enforceSatkerAccess } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -158,15 +159,13 @@ export async function POST(request) {
     }
     const currentSatker = auth.targetSatker;
     const currentPeriod = period || "September 2026";
-    const actorName = auth.user.name || "Bendahara Cabang";
+    const actorName = auth.user.name || auth.user.username || "Bendahara Cabang";
     const actorRole = auth.user.roleLabel || auth.user.role || "Bendahara";
 
     // Aksi 1: Toggle bayar per anggota
     if (action === "toggle_paid") {
       const isPaid = paid ? 1 : 0;
       const paidDate = paid ? new Date().toISOString().split("T")[0] : null;
-      const actorName = body.userName || body.user_name || "Bendahara Cabang";
-      const actorRole = body.userRole || body.user_role || "Bendahara";
 
       // 1. Ambil nama & status lama anggota untuk audit trail
       const existingRows = await query(
@@ -198,24 +197,18 @@ export async function POST(request) {
       );
 
       // 4. Rekam jejak audit di tabel audit_logs
-      try {
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'TOGGLE_PAID', 'Iuran Anggota', ?, ?, ?, ?, ?)`,
-          [
-            currentSatker,
-            actorName,
-            actorRole,
-            String(memberId),
-            currentPeriod,
-            JSON.stringify({ paid: oldPaid, paid_date: oldDate }),
-            JSON.stringify({ paid: Boolean(isPaid), paid_date: paidDate }),
-            `Perubahan status iuran pegawai "${memberName}" (${currentPeriod}) menjadi ${isPaid ? "Lunas" : "Belum Bayar"}.`,
-          ]
-        );
-      } catch (auditErr) {
-        console.error("[Audit Trail Log Error]:", auditErr.message);
-      }
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker: currentSatker,
+        action: "TOGGLE_PAID",
+        module: "Iuran Anggota",
+        entityId: String(memberId),
+        period: currentPeriod,
+        oldValue: { paid: oldPaid, paid_date: oldDate },
+        newValue: { paid: Boolean(isPaid), paid_date: paidDate },
+        description: `Perubahan status iuran pegawai "${memberName}" (${currentPeriod}) menjadi ${isPaid ? "Lunas" : "Belum Bayar"}.`,
+      });
 
       // 5. Sinkronisasi otomatis penerimaan iuran ke tabel buku kas (cashbook)
       await syncPeriodDuesToCashbook(currentSatker, currentPeriod, actorName);
@@ -303,23 +296,17 @@ export async function POST(request) {
       }
 
       // Rekam audit trail
-      try {
-        const actorName = body.userName || body.user_name || "Bendahara Cabang";
-        const actorRole = body.userRole || body.user_role || "Bendahara";
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'IMPORT_EXCEL', 'Iuran Anggota', ?, ?, NULL, ?, ?)`,
-          [
-            currentSatker,
-            actorName,
-            actorRole,
-            `import_${currentPeriod}`,
-            currentPeriod,
-            JSON.stringify({ count: membersList.length }),
-            `Import / pembaruan data rekapitulasi iuran periode ${currentPeriod} sebanyak ${membersList.length} pegawai.`,
-          ]
-        );
-      } catch (e) {}
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker: currentSatker,
+        action: "IMPORT_EXCEL",
+        module: "Iuran Anggota",
+        entityId: `import_${currentPeriod}`,
+        period: currentPeriod,
+        newValue: { count: membersList.length },
+        description: `Import / pembaruan data rekapitulasi iuran periode ${currentPeriod} sebanyak ${membersList.length} pegawai.`,
+      });
 
       // 3. Sinkronisasi otomatis penerimaan iuran ke tabel buku kas (cashbook)
       await syncPeriodDuesToCashbook(currentSatker, currentPeriod, actorName);
@@ -414,22 +401,16 @@ export async function POST(request) {
       }
 
       // Rekam jejak audit multi-periode
-      try {
-        const actorName = body.userName || body.user_name || "Bendahara Cabang";
-        const actorRole = body.userRole || body.user_role || "Bendahara";
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'IMPORT_MULTI_EXCEL', 'Iuran Anggota', ?, NULL, NULL, ?, ?)`,
-          [
-            currentSatker,
-            actorName,
-            actorRole,
-            `multi_import_${Date.now()}`,
-            JSON.stringify({ periods: periodsData.map((p) => p.period) }),
-            `Import multi-sheet iuran tahunan (${periodsData.length} bulan) untuk ${currentSatker}.`,
-          ]
-        );
-      } catch (e) {}
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker: currentSatker,
+        action: "IMPORT_MULTI_EXCEL",
+        module: "Iuran Anggota",
+        entityId: `multi_import_${Date.now()}`,
+        newValue: { periods: periodsData.map((p) => p.period) },
+        description: `Import multi-sheet iuran tahunan (${periodsData.length} bulan) untuk ${currentSatker}.`,
+      });
 
       // 3. Sinkronisasi otomatis penerimaan iuran setiap periode ke tabel cashbook
       for (const item of periodsData) {
@@ -497,21 +478,17 @@ export async function POST(request) {
       );
 
       // Rekam audit trail
-      try {
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'UPSERT_MEMBER', 'Iuran Anggota', ?, ?, NULL, ?, ?)`,
-          [
-            currentSatker,
-            actorName,
-            actorRole,
-            id,
-            currentPeriod,
-            JSON.stringify({ name: memberData.name, title: memberData.title, category: memberData.category }),
-            `Simpan/perbarui data pegawai "${memberData.name}" (${memberData.title || "Pegawai"}) pada periode ${currentPeriod}.`,
-          ]
-        );
-      } catch (e) {}
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker: currentSatker,
+        action: "UPSERT_MEMBER",
+        module: "Iuran Anggota",
+        entityId: id,
+        period: currentPeriod,
+        newValue: { name: memberData.name, title: memberData.title, category: memberData.category },
+        description: `Simpan/perbarui data pegawai "${memberData.name}" (${memberData.title || "Pegawai"}) pada periode ${currentPeriod}.`,
+      });
 
       // Sinkronisasi otomatis penerimaan iuran ke tabel buku kas (cashbook)
       await syncPeriodDuesToCashbook(currentSatker, currentPeriod, actorName);
@@ -546,13 +523,15 @@ export async function DELETE(request) {
       await query("DELETE FROM members WHERE satker = ?", [satker]);
       await query("DELETE FROM cashbook WHERE satker = ? AND source = 'rekap_iuran'", [satker]);
 
-      try {
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, 'Bendahara', 'DELETE_ALL', 'Iuran Anggota', 'all', NULL, NULL, NULL, ?)`,
-          [satker, actorName, `Pengosongan seluruh data rekapitulasi iuran untuk ${satker}.`]
-        );
-      } catch (e) {}
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker,
+        action: "DELETE_ALL",
+        module: "Iuran Anggota",
+        entityId: "all",
+        description: `Pengosongan seluruh data rekapitulasi iuran untuk ${satker}.`,
+      });
 
       return NextResponse.json({ success: true, message: `Seluruh data iuran ${satker} berhasil dikosongkan.` });
     }
@@ -562,13 +541,16 @@ export async function DELETE(request) {
       await query("DELETE FROM members WHERE satker = ? AND period = ?", [satker, period]);
       await query("DELETE FROM cashbook WHERE satker = ? AND (period = ? OR id = ?) AND source = 'rekap_iuran'", [satker, period, `dues_${period}`]);
 
-      try {
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, 'Bendahara', 'DELETE_PERIOD', 'Iuran Anggota', ?, ?, NULL, NULL, ?)`,
-          [satker, actorName, period, period, `Pengosongan data iuran periode ${period} (${satker}).`]
-        );
-      } catch (e) {}
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker,
+        action: "DELETE_PERIOD",
+        module: "Iuran Anggota",
+        entityId: period,
+        period,
+        description: `Pengosongan data iuran periode ${period} (${satker}).`,
+      });
 
       return NextResponse.json({ success: true, message: `Data iuran periode ${period} berhasil dikosongkan.` });
     }
@@ -582,13 +564,15 @@ export async function DELETE(request) {
     await query("DELETE FROM dues_records WHERE member_id = ? AND satker = ?", [memberId, satker]);
     await query("DELETE FROM members WHERE id = ? AND satker = ?", [memberId, satker]);
 
-    try {
-      await query(
-        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-         VALUES (?, ?, 'Bendahara', 'DELETE_MEMBER', 'Iuran Anggota', ?, NULL, NULL, NULL, ?)`,
-        [satker, actorName, memberId, `Penghapusan data anggota ID ${memberId} dari satuan kerja ${satker}.`]
-      );
-    } catch (e) {}
+    await recordAuditLog({
+      request,
+      user: auth.user,
+      satker,
+      action: "DELETE_MEMBER",
+      module: "Iuran Anggota",
+      entityId: memberId,
+      description: `Penghapusan data anggota ID ${memberId} dari satuan kerja ${satker}.`,
+    });
 
     // Sinkronkan cashbook untuk setiap periode yang terdampak oleh penghapusan anggota
     for (const p of affectedPeriods) {

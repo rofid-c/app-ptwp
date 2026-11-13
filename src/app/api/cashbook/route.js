@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { enforceSatkerAccess } from "@/lib/auth";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,6 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
     }
     const safeSatker = auth.targetSatker;
-    const actorName = auth.user.name || "Bendahara Cabang";
-    const actorRole = auth.user.roleLabel || auth.user.role || "Bendahara";
 
     // Dukungan Batch Insert untuk banyak transaksi kas & belanja sekaligus
     if (Array.isArray(body)) {
@@ -73,22 +72,17 @@ export async function POST(request) {
       }
 
       // Rekam jejak audit batch kas
-      try {
-        const first = body[0];
-        await query(
-          `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-           VALUES (?, ?, ?, 'ADD_CASH_BATCH', 'Buku Kas', ?, ?, NULL, ?, ?)`,
-          [
-            safeSatker,
-            actorName,
-            actorRole,
-            `batch_${Date.now()}`,
-            first?.period || null,
-            JSON.stringify({ count: body.length }),
-            `Pencatatan batch transaksi kas/belanja sebanyak ${body.length} baris untuk ${safeSatker}.`,
-          ]
-        );
-      } catch (e) {}
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker: safeSatker,
+        action: "ADD_CASH_BATCH",
+        module: "Buku Kas",
+        entityId: `batch_${Date.now()}`,
+        period: body[0]?.period || null,
+        newValue: { count: body.length },
+        description: `Pencatatan batch transaksi kas/belanja sebanyak ${body.length} baris untuk ${safeSatker}.`,
+      });
 
       return NextResponse.json({ success: true, count: body.length });
     }
@@ -104,22 +98,18 @@ export async function POST(request) {
     );
 
     // Rekam jejak audit transaksi kas
-    try {
-      const tipeLabel = type === "in" ? "Kas Masuk" : "Kas Keluar / Belanja";
-      await query(
-        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-         VALUES (?, ?, ?, 'ADD_CASH', 'Buku Kas', ?, ?, NULL, ?, ?)`,
-        [
-          safeSatker,
-          actorName,
-          actorRole,
-          entryId,
-          period || null,
-          JSON.stringify({ type, category, amount: Number(amount || 0), description }),
-          `Pencatatan ${tipeLabel}: Rp ${Number(amount || 0).toLocaleString("id-ID")} (${category} - "${description}").`,
-        ]
-      );
-    } catch (e) {}
+    const tipeLabel = type === "in" ? "Kas Masuk" : "Kas Keluar / Belanja";
+    await recordAuditLog({
+      request,
+      user: auth.user,
+      satker: safeSatker,
+      action: "ADD_CASH",
+      module: "Buku Kas",
+      entityId: entryId,
+      period: period || null,
+      newValue: { type, category, amount: Number(amount || 0), description },
+      description: `Pencatatan ${tipeLabel}: Rp ${Number(amount || 0).toLocaleString("id-ID")} (${category} - "${description}").`,
+    });
 
     return NextResponse.json({ success: true, id: entryId });
   } catch (err) {
@@ -138,13 +128,23 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.statusCode });
     }
     const satker = auth.targetSatker;
-    const actorName = auth.user.name || "Bendahara Cabang";
     const id = searchParams.get("id");
     const period = searchParams.get("period");
     const clearAll = searchParams.get("clearAll");
 
     if (clearAll === "true") {
       await query("DELETE FROM cashbook WHERE satker = ?", [satker]);
+
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker,
+        action: "DELETE_ALL_CASH",
+        module: "Buku Kas",
+        entityId: "all",
+        description: `Pengosongan seluruh data buku kas untuk ${satker}.`,
+      });
+
       return NextResponse.json({ success: true, message: `Seluruh data buku kas ${satker} berhasil dikosongkan.` });
     }
 
@@ -155,6 +155,18 @@ export async function DELETE(request) {
         `%${period}%`,
         `%${period}%`,
       ]);
+
+      await recordAuditLog({
+        request,
+        user: auth.user,
+        satker,
+        action: "DELETE_PERIOD_CASH",
+        module: "Buku Kas",
+        entityId: period,
+        period,
+        description: `Pengosongan data kas periode ${period} (${satker}).`,
+      });
+
       return NextResponse.json({ success: true, message: `Data kas periode ${period} (${satker}) berhasil dikosongkan.` });
     }
 
@@ -166,21 +178,17 @@ export async function DELETE(request) {
 
     await query("DELETE FROM cashbook WHERE id = ? AND satker = ?", [id, satker]);
 
-    try {
-      const actorName = searchParams.get("userName") || "Bendahara Cabang";
-      await query(
-        `INSERT INTO audit_logs (satker, user_name, user_role, action, module, entity_id, period, old_value, new_value, description)
-         VALUES (?, ?, 'Bendahara', 'DELETE_CASH', 'Buku Kas', ?, ?, ?, NULL, ?)`,
-        [
-          satker,
-          actorName,
-          id,
-          existingEntry?.period || null,
-          existingEntry ? JSON.stringify({ type: existingEntry.type, amount: Number(existingEntry.amount), description: existingEntry.description }) : null,
-          `Penghapusan mutasi kas ID "${id}": ${existingEntry?.description || "-"} (Rp ${Number(existingEntry?.amount || 0).toLocaleString("id-ID")}).`,
-        ]
-      );
-    } catch (e) {}
+    await recordAuditLog({
+      request,
+      user: auth.user,
+      satker,
+      action: "DELETE_CASH",
+      module: "Buku Kas",
+      entityId: id,
+      period: existingEntry?.period || null,
+      oldValue: existingEntry ? { type: existingEntry.type, amount: Number(existingEntry.amount), description: existingEntry.description } : null,
+      description: `Penghapusan mutasi kas ID "${id}": ${existingEntry?.description || "-"} (Rp ${Number(existingEntry?.amount || 0).toLocaleString("id-ID")}).`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
