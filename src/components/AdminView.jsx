@@ -83,7 +83,6 @@ export default function AdminView({ currentUser }) {
   };
 
   const handleApprove = async (req) => {
-    const passwordToUse = (req.password && String(req.password).trim()) ? String(req.password).trim() : "123";
     try {
       const res = await fetch("/api/requests", {
         method: "PUT",
@@ -96,12 +95,11 @@ export default function AdminView({ currentUser }) {
           await loadData();
           setApprovedModalData({
             name: req.name,
-            username: json.user?.username || req.name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
-            password: json.user?.password || passwordToUse,
+            username: json.user?.username || req.name.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
             satker: req.satker,
             phone: req.phone,
             email: req.email,
-            isSelfPassword: Boolean(req.password),
+            isSelfPassword: true,
           });
           showToast(`Akses berhasil diizinkan untuk ${req.name}!`, "success");
           return;
