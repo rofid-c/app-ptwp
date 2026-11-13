@@ -57,6 +57,11 @@ export default function Sidebar({
                 label: "Monitoring Cabang",
                 icon: Building2,
               },
+              {
+                id: "admin",
+                label: "Portal Admin",
+                icon: ShieldCheck,
+              },
             ]
           : []),
         {

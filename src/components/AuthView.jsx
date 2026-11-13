@@ -214,16 +214,16 @@ export default function AuthView({
         satker: "Pengadilan Agama Gunung Sugih",
         level: "cabang",
       };
-    } else if (roleType === "pusat") {
+    } else if (roleType === "pta" || roleType === "pusat") {
       mockUser = {
-        name: "Dr. H. Pengurus Pusat, S.H., M.H.",
-        username: "admin_pusat",
+        name: "Pengurus Daerah PTA Bandar Lampung",
+        username: "admin_pta",
         phone: "08119876543",
-        role: "pusat",
-        roleLabel: "Pengurus Pusat PTWP MA-RI",
-        title: "Pengurus Pusat",
-        satker: "Mahkamah Agung RI",
-        level: "pusat",
+        role: "admin",
+        roleLabel: "Pengurus Daerah PTWP PTA",
+        title: "Pengurus Daerah",
+        satker: "Pengadilan Tinggi Agama Bandar Lampung",
+        level: "daerah",
       };
     } else {
       mockUser = {

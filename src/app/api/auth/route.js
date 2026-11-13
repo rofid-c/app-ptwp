@@ -61,8 +61,6 @@ export async function POST(request) {
 
     const activeSatker = isSuperAdmin
       ? "Seluruh Satuan Kerja (Super Admin)"
-      : isPusat
-      ? (satker || "Mahkamah Agung RI")
       : (user.satker || satker || "Pengadilan Agama Gunung Sugih");
 
     const userPayload = {

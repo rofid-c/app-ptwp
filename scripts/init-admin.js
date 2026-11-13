@@ -147,11 +147,11 @@ async function main() {
   }
 
   const hashedPassword = hashPassword(password);
-  const satker = "Mahkamah Agung RI";
-  const title = "Super Administrator Pusat";
-  const role = "super_admin";
-  const roleLabel = "Super Administrator Pusat";
-  const level = "super_admin";
+  const satker = "Pengadilan Tinggi Agama Bandar Lampung";
+  const title = "Administrator Daerah PTA";
+  const role = "admin";
+  const roleLabel = "Administrator PTA Bandar Lampung";
+  const level = "daerah";
 
   try {
     await pool.query(
@@ -171,7 +171,7 @@ async function main() {
     );
 
     console.log("\n-------------------------------------------------------");
-    console.log(" [BERHASIL] Akun Super Administrator berhasil disimpan!");
+    console.log(" [BERHASIL] Akun Administrator PTA berhasil disimpan!");
     console.log(` - Username : ${username}`);
     console.log(` - Nama     : ${name}`);
     console.log(` - Email    : ${email}`);

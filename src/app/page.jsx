@@ -851,15 +851,18 @@ export default function HomePage() {
     });
   };
 
-  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin" || currentUser?.username?.toLowerCase() === "root";
+  const isPTA = Boolean(
+    (currentUser?.satker || "").toLowerCase().includes("tinggi") ||
+    (currentUser?.satker || "").toLowerCase().includes("pta")
+  );
+  const isSuper = currentUser?.role === "super_admin";
+  const canAccessAdmin = isSuper || (isPTA && (currentUser?.role === "admin" || currentUser?.role === "bendahara" || currentUser?.role === "pimpinan"));
 
   useEffect(() => {
-    if (!isSuper && activeTab === "admin") {
+    if (!canAccessAdmin && activeTab === "admin") {
       setActiveTab("dashboard");
-    } else if (isSuper && activeTab !== "admin") {
-      setActiveTab("admin");
     }
-  }, [currentUser, activeTab, isSuper]);
+  }, [currentUser, activeTab, canAccessAdmin]);
 
   const isAdmin = currentUser?.role === "bendahara" || currentUser?.role === "pimpinan" || currentUser?.role === "super_admin";
 
@@ -1481,8 +1484,8 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* TAB 3: PORTAL SUPER ADMINISTRATOR */}
-          {activeTab === "admin" && isSuper && (
+          {/* TAB 3: PORTAL ADMINISTRATOR */}
+          {activeTab === "admin" && canAccessAdmin && (
             <AdminView currentUser={currentUser} />
           )}
         </main>

@@ -634,12 +634,6 @@ export const INITIAL_USERS = [
     satker: "Pengadilan Tinggi Agama Bandar Lampung",
     role: "bendahara",
   },
-  {
-    username: "root",
-    name: "Super Administrator PTWP",
-    satker: "Mahkamah Agung RI",
-    role: "super_admin",
-  },
 ];
 
 let inMemoryUsers = [];
