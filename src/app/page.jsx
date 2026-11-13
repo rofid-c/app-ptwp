@@ -27,7 +27,6 @@ import DuesMobileCards from "@/components/DuesMobileCards";
 import ExcelExportModal from "@/components/ExcelExportModal";
 import ExcelImportModal from "@/components/ExcelImportModal";
 import CashBookView from "@/components/CashBookView";
-import AuthModal from "@/components/AuthModal";
 import MemberFormModal from "@/components/MemberFormModal";
 import SettingsModal from "@/components/SettingsModal";
 import DashboardView from "@/components/DashboardView";
@@ -61,7 +60,6 @@ import {
   saveSettings,
   getCurrentUser,
   loginUser,
-  registerUser,
   logoutUser,
   clearPeriodData,
   clearAllPeriodsData,
@@ -92,7 +90,6 @@ export default function HomePage() {
   // Modals state
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isMemberFormOpen, setIsMemberFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddCashOpen, setIsAddCashOpen] = useState(false);
@@ -601,22 +598,6 @@ export default function HomePage() {
 
 
   // Auth
-  const handleLogin = (nip, password) => {
-    const user = loginUser(nip, password);
-    if (user) {
-      setCurrentUser(user);
-      const userSatker = user.satker || "Pengadilan Agama Gunung Sugih";
-      setSettings(fetchSettings(userSatker));
-      fetchMembersByPeriod(period, userSatker).then((d) => setMembers(d));
-      fetchCashBook(userSatker).then((c) => setCashbook(c));
-    }
-  };
-
-  const handleRegister = (userData) => {
-    const user = registerUser(userData);
-    setCurrentUser(user);
-  };
-
   const handleLogout = () => {
     logoutUser();
     if (typeof window !== "undefined") {
@@ -628,7 +609,6 @@ export default function HomePage() {
     setMembers([]);
     setCashbook([]);
     setIsAuthView(true);
-    setIsAuthOpen(false);
   };
 
   // Filter anggota
@@ -1539,16 +1519,6 @@ export default function HomePage() {
         onClose={() => setIsImportOpen(false)}
         onImportSuccess={handleImportSuccess}
         period={period}
-
-      />
-
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        currentUser={currentUser}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        onLogout={handleLogout}
       />
 
       <MemberFormModal
