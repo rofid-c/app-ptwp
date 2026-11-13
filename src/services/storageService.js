@@ -635,7 +635,7 @@ export const INITIAL_USERS = [
     role: "bendahara",
   },
   {
-    username: "Aku admin",
+    username: "root",
     name: "Super Administrator PTWP",
     satker: "Mahkamah Agung RI",
     role: "super_admin",

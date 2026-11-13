@@ -147,7 +147,8 @@ export default function AdminView({ currentUser }) {
   };
 
   const handleRevokeUser = async (username, name) => {
-    if (username.toLowerCase() === "aku admin") {
+    const uLower = String(username || "").toLowerCase();
+    if (uLower === "aku admin" || uLower === "root") {
       alert("Akun Super Administrator tidak dapat dihapus!");
       return;
     }
@@ -968,7 +969,7 @@ export default function AdminView({ currentUser }) {
               </thead>
               <tbody>
                 {filteredUsers.map((u) => {
-                  const isSuper = u.role === "super_admin" || u.username.toLowerCase() === "aku admin";
+                  const isSuper = u.role === "super_admin" || u.username.toLowerCase() === "aku admin" || u.username.toLowerCase() === "root";
                   const isVisiblePassword = showPasswordMap[u.username];
 
                   return (

@@ -10,7 +10,10 @@ export default function MobileBottomNav({
   onOpenAuth,
   onOpenProfile,
 }) {
-  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
+  const isSuper =
+    currentUser?.role === "super_admin" ||
+    currentUser?.username?.toLowerCase() === "aku admin" ||
+    currentUser?.username?.toLowerCase() === "root";
   const isPTA = Boolean(
     (currentUser?.satker || "").toLowerCase().includes("tinggi") ||
     (currentUser?.satker || "").toLowerCase().includes("pta")

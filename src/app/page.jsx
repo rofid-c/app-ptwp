@@ -177,7 +177,7 @@ export default function HomePage() {
       const savedSettings = fetchSettings(activeSatker);
       setSettings(savedSettings);
 
-      if (user.role === "super_admin" || user.username?.toLowerCase() === "aku admin") {
+      if (user.role === "super_admin" || user.username?.toLowerCase() === "aku admin" || user.username?.toLowerCase() === "root") {
         setActiveTab("admin");
       } else {
         setActiveTab("dashboard");
@@ -851,7 +851,7 @@ export default function HomePage() {
     });
   };
 
-  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin";
+  const isSuper = currentUser?.role === "super_admin" || currentUser?.username?.toLowerCase() === "aku admin" || currentUser?.username?.toLowerCase() === "root";
 
   useEffect(() => {
     if (!isSuper && activeTab === "admin") {
@@ -934,7 +934,7 @@ export default function HomePage() {
               } catch (e) {}
             }
             setCurrentUser(user);
-            if (user?.role === "super_admin" || user?.username?.toLowerCase() === "aku admin") {
+            if (user?.role === "super_admin" || user?.username?.toLowerCase() === "aku admin" || user?.username?.toLowerCase() === "root") {
               setActiveTab("admin");
             } else {
               setActiveTab("dashboard");

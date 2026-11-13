@@ -44,7 +44,8 @@ export default function Navbar({
 }) {
   const isSuper =
     currentUser?.role === "super_admin" ||
-    currentUser?.username?.toLowerCase() === "aku admin";
+    currentUser?.username?.toLowerCase() === "aku admin" ||
+    currentUser?.username?.toLowerCase() === "root";
 
   const satkerText = (
     currentUser?.satker ||

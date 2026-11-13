@@ -28,7 +28,8 @@ export default function Sidebar({
 }) {
   const isSuper =
     currentUser?.role === "super_admin" ||
-    currentUser?.username?.toLowerCase() === "aku admin";
+    currentUser?.username?.toLowerCase() === "aku admin" ||
+    currentUser?.username?.toLowerCase() === "root";
 
   const isPTA = Boolean(
     (currentUser?.satker || "").toLowerCase().includes("tinggi") ||
