@@ -87,9 +87,9 @@ export async function GET(request) {
     // Jika minta daftar periode yang memiliki data di MySQL
     if (getPeriods === "true") {
       const rows = await query(
-        `SELECT DISTINCT period FROM members WHERE satker = ?
+        `SELECT DISTINCT period FROM members WHERE satker = ? AND period IS NOT NULL AND TRIM(period) != ''
          UNION
-         SELECT DISTINCT period FROM cashbook WHERE satker = ? AND period IS NOT NULL`,
+         SELECT DISTINCT period FROM cashbook WHERE satker = ? AND period IS NOT NULL AND TRIM(period) != '' AND amount > 0`,
         [satker, satker]
       );
       return NextResponse.json({ success: true, periods: rows.map((r) => r.period).filter(Boolean) });

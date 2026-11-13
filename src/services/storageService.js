@@ -379,6 +379,14 @@ export function getAvailablePeriods(satker) {
 
 let inMemoryPeriodsWithData = {};
 
+export function invalidatePeriodsCache(satker) {
+  if (satker) {
+    delete inMemoryPeriodsWithData[satker];
+  } else {
+    inMemoryPeriodsWithData = {};
+  }
+}
+
 export async function refreshPeriodsWithData(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   if (!isClient()) return [];
@@ -389,6 +397,9 @@ export async function refreshPeriodsWithData(satker) {
     const json = await res.json();
     if (json.success && Array.isArray(json.periods)) {
       inMemoryPeriodsWithData[targetSatker] = json.periods;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ptwp-periods-updated", { detail: { satker: targetSatker } }));
+      }
       return json.periods;
     }
   } catch (e) {}
@@ -403,6 +414,9 @@ export function getPeriodsWithData(satker) {
       .then((json) => {
         if (json.success && Array.isArray(json.periods)) {
           inMemoryPeriodsWithData[targetSatker] = json.periods;
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("ptwp-periods-updated", { detail: { satker: targetSatker } }));
+          }
         }
       })
       .catch(() => {});

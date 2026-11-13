@@ -8,6 +8,7 @@ import {
   fetchCashBook,
   fetchSettings,
   getPeriodsWithData,
+  refreshPeriodsWithData,
   filterRealMembers,
 } from "@/services/storageService";
 import { exportExpensesToExcel } from "@/services/excelService";
@@ -247,20 +248,41 @@ export default function MonitoringCabangView({
 
   // Sinkronkan daftar periode yang memiliki data riil untuk satker terpilih
   useEffect(() => {
-    const updatePeriods = () => {
-      if (typeof window !== "undefined") {
-        const targetSatker = selectedBranch || currentUser?.satker || "Pengadilan Agama Gunung Sugih";
-        const pData = getPeriodsWithData(targetSatker);
-        setPeriodsWithData(pData || []);
+    let isMounted = true;
+    const targetSatker = selectedBranch || currentUser?.satker || "Pengadilan Agama Gunung Sugih";
+
+    // Set langsung dari in-memory cache jika ada agar UI kalender cepat/instan
+    const cached = getPeriodsWithData(targetSatker);
+    setPeriodsWithData(Array.isArray(cached) ? cached : []);
+
+    // Muat data periode terbaru dari server secara asinkron dan reaktif
+    const updatePeriods = async () => {
+      try {
+        const pData = await refreshPeriodsWithData(targetSatker);
+        if (isMounted) {
+          setPeriodsWithData(Array.isArray(pData) ? pData : []);
+        }
+      } catch (err) {
+        console.error("Gagal refresh periode kalender monitoring:", err);
       }
     };
 
     updatePeriods();
-    window.addEventListener("storage", updatePeriods);
-    return () => {
-      window.removeEventListener("storage", updatePeriods);
+
+    const handlePeriodsEvent = (e) => {
+      if (!e?.detail?.satker || e.detail.satker === targetSatker) {
+        updatePeriods();
+      }
     };
-  }, [selectedBranch, period, currentUser]);
+
+    window.addEventListener("storage", updatePeriods);
+    window.addEventListener("ptwp-periods-updated", handlePeriodsEvent);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("storage", updatePeriods);
+      window.removeEventListener("ptwp-periods-updated", handlePeriodsEvent);
+    };
+  }, [selectedBranch, currentUser]);
 
   // Parse Periode aktif (e.g. "September 2026")
   const { currentMonthIdx, currentYear } = useMemo(() => {

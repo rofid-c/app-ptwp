@@ -107,15 +107,27 @@ export default function DashboardView({
   );
 
   const paidMembers = members.filter((m) => m.paid);
-  const totalCollected = paidMembers.reduce(
+  const duesFromMembers = paidMembers.reduce(
     (sum, m) => sum + (Number(m.pusat || 0) + Number(m.daerah || 0) + Number(m.cabang || 0) + Number(m.tournamen || 0)),
     0
   );
 
+  // Jika anggota belum diinput/diimpor pada periode ini, periksa apakah ada penerimaan iuran di buku kas
+  const duesInCashbook = (cashbook || [])
+    .filter(
+      (c) =>
+        c.type === "in" &&
+        (c.period?.toLowerCase() === period.toLowerCase() ||
+          (c.source === "rekap_iuran" && c.period === period))
+    )
+    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+  const totalCollected = duesFromMembers > 0 ? duesFromMembers : duesInCashbook;
+  const effectiveTarget = totalTarget > 0 ? totalTarget : totalCollected;
   const unpaidMembers = members.filter((m) => !m.paid);
-  const totalUnpaid = Math.max(0, totalTarget - totalCollected);
-  const percentageCollected = totalTarget > 0 ? ((totalCollected / totalTarget) * 100).toFixed(1) : "0.0";
-  const percentageUnpaid = totalTarget > 0 ? ((totalUnpaid / totalTarget) * 100).toFixed(1) : "0.0";
+  const totalUnpaid = Math.max(0, effectiveTarget - totalCollected);
+  const percentageCollected = effectiveTarget > 0 ? ((totalCollected / effectiveTarget) * 100).toFixed(1) : "0.0";
+  const percentageUnpaid = effectiveTarget > 0 ? ((totalUnpaid / effectiveTarget) * 100).toFixed(1) : "0.0";
 
   // Saldo Kas Cabang
   const totalCashIn = cashbook.filter((c) => c.type === "in").reduce((sum, c) => sum + Number(c.amount || 0), 0);
