@@ -64,24 +64,14 @@ export default function MobileBottomNav({
         </button>
 
         {isPTA && (
-          <>
-            <button
-              type="button"
-              className={`bottom-nav-item ${activeTab === "monitoring" ? "active" : ""}`}
-              onClick={() => setActiveTab("monitoring")}
-            >
-              <Building2 className="icon" size={18} />
-              <span>Monitoring</span>
-            </button>
-            <button
-              type="button"
-              className={`bottom-nav-item ${activeTab === "admin" ? "active" : ""}`}
-              onClick={() => setActiveTab("admin")}
-            >
-              <ShieldCheck className="icon" size={18} />
-              <span>Admin</span>
-            </button>
-          </>
+          <button
+            type="button"
+            className={`bottom-nav-item ${activeTab === "monitoring" ? "active" : ""}`}
+            onClick={() => setActiveTab("monitoring")}
+          >
+            <Building2 className="icon" size={18} />
+            <span>Monitoring</span>
+          </button>
         )}
 
         <button

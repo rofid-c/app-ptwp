@@ -856,13 +856,12 @@ export default function HomePage() {
     (currentUser?.satker || "").toLowerCase().includes("pta")
   );
   const isSuper = currentUser?.role === "super_admin";
-  const canAccessAdmin = isSuper || (isPTA && (currentUser?.role === "admin" || currentUser?.role === "bendahara" || currentUser?.role === "pimpinan"));
 
   useEffect(() => {
-    if (!canAccessAdmin && activeTab === "admin") {
+    if (!isSuper && activeTab === "admin") {
       setActiveTab("dashboard");
     }
-  }, [currentUser, activeTab, canAccessAdmin]);
+  }, [currentUser, activeTab, isSuper]);
 
   const isAdmin = currentUser?.role === "bendahara" || currentUser?.role === "pimpinan" || currentUser?.role === "super_admin";
 
@@ -1484,8 +1483,8 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* TAB 3: PORTAL ADMINISTRATOR */}
-          {activeTab === "admin" && canAccessAdmin && (
+          {/* TAB 3: PORTAL SUPER ADMINISTRATOR */}
+          {activeTab === "admin" && isSuper && (
             <AdminView currentUser={currentUser} />
           )}
         </main>
