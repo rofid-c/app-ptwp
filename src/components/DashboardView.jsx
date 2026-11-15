@@ -1413,6 +1413,9 @@ export default function DashboardView({
         flexDirection: "column",
         justifyContent: "space-between",
         margin: 0,
+        minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
       }}
     >
       <div>
@@ -1437,7 +1440,7 @@ export default function DashboardView({
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, justifyContent: "space-between" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1, justifyContent: "space-between", minWidth: 0, width: "100%" }}>
         {cashbook.length === 0 ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: "var(--text-muted)", fontSize: "13px" }}>
             Belum ada transaksi kas tercatat
@@ -1456,9 +1459,12 @@ export default function DashboardView({
                 border: "1px solid var(--border-light)",
                 gap: "10px",
                 flex: 1,
+                minWidth: 0,
+                width: "100%",
+                boxSizing: "border-box",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1, overflow: "hidden" }}>
                 <div
                   style={{
                     width: "28px",
@@ -1474,7 +1480,7 @@ export default function DashboardView({
                 >
                   {entry.type === "in" ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
                 </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
                   <div
                     style={{
                       fontSize: "12.5px",
@@ -1483,12 +1489,24 @@ export default function DashboardView({
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
+                      display: "block",
+                      maxWidth: "100%",
                     }}
                     title={entry.description}
                   >
                     {entry.description}
                   </div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--text-muted)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "block",
+                      maxWidth: "100%",
+                    }}
+                  >
                     {entry.date} • {entry.category}
                   </div>
                 </div>
@@ -1619,8 +1637,8 @@ export default function DashboardView({
       {/* 4. Layout Realisasi 4 Pos Iuran & Mutasi Kas Terakhir */}
       {hasCashbook ? (
         <div className="stitch-two-col" style={{ marginBottom: "20px" }}>
-          <div className="widen-stagger widen-delay-7">{renderRealisasiCard()}</div>
-          <div className="widen-stagger widen-delay-8">{renderMutasiCard()}</div>
+          <div className="widen-stagger widen-delay-7" style={{ minWidth: 0, maxWidth: "100%" }}>{renderRealisasiCard()}</div>
+          <div className="widen-stagger widen-delay-8" style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>{renderMutasiCard()}</div>
         </div>
       ) : (
         <div className="widen-stagger widen-delay-7" style={{ marginBottom: "20px" }}>
