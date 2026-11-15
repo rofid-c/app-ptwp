@@ -149,7 +149,7 @@ async function main() {
   const hashedPassword = hashPassword(password);
   const satker = "Pengadilan Tinggi Agama Bandar Lampung";
   const title = "Administrator Daerah PTA";
-  const role = "admin";
+  const role = "super_admin";
   const roleLabel = "Administrator PTA Bandar Lampung";
   const level = "daerah";
 

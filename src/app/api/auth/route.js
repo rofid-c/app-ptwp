@@ -60,9 +60,7 @@ export async function POST(request) {
       });
     }
 
-    const activeSatker = isSuperAdmin
-      ? "Seluruh Satuan Kerja (Super Admin)"
-      : (user.satker || satker || "Pengadilan Agama Gunung Sugih");
+    const activeSatker = satker || user.satker || "Pengadilan Agama Gunung Sugih";
 
     const userPayload = {
       id: user.id,
