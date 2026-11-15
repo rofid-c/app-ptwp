@@ -378,48 +378,85 @@ export function getAvailablePeriods(satker) {
 }
 
 let inMemoryPeriodsWithData = {};
+let isFetchingPeriods = {};
+let refreshPromises = {};
 
 export function invalidatePeriodsCache(satker) {
   if (satker) {
     delete inMemoryPeriodsWithData[satker];
+    delete isFetchingPeriods[satker];
+    delete refreshPromises[satker];
   } else {
     inMemoryPeriodsWithData = {};
+    isFetchingPeriods = {};
+    refreshPromises = {};
   }
+}
+
+export function getCachedPeriods(satker) {
+  const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
+  return inMemoryPeriodsWithData[targetSatker] || [];
 }
 
 export async function refreshPeriodsWithData(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
   if (!isClient()) return [];
-  try {
-    const res = await apiFetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, {
-      cache: "no-store",
-    });
-    const json = await res.json();
-    if (json.success && Array.isArray(json.periods)) {
-      inMemoryPeriodsWithData[targetSatker] = json.periods;
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ptwp-periods-updated", { detail: { satker: targetSatker } }));
+
+  // Deduplikasi: Jika request untuk satker ini sedang berjalan, jangan buat request baru
+  if (refreshPromises[targetSatker]) {
+    return refreshPromises[targetSatker];
+  }
+
+  refreshPromises[targetSatker] = (async () => {
+    try {
+      const res = await apiFetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, {
+        cache: "no-store",
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.periods)) {
+        inMemoryPeriodsWithData[targetSatker] = json.periods;
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("ptwp-periods-updated", {
+              detail: { satker: targetSatker, periods: json.periods },
+            })
+          );
+        }
+        return json.periods;
       }
-      return json.periods;
+    } catch (e) {
+      console.error("[StorageService] Gagal refresh periods:", e);
+    } finally {
+      delete refreshPromises[targetSatker];
     }
-  } catch (e) {}
-  return inMemoryPeriodsWithData[targetSatker] || [];
+    return inMemoryPeriodsWithData[targetSatker] || [];
+  })();
+
+  return refreshPromises[targetSatker];
 }
 
 export function getPeriodsWithData(satker) {
   const targetSatker = satker || getCurrentUser()?.satker || "Pengadilan Agama Gunung Sugih";
-  if (isClient() && !inMemoryPeriodsWithData[targetSatker]) {
+  if (isClient() && !inMemoryPeriodsWithData[targetSatker] && !isFetchingPeriods[targetSatker]) {
+    isFetchingPeriods[targetSatker] = true;
     apiFetch(`/api/dues?getPeriods=true&satker=${encodeURIComponent(targetSatker)}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((json) => {
+        isFetchingPeriods[targetSatker] = false;
         if (json.success && Array.isArray(json.periods)) {
           inMemoryPeriodsWithData[targetSatker] = json.periods;
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("ptwp-periods-updated", { detail: { satker: targetSatker } }));
+            window.dispatchEvent(
+              new CustomEvent("ptwp-periods-updated", {
+                detail: { satker: targetSatker, periods: json.periods },
+              })
+            );
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        isFetchingPeriods[targetSatker] = false;
+      });
   }
 
   return inMemoryPeriodsWithData[targetSatker] || [];

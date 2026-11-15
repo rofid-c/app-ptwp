@@ -317,7 +317,12 @@ export default function MonitoringCabangView({
 
     const handlePeriodsEvent = (e) => {
       if (!e?.detail?.satker || e.detail.satker === targetSatker) {
-        updatePeriods();
+        if (isMounted && Array.isArray(e?.detail?.periods)) {
+          setPeriodsWithData(e.detail.periods);
+        } else if (isMounted) {
+          const cachedPeriods = getPeriodsWithData(targetSatker);
+          setPeriodsWithData(Array.isArray(cachedPeriods) ? cachedPeriods : []);
+        }
       }
     };
 
