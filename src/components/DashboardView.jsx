@@ -46,36 +46,57 @@ function getSmoothPath(points) {
   return d;
 }
 
-// Hook animasi angka (Count-Up dari 0 ke target nominal real dengan durasi 1.8 detik)
-function useCountUp(target, duration = 1800) {
+// Hook animasi angka (Count-Up dari 0 ke target nominal real, durasi disamakan pemekaran kartu ~2.8 detik)
+function useCountUp(target, duration = 2800, delay = 0) {
   const [count, setCount] = useState(0);
+  const mountTimeRef = React.useRef(Date.now());
+  const hasFinishedInitialDelayRef = React.useRef(false);
 
   useEffect(() => {
     let startTimestamp = null;
     let animationFrameId;
-    const startValue = 0;
+    let timeoutId;
     const endValue = Number(target || 0);
 
-    const step = (timestamp) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // Easing curve: easeOutExpo (alami, halus, melambat di ujung)
-      const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      setCount(Math.round(startValue + (endValue - startValue) * easeOut));
+    const elapsed = Date.now() - mountTimeRef.current;
+    const remainingDelay = hasFinishedInitialDelayRef.current
+      ? 0
+      : Math.max(0, delay - elapsed);
 
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      } else {
-        setCount(endValue);
-      }
+    const startCounter = () => {
+      startTimestamp = null;
+      const startValue = count;
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        // Easing curve: easeOutExpo (alami, halus, melambat di ujung)
+        const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        setCount(Math.round(startValue + (endValue - startValue) * easeOut));
+
+        if (progress < 1) {
+          animationFrameId = requestAnimationFrame(step);
+        } else {
+          setCount(endValue);
+          hasFinishedInitialDelayRef.current = true;
+        }
+      };
+      animationFrameId = requestAnimationFrame(step);
     };
 
-    animationFrameId = requestAnimationFrame(step);
+    if (remainingDelay > 0) {
+      timeoutId = setTimeout(() => {
+        hasFinishedInitialDelayRef.current = true;
+        startCounter();
+      }, remainingDelay);
+    } else {
+      startCounter();
+    }
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, [target, duration]);
+  }, [target, duration, delay]);
 
   return count;
 }
@@ -155,11 +176,11 @@ export default function DashboardView({
   const hasCashbook = Array.isArray(cashbook) && cashbook.length > 0;
   const hasRightColumn = hasCashbook;
 
-  // Animasi Count-Up dari 0 ke nominal real (Durasi 1.8 detik)
-  const animatedCollected = useCountUp(totalCollected, 1800);
-  const animatedCashOut = useCountUp(totalCashOut, 1800);
-  const animatedBalance = useCountUp(currentBalance, 1800);
-  const animatedPercent = useCountUp(percentageCollected, 1800);
+  // Animasi Count-Up dari 0 ke nominal real: durasi 2.8s, waktu nampil selaras pemekaran kartu
+  const animatedCollected = useCountUp(totalCollected, 2800, 220);
+  const animatedCashOut = useCountUp(totalCashOut, 2800, 480);
+  const animatedBalance = useCountUp(currentBalance, 2800, 340);
+  const animatedPercent = useCountUp(percentageCollected, 2800, 220);
 
   // State untuk Kartu Analitik Kas Bulanan
   const ALL_MONTHS = [
@@ -273,7 +294,7 @@ export default function DashboardView({
     realMonthlyData.length - 1
   );
   const activePointData = realMonthlyData[activeIdx] || realMonthlyData[0];
-  const animatedChartBalance = useCountUp(activePointData?.balance, 1800);
+  const animatedChartBalance = useCountUp(activePointData?.balance, 2800, 620);
 
   // Sinkronisasi dinamis: Donut card mengikuti bulan yang sedang disorot/dipilih pada grafik tren
   const inspectedPeriod = activePointData?.periodTitle || period;
@@ -344,7 +365,7 @@ export default function DashboardView({
   const donutPctCollected =
     donutTotalTarget > 0 ? ((donutTotalCollected / donutTotalTarget) * 100).toFixed(1) : "0.0";
   const donutTotalMembers = inspectedMembers.length;
-  const animatedDonutTarget = useCountUp(donutTotalTarget, 1800);
+  const animatedDonutTarget = useCountUp(donutTotalTarget, 2800, 760);
 
   const calcDonutUnitStats = (catName) => {
     const unitMembers = inspectedMembers.filter((m) => {
@@ -722,8 +743,9 @@ export default function DashboardView({
 
       {/* Interactive Chart Container */}
       <div style={{ position: "relative", width: "100%", marginTop: "8px" }}>
-        {/* Floating Tooltip Card */}
+        {/* Floating Tooltip Card (Sinkron muncul bersamaan di 2.8s) */}
         <div
+          className="chart-floating-tooltip"
           style={{
             position: "absolute",
             left: `${(pAnchor.x / svgWidth) * 100}%`,
@@ -888,22 +910,6 @@ export default function DashboardView({
                 <stop offset="65%" stopColor="#dc2626" stopOpacity="0.04" />
                 <stop offset="100%" stopColor="#dc2626" stopOpacity="0.0" />
               </linearGradient>
-
-              {/* Clip-Path Reveal dari Kiri ke Kanan dengan Durasi 1.8 Detik */}
-              <clipPath id="chartRevealFromLeft">
-                <rect x="0" y="0" width="0" height={svgHeight}>
-                  <animate
-                    attributeName="width"
-                    from="0"
-                    to={svgWidth}
-                    dur="1.8s"
-                    fill="freeze"
-                    calcMode="spline"
-                    keyTimes="0; 1"
-                    keySplines="0.25 0.7 0.1 1"
-                  />
-                </rect>
-              </clipPath>
             </defs>
 
             {/* Horizontal Dashed Grid Lines & Y Labels */}
@@ -932,8 +938,8 @@ export default function DashboardView({
               </g>
             ))}
 
-            {/* Elemen Grafik: Area Fill, Kurva Garis, dan Active Point Dots Muncul Perlahan dari Kiri (1.8 Detik) */}
-            <g clipPath="url(#chartRevealFromLeft)" className="chart-reveal-from-left">
+            {/* Elemen Grafik: Area Fill & Kurva Garis Menyapu Halus dari Kiri ke Kanan (1.6 Detik, Mulai di 2.8s) */}
+            <g className="chart-reveal-from-left">
               {/* Area Fill Halus untuk masing-masing kurva aktif */}
               {visibleLines.outflows && <path d={areaFillOutflow} fill="url(#outflowGrad)" />}
               {visibleLines.inflows && <path d={areaFillInflow} fill="url(#inflowGrad)" />}
@@ -974,7 +980,10 @@ export default function DashboardView({
                   strokeLinejoin="round"
                 />
               )}
+            </g>
 
+            {/* Marker Titik Aktif & Garis Pandu: Muncul Bersamaan & Halus (Mulai di 2.8s) */}
+            <g className="chart-marker-entrance">
               {/* Vertical Guide Line */}
               <line
                 x1={pAnchor.x}
@@ -996,7 +1005,7 @@ export default function DashboardView({
 
               {visibleLines.inflows && (
                 <g>
-                  <circle cx={pInflow.x} cy={pInflow.y} r="7" fill="rgba(22, 163, 74, 0.25)" />
+                  <circle cx={pInflow.x} cy={pInflow.y} r="7" fill="rgba(220, 38, 38, 0.25)" />
                   <circle cx={pInflow.x} cy={pInflow.y} r="4.5" fill="#16a34a" stroke="#ffffff" strokeWidth="2.5" />
                 </g>
               )}
@@ -1554,7 +1563,7 @@ export default function DashboardView({
                 height: "100%",
                 background: "var(--money-in)",
                 borderRadius: "99px",
-                transition: "width 1800ms cubic-bezier(0.16, 1, 0.3, 1)",
+                transition: "width 1600ms cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             />
           </div>

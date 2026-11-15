@@ -98,7 +98,7 @@
 }
 
 ::view-transition-new(root) {
-  z-index: 9999;
+  z-index: 99999;
 }
 
 [data-theme="dark"] {
@@ -481,40 +481,41 @@ body {
 }
 
 /* ==========================================================================
-   STAGGERED SLIDE & WIDEN FROM LEFT (MUNCUL MELEBAR 1 PER 1 DARI UJUNG KIRI MENU)
-   Durasi total 1.8 detik, kurva Apple cubic-bezier sangat halus
+   DASHBOARD CARD SCALE POP & EXPAND (MUNCUL KECIL KE BESAR PERLAHAN, HALUS & MEWAH)
+   Durasi total ~2.8 detik, kurva bezier Apple sangat halus, transform-origin center
    ========================================================================== */
-@keyframes emergeAndWidenFromLeft {
+@keyframes dashboardCardScaleSmooth {
   0% {
     opacity: 0;
-    transform: translateX(-50px) scaleX(0.88);
-    filter: blur(3px);
+    transform: scale(0.91) translateY(14px);
+    filter: blur(4px);
   }
-  30% {
-    opacity: 0.7;
+  40% {
+    opacity: 0.85;
     filter: blur(1px);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) scaleX(1);
+    transform: scale(1) translateY(0);
     filter: blur(0px);
   }
 }
 
 .widen-stagger {
-  animation: emergeAndWidenFromLeft 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transform-origin: left center;
+  animation: dashboardCardScaleSmooth 1.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: center center;
   will-change: transform, opacity, filter;
 }
 
-.widen-delay-1 { animation-delay: 60ms; }
-.widen-delay-2 { animation-delay: 180ms; }
-.widen-delay-3 { animation-delay: 300ms; }
-.widen-delay-4 { animation-delay: 420ms; }
-.widen-delay-5 { animation-delay: 540ms; }
-.widen-delay-6 { animation-delay: 660ms; }
-.widen-delay-7 { animation-delay: 780ms; }
-.widen-delay-8 { animation-delay: 900ms; }
+/* Stagger organik & dinamis yang menyebar anggun (total ~2.8 detik) */
+.widen-delay-1 { animation-delay: 0ms; }     /* Tabel Atas: Dashboard Utama Banner muncul pertama */
+.widen-delay-2 { animation-delay: 220ms; }   /* Card 1: Iuran Terkumpul */
+.widen-delay-4 { animation-delay: 340ms; }   /* Card 3: Saldo Kas (organik/random sebelum card 2) */
+.widen-delay-3 { animation-delay: 480ms; }   /* Card 2: Total Pengeluaran */
+.widen-delay-5 { animation-delay: 620ms; }   /* Hero Left: Grafik Tren Kas Bulanan */
+.widen-delay-6 { animation-delay: 760ms; }   /* Hero Right: Donut Distribusi Kategori */
+.widen-delay-7 { animation-delay: 920ms; }   /* Realisasi 4 Pos Iuran */
+.widen-delay-8 { animation-delay: 1080ms; }  /* Mutasi Kas & Aksi Cepat Bendahara */
 
 /* ==========================================================================
    METRIC CARDS (DASHBOARD STATS)
@@ -2285,7 +2286,7 @@ body {
 }
 
 /* ==========================================================================
-   ANIMASI TREND CHART MUNCUL PERLAHAN DARI KIRI (DURASI 1.8 DETIK)
+   ANIMASI TREND CHART MUNCUL DARI KIRI & SINKRON DENGAN KARTU (DURASI 2.8 DETIK)
    ========================================================================== */
 @keyframes chartRevealLeftToRight {
   0% {
@@ -2297,7 +2298,38 @@ body {
 }
 
 .chart-reveal-from-left {
-  animation: chartRevealLeftToRight 1.8s cubic-bezier(0.25, 0.7, 0.1, 1) forwards;
+  animation: chartRevealLeftToRight 2.8s cubic-bezier(0.16, 1, 0.3, 1) 620ms both;
+  will-change: clip-path;
+}
+
+@keyframes chartMarkerFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.chart-marker-entrance {
+  animation: chartMarkerFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 620ms both;
+  will-change: opacity;
+}
+
+@keyframes chartTooltipFadeIn {
+  0% {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+.chart-floating-tooltip {
+  animation: chartTooltipFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 620ms both;
+  will-change: opacity, filter;
 }
 
 .stitch-two-col {
@@ -4674,60 +4706,83 @@ body {
 }
 
 .monitoring-nav-segmented {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
   background: #f1f5f9;
   padding: 3px;
   border-radius: 9999px;
-  border: 1px solid rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="dark"] .monitoring-nav-segmented {
   background: #0f182c;
   border-color: #1e293b;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Kapsul Hijau Berseluncur ("ijo-ijo bergeser" kebal terhadap rasio zoom 80%) */
+.monitoring-slider-pill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 9999px;
+  background: #0f5132;
+  box-shadow: 0 3px 12px rgba(15, 81, 50, 0.32);
+  pointer-events: none;
+  z-index: 1;
+  transition: left 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s ease;
+  will-change: left, width;
+}
+
+[data-theme="dark"] .monitoring-slider-pill {
+  background: #10b981;
+  box-shadow: 0 3px 14px rgba(16, 185, 129, 0.4);
 }
 
 .monitoring-segment-btn {
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 7px 18px;
   border-radius: 9999px;
   border: none;
-  background: transparent;
+  background: transparent !important;
   color: var(--text-muted, #64748b);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   outline: none;
   white-space: nowrap;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease;
   user-select: none;
 }
 
 .monitoring-segment-btn:hover:not(.active) {
   color: var(--text-primary, #0f172a);
-  background: rgba(255, 255, 255, 0.7);
-  transform: translateY(-0.5px);
 }
 
 [data-theme="dark"] .monitoring-segment-btn:hover:not(.active) {
   color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .monitoring-segment-btn.active {
-  background: #0f5132;
-  color: #ffffff;
-  box-shadow: 0 2px 10px rgba(15, 81, 50, 0.28);
+  color: #ffffff !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 [data-theme="dark"] .monitoring-segment-btn.active {
-  background: #10b981;
-  color: #062817;
+  color: #062817 !important;
   font-weight: 800;
-  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.35);
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .island-calendar-btn {
@@ -6766,6 +6821,51 @@ body.monitoring-active-tab {
 
 
 /* ==========================================================================
+   ANIMASI PERALIHAN SUB-TAB MONITORING CABANG (DASHBOARD, REKAP, AUDIT TRAIL)
+   ========================================================================== */
+@keyframes monitoringSubTabFadeSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.monitoring-subtab-pane {
+  animation: monitoringSubTabFadeSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+  width: 100%;
+}
+
+@keyframes monitoringCardScalePop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.monitoring-card-stagger-1 {
+  animation: monitoringCardScalePop 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.monitoring-card-stagger-2 {
+  animation: monitoringCardScalePop 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+.monitoring-card-stagger-3 {
+  animation: monitoringCardScalePop 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+
+/* ==========================================================================
    INLINE MONITORING REKAP BELANJA & DOKUMEN (80% LEFT PANE)
    Mengikuti Taste Skill 2.5: Typography bersih, no clutter, micro-interactions
    ========================================================================== */
@@ -6774,18 +6874,6 @@ body.monitoring-active-tab {
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  animation: fadeInPane 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes fadeInPane {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Header Card Rekap Belanja */
@@ -7220,3 +7308,708 @@ body.monitoring-active-tab {
   line-height: 1.4;
   padding: 4px 6px;
 }
+
+/* ==========================================================================
+   PORTAL ADMIN: ANIMASI INTERAKTIF & MICRO-INTERACTIONS RBAC
+   ========================================================================== */
+
+/* Keyframe Animations */
+@keyframes adminFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes adminScalePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  70% {
+    transform: scale(1.01) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes adminSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes adminPulsePing {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(22, 163, 74, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+  }
+}
+
+@keyframes adminAmberPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(217, 119, 6, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0);
+  }
+}
+
+@keyframes adminFloatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes adminToastSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes adminProgressBar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes adminShimmerLight {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Container Root */
+.admin-view-root {
+  animation: adminFadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Banner Interaktif */
+.admin-header-banner {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #052618 0%, #0d4a32 50%, #062319 100%);
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 26px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 12px 30px -8px rgba(6, 46, 30, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-header-banner:hover {
+  box-shadow: 0 16px 36px -6px rgba(6, 46, 30, 0.55);
+}
+
+.admin-banner-glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(22, 163, 74, 0.28) 0%, rgba(22, 163, 74, 0) 70%);
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+.admin-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #fef08a 0%, #fde047 100%);
+  color: #1e3a2b;
+  padding: 3.5px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(254, 240, 138, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.admin-banner-badge:hover {
+  transform: scale(1.04);
+}
+
+/* Tombol Refresh Interaktif */
+.admin-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.admin-refresh-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.admin-spin-icon {
+  animation: adminSpin 0.75s linear infinite;
+}
+
+/* Stat Cards Interaktif */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-stat-card {
+  position: relative;
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -4px rgba(15, 81, 50, 0.12);
+  border-color: #86efac;
+}
+
+[data-theme="dark"] .admin-stat-card:hover {
+  border-color: #15803d;
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+.admin-stat-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.admin-stat-card:hover .admin-stat-icon-wrap {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.admin-ping-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #d97706;
+  animation: adminAmberPulse 1.8s infinite;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+/* Navigation Tabs Interaktif */
+.admin-tabs-nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1.5px solid var(--border-light, #e2e8f0);
+  margin-bottom: 22px;
+  gap: 14px;
+}
+
+.admin-nav-tab {
+  position: relative;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 12px 12px 0 0;
+  transition: all 0.2s ease;
+}
+
+.admin-nav-tab:hover {
+  color: #0f5132;
+  background: rgba(15, 81, 50, 0.05);
+}
+
+.admin-nav-tab.active {
+  color: #0f5132;
+  font-weight: 800;
+}
+
+.admin-nav-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1.5px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #16a34a 0%, #0f5132 100%);
+  border-radius: 3px 3px 0 0;
+  animation: adminFadeInUp 0.2s ease-out;
+}
+
+.admin-badge-count {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2.5px 8px;
+  border-radius: 20px;
+  transition: transform 0.2s ease;
+}
+
+.admin-nav-tab:hover .admin-badge-count {
+  transform: scale(1.08);
+}
+
+.admin-badge-pulse-red {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+  animation: adminAmberPulse 2s infinite;
+}
+
+/* Search Bar & Filter Interaktif */
+.admin-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-light, #cbd5e1);
+  border-radius: 12px;
+  padding: 7px 14px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-search-wrapper:focus-within {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16);
+}
+
+.admin-search-input {
+  border: none;
+  outline: none;
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--text-primary);
+  width: 190px;
+  transition: width 0.25s ease;
+}
+
+.admin-search-input:focus {
+  width: 230px;
+}
+
+.admin-clear-search-btn {
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-clear-search-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.admin-satker-select {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-light, #cbd5e1);
+  font-size: 12px;
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  max-width: 200px;
+}
+
+.admin-satker-select:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16);
+}
+
+/* Status Filter Pill Buttons */
+.admin-filter-pill-btn {
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-filter-pill-btn:hover {
+  transform: translateY(-1.5px);
+  filter: brightness(1.05);
+}
+
+.admin-filter-pill-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Tabel Interaktif & Baris */
+.admin-table-card {
+  background: var(--bg-card, #ffffff);
+  border-radius: 18px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.03);
+  animation: adminFadeInUp 0.3s ease-out;
+}
+
+.admin-interactive-row {
+  transition: background 0.18s ease, transform 0.15s ease;
+}
+
+.admin-interactive-row:hover {
+  background: rgba(15, 81, 50, 0.035) !important;
+}
+
+[data-theme="dark"] .admin-interactive-row:hover {
+  background: rgba(22, 163, 74, 0.08) !important;
+}
+
+/* Action Buttons Interaktif */
+.admin-btn-action-approve {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #ffffff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-btn-action-approve:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.42);
+  background: linear-gradient(135deg, #15803d 0%, #0f5132 100%);
+}
+
+.admin-btn-action-approve:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
+}
+
+.admin-btn-action-approve:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.admin-btn-action-reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1.5px solid #fecaca;
+  padding: 6.5px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-btn-action-reject:hover {
+  background: #fca5a5;
+  color: #991b1b;
+  border-color: #f87171;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.admin-btn-action-reject:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.admin-btn-action-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.admin-btn-action-delete:hover {
+  color: #dc2626;
+  background: #fee2e2;
+  transform: scale(1.15) rotate(-6deg);
+}
+
+.admin-wa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #16a34a;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.admin-wa-pill:hover {
+  background: #dcfce7;
+  color: #15803d;
+  transform: translateY(-1px);
+}
+
+.admin-copyable-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: monospace;
+  font-weight: 700;
+  color: #0f5132;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 3px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-copyable-pill:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+  transform: translateY(-1.5px);
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.15);
+}
+
+.admin-copyable-pill:active {
+  transform: scale(0.96);
+}
+
+/* Modal Approval Interaktif */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: adminFadeInUp 0.2s ease-out;
+}
+
+.admin-modal-container {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 22px;
+  padding: 30px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  animation: adminScalePop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .admin-modal-container {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.admin-modal-icon-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+  animation: adminPulsePing 2.2s infinite;
+}
+
+/* Form Input Interaktif */
+.admin-form-card {
+  max-width: 620px;
+  margin: 0 auto;
+  background: var(--bg-card, #ffffff);
+  border-radius: 20px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  padding: 30px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.04);
+  animation: adminFadeInUp 0.3s ease-out;
+}
+
+.admin-input-field {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 11px;
+  border: 1.5px solid var(--border-light, #cbd5e1);
+  font-size: 13px;
+  background: var(--bg-app, #f8fafc);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.admin-input-field:focus {
+  border-color: #16a34a;
+  background: var(--bg-card, #ffffff);
+  box-shadow: 0 0 0 3.5px rgba(22, 163, 74, 0.16);
+  transform: translateY(-1px);
+}
+
+.admin-btn-submit-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 13px;
+  margin-top: 14px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #15803d 0%, #0f5132 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgba(15, 81, 50, 0.35);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-btn-submit-form:hover:not(:disabled) {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(15, 81, 50, 0.45);
+}
+
+.admin-btn-submit-form:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.admin-btn-submit-form:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+/* Toast Interaktif dengan Progress Bar */
+.admin-toast-box {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 999999;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: adminToastSlide 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  min-width: 290px;
+  backdrop-filter: blur(10px);
+}
+
+.admin-toast-content {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-toast-progress-bar {
+  height: 3.5px;
+  animation: adminProgressBar 4s linear forwards;
+}
+
+.admin-empty-icon-float {
+  animation: adminFloatGentle 3s ease-in-out infinite;
+}
+

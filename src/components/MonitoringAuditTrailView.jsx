@@ -167,7 +167,7 @@ export default function MonitoringAuditTrailView({
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
       {/* 1. HEADER CARD: JUDUL */}
       <div
-        className="stitch-card"
+        className="stitch-card monitoring-card-stagger-1"
         style={{
           background: "var(--bg-surface, #ffffff)",
           border: "1px solid var(--border-color, #e2e8f0)",
@@ -207,6 +207,7 @@ export default function MonitoringAuditTrailView({
 
       {/* 2. RINGKASAN METRIK AUDIT (5 KARTU) */}
       <div
+        className="monitoring-card-stagger-2"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
@@ -331,7 +332,7 @@ export default function MonitoringAuditTrailView({
 
       {/* 3. TOOLBAR FILTER & PENCARIAN */}
       <div
-        className="stitch-card"
+        className="stitch-card monitoring-card-stagger-3"
         style={{
           background: "var(--bg-surface, #ffffff)",
           border: "1px solid var(--border-color, #e2e8f0)",

@@ -286,8 +286,8 @@ export default function HomePage() {
           clipPath: clipPath,
         },
         {
-          duration: 1800,
-          easing: "cubic-bezier(0.32, 0.72, 0, 1)",
+          duration: 2500,
+          easing: "linear",
           pseudoElement: "::view-transition-new(root)",
         }
       );
@@ -865,7 +865,7 @@ export default function HomePage() {
 
   const isAdmin = currentUser?.role === "bendahara" || currentUser?.role === "pimpinan" || currentUser?.role === "super_admin";
 
-  // Animasi Lingkaran Membesar dari Tengah ke Full Screen (Smooth & Cepat 0.7 Detik)
+  // Animasi Lingkaran Membesar dari Kecil ke Besar (Durasi 2.8 Detik Mulus, Easing Linear Durasi Per Frame Sama, Di Lapisan Paling Atas Tanpa Tertutup Apapun)
   const handleLoginTransition = (stateUpdateFn) => {
     if (
       typeof document === "undefined" ||
@@ -878,7 +878,7 @@ export default function HomePage() {
 
     const x = window.innerWidth / 2;
     const y = window.innerHeight / 2;
-    const endRadius = Math.hypot(x, y);
+    const endRadius = Math.ceil(Math.hypot(x, y)) + 15;
 
     setIsLoggingIn(true);
 
@@ -889,7 +889,8 @@ export default function HomePage() {
     });
 
     transition.ready.then(() => {
-      // 1. Dashboard baru membesar melingkar dari tengah menuhin layar (On Top, z-index 9999)
+      // 1. Dashboard baru membesar melingkar dari tengah menuhin layar (Di lapisan paling atas z-index 99999, tidak tertutup apapun)
+      // Easing linear memastikan durasi dan kecepatan per frame sama rata (2.8 detik konstan mulus)
       document.documentElement.animate(
         {
           clipPath: [
@@ -898,22 +899,22 @@ export default function HomePage() {
           ],
         },
         {
-          duration: 700,
-          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          duration: 2000,
+          easing: "linear",
           pseudoElement: "::view-transition-new(root)",
         }
       );
 
-      // 2. Form login lama memudar, blur & menyusut lembut agar tidak menindih/menutupi lingkaran
+      // 2. Form login lama memudar secara mulus di lapisan bawah dengan durasi yang sama (2.8s linear)
       document.documentElement.animate(
         {
-          opacity: [1, 0.5, 0],
+          opacity: [1, 0],
           transform: ["scale(1)", "scale(0.96)"],
-          filter: ["blur(0px)", "blur(8px)"],
+          filter: ["blur(0px)", "blur(6px)"],
         },
         {
-          duration: 700,
-          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          duration: 2000,
+          easing: "linear",
           pseudoElement: "::view-transition-old(root)",
         }
       );

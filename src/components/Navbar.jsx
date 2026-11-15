@@ -62,6 +62,36 @@ export default function Navbar({
 
   const [timeStr, setTimeStr] = useState("");
 
+  // Sliding pill indicator untuk 3 sub-tab monitoring di pulau tengah ("ijo-ijo bergeser")
+  // Menggunakan offsetLeft & offsetWidth lokal agar 100% presisi dan kebal terhadap rasio zoom 80%
+  const [sliderStyle, setSliderStyle] = useState({ left: 3, width: 110, opacity: 1 });
+  const tabRefs = React.useRef({});
+
+  useEffect(() => {
+    if (activeTab !== "monitoring") return;
+
+    const updateSlider = () => {
+      const activeEl = tabRefs.current[monitoringSubTab];
+      if (activeEl) {
+        setSliderStyle({
+          left: activeEl.offsetLeft,
+          width: activeEl.offsetWidth,
+          opacity: 1,
+        });
+      }
+    };
+
+    updateSlider();
+    const frameId = requestAnimationFrame(updateSlider);
+    const timer = setTimeout(updateSlider, 60);
+    window.addEventListener("resize", updateSlider);
+    return () => {
+      cancelAnimationFrame(frameId);
+      clearTimeout(timer);
+      window.removeEventListener("resize", updateSlider);
+    };
+  }, [monitoringSubTab, activeTab]);
+
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -141,7 +171,19 @@ export default function Navbar({
       {activeTab === "monitoring" ? (
         <div className="top-island-center monitoring-island-center">
           <div className="monitoring-nav-segmented">
+            {/* Indikator Kapsul Hijau Berseluncur ("ijo-ijo bergeser" kebal rasio zoom) */}
+            <div
+              className="monitoring-slider-pill"
+              style={{
+                left: `${sliderStyle.left}px`,
+                width: `${sliderStyle.width}px`,
+                opacity: sliderStyle.opacity,
+              }}
+            />
             <button
+              ref={(el) => {
+                if (el) tabRefs.current["dashboard"] = el;
+              }}
               type="button"
               className={`monitoring-segment-btn ${monitoringSubTab === "dashboard" ? "active" : ""}`}
               onClick={() => onMonitoringSubTabChange && onMonitoringSubTabChange("dashboard")}
@@ -151,6 +193,9 @@ export default function Navbar({
               <span>Dashboard</span>
             </button>
             <button
+              ref={(el) => {
+                if (el) tabRefs.current["expenses"] = el;
+              }}
               type="button"
               className={`monitoring-segment-btn ${monitoringSubTab === "expenses" ? "active" : ""}`}
               onClick={() => onMonitoringSubTabChange && onMonitoringSubTabChange("expenses")}
@@ -160,6 +205,9 @@ export default function Navbar({
               <span>Rekap Pengeluaran</span>
             </button>
             <button
+              ref={(el) => {
+                if (el) tabRefs.current["audit"] = el;
+              }}
               type="button"
               className={`monitoring-segment-btn ${monitoringSubTab === "audit" ? "active" : ""}`}
               onClick={() => onMonitoringSubTabChange && onMonitoringSubTabChange("audit")}

@@ -192,6 +192,38 @@ const MONTH_NAMES = [
   "Desember",
 ];
 
+// Hook animasi angka (Count-Up) untuk stat cards sub-tab rekap pengeluaran
+function useCountUp(target, duration = 1000) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    let animationFrameId;
+    const startValue = 0;
+    const endValue = Number(target || 0);
+
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setCount(Math.round(startValue + (endValue - startValue) * easeOut));
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setCount(endValue);
+      }
+    };
+    animationFrameId = requestAnimationFrame(step);
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [target, duration]);
+
+  return count;
+}
+
 export default function MonitoringCabangView({
   period = "September 2026",
   onPeriodChange,
@@ -450,6 +482,11 @@ export default function MonitoringCabangView({
 
   const netBalance = totalCollected - totalPeriodExpenses;
 
+  // Animasi angka count-up saat sub-tab rekap pengeluaran dibuka
+  const animatedExpenseTotal = useCountUp(totalPeriodExpenses, 1000);
+  const animatedCollectedTotal = useCountUp(totalCollected, 1000);
+  const animatedNetBalance = useCountUp(netBalance, 1000);
+
   const paidMembersCount = useMemo(() => {
     return filterRealMembers(branchMembers).filter((m) => m.isPaid).length;
   }, [branchMembers]);
@@ -552,140 +589,145 @@ export default function MonitoringCabangView({
       <div className="monitoring-left-pane">
         {monitoringSubTab === "dashboard" ? (
           /* Dashboard Terintegrasi dengan Data Cabang Bersangkutan */
-          <DashboardView
-            members={branchMembers}
-            cashbook={branchCashbook}
-            period={period}
-            settings={{
-              ...branchSettings,
-              branchName: activeBranchMeta.shortName,
-              institution: activeBranchMeta.name.toUpperCase(),
-            }}
-            currentUser={{
-              ...currentUser,
-              satker: activeBranchMeta.name,
-              name: "PTA Bandar Lampung",
-              roleLabel: "Pengawas Daerah (PTA)",
-            }}
-            hideHeader={true}
-            onOpenDues={() => {}}
-            onOpenAddCash={() => {}}
-            onOpenExport={() => {}}
-            onOpenPeriodPicker={() => {}}
-          />
+          <div key="monitoring-subtab-dashboard" className="monitoring-subtab-pane">
+            <DashboardView
+              members={branchMembers}
+              cashbook={branchCashbook}
+              period={period}
+              settings={{
+                ...branchSettings,
+                branchName: activeBranchMeta.shortName,
+                institution: activeBranchMeta.name.toUpperCase(),
+              }}
+              currentUser={{
+                ...currentUser,
+                satker: activeBranchMeta.name,
+                name: "PTA Bandar Lampung",
+                roleLabel: "Pengawas Daerah (PTA)",
+              }}
+              hideHeader={true}
+              onOpenDues={() => {}}
+              onOpenAddCash={() => {}}
+              onOpenExport={() => {}}
+              onOpenPeriodPicker={() => {}}
+            />
+          </div>
         ) : monitoringSubTab === "audit" ? (
           /* Tampilan Jejak Rekam & Audit Trail Terpadu */
-          <MonitoringAuditTrailView
-            selectedBranch={selectedBranch}
-            onSelectBranch={setSelectedBranch}
-            currentUser={currentUser}
-          />
+          <div key="monitoring-subtab-audit" className="monitoring-subtab-pane">
+            <MonitoringAuditTrailView
+              selectedBranch={selectedBranch}
+              onSelectBranch={setSelectedBranch}
+              currentUser={currentUser}
+            />
+          </div>
         ) : (
           /* Tampilan Rincian Rekap Belanja & Dokumen Cabang Sesuai Permintaan */
-          <div className="monitoring-expense-container">
-            {/* Header Card Rekap Belanja */}
-            <div className="monitoring-expense-header-card">
-              <div className="expense-header-info">
-                <div className="expense-header-icon-wrap">
-                  <FileSpreadsheet size={22} color="#0f5132" />
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <h3 className="expense-header-title">Rekap Pengeluaran Cabang</h3>
-                    <span className="satker-tag-pill">{activeBranchMeta.shortName}</span>
-                    <span className="period-tag-pill">{period}</span>
-                    {hasOriginalDoc && (
-                      <span
-                        className="satker-tag-pill"
-                        style={{
-                          color: "#15803d",
-                          background: "#dcfce7",
-                          borderColor: "#86efac",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                        title={`Dokumen Excel murni asli tersimpan: ${originalDocInfo?.filename || ""}`}
-                      >
-                        <FileCheck size={12} />
-                        <span>Dokumen Asli Tersedia</span>
-                      </span>
-                    )}
+          <div key="monitoring-subtab-expenses" className="monitoring-subtab-pane">
+            <div className="monitoring-expense-container">
+              {/* Header Card Rekap Belanja */}
+              <div className="monitoring-expense-header-card monitoring-card-stagger-1">
+                <div className="expense-header-info">
+                  <div className="expense-header-icon-wrap">
+                    <FileSpreadsheet size={22} color="#0f5132" />
                   </div>
-                  <p className="expense-header-subtitle">
-                    Rincian realisasi pengeluaran kas operasional dan unduhan berkas Excel murni asli yang diunggah oleh {activeBranchMeta.name}.
-                  </p>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <h3 className="expense-header-title">Rekap Pengeluaran Cabang</h3>
+                      <span className="satker-tag-pill">{activeBranchMeta.shortName}</span>
+                      <span className="period-tag-pill">{period}</span>
+                      {hasOriginalDoc && (
+                        <span
+                          className="satker-tag-pill"
+                          style={{
+                            color: "#15803d",
+                            background: "#dcfce7",
+                            borderColor: "#86efac",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                          title={`Dokumen Excel murni asli tersimpan: ${originalDocInfo?.filename || ""}`}
+                        >
+                          <FileCheck size={12} />
+                          <span>Dokumen Asli Tersedia</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="expense-header-subtitle">
+                      Rincian realisasi pengeluaran kas operasional dan unduhan berkas Excel murni asli yang diunggah oleh {activeBranchMeta.name}.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Button: Hanya Ekspor Keuangan Pengeluaran (Dokumen Lengkap Dihapus Sesuai Permintaan) */}
+                <div className="expense-header-actions">
+                  <button
+                    type="button"
+                    className="exp-export-btn-primary"
+                    onClick={handleExportExpenseDocument}
+                    disabled={isExporting !== null}
+                    title="Unduh berkas Excel murni pengeluaran yang diunggah oleh cabang dari database"
+                  >
+                    <Download size={15} />
+                    <span>
+                      {isExporting === "expenses"
+                        ? "Mengunduh Dokumen..."
+                        : "Ekspor Keuangan Pengeluaran"}
+                    </span>
+                  </button>
                 </div>
               </div>
 
-              {/* Action Button: Hanya Ekspor Keuangan Pengeluaran (Dokumen Lengkap Dihapus Sesuai Permintaan) */}
-              <div className="expense-header-actions">
-                <button
-                  type="button"
-                  className="exp-export-btn-primary"
-                  onClick={handleExportExpenseDocument}
-                  disabled={isExporting !== null}
-                  title="Unduh berkas Excel murni pengeluaran yang diunggah oleh cabang dari database"
-                >
-                  <Download size={15} />
-                  <span>
-                    {isExporting === "expenses"
-                      ? "Mengunduh Dokumen..."
-                      : "Ekspor Keuangan Pengeluaran"}
-                  </span>
-                </button>
-              </div>
-            </div>
+              {/* 3 Stat Cards Row */}
+              <div className="monitoring-expense-stats-grid monitoring-card-stagger-2">
+                {/* Card 1: Total Pengeluaran */}
+                <div className="exp-stat-card card-expense">
+                  <div className="stat-card-header">
+                    <span className="stat-card-title">Total Pengeluaran</span>
+                    <span className="stat-card-pill pill-red">{branchExpenses.length} Pengeluaran</span>
+                  </div>
+                  <div className="stat-card-value font-mono text-red">
+                    {formatRupiah(animatedExpenseTotal)}
+                  </div>
+                  <div className="stat-card-footer">
+                    Total pengeluaran kas operasional {activeBranchMeta.shortName}
+                  </div>
+                </div>
 
-            {/* 3 Stat Cards Row */}
-            <div className="monitoring-expense-stats-grid">
-              {/* Card 1: Total Pengeluaran */}
-              <div className="exp-stat-card card-expense">
-                <div className="stat-card-header">
-                  <span className="stat-card-title">Total Pengeluaran</span>
-                  <span className="stat-card-pill pill-red">{branchExpenses.length} Pengeluaran</span>
+                {/* Card 2: Iuran Terkumpul */}
+                <div className="exp-stat-card card-dues">
+                  <div className="stat-card-header">
+                    <span className="stat-card-title">Iuran Terkumpul</span>
+                    <span className="stat-card-pill pill-green">{paidMembersCount} Lunas</span>
+                  </div>
+                  <div className="stat-card-value font-mono text-green">
+                    {formatRupiah(animatedCollectedTotal)}
+                  </div>
+                  <div className="stat-card-footer">
+                    Penerimaan iuran dari {filterRealMembers(branchMembers).length} pegawai
+                  </div>
                 </div>
-                <div className="stat-card-value font-mono text-red">
-                  {formatRupiah(totalPeriodExpenses)}
-                </div>
-                <div className="stat-card-footer">
-                  Total pengeluaran kas operasional {activeBranchMeta.shortName}
-                </div>
-              </div>
 
-              {/* Card 2: Iuran Terkumpul */}
-              <div className="exp-stat-card card-dues">
-                <div className="stat-card-header">
-                  <span className="stat-card-title">Iuran Terkumpul</span>
-                  <span className="stat-card-pill pill-green">{paidMembersCount} Lunas</span>
-                </div>
-                <div className="stat-card-value font-mono text-green">
-                  {formatRupiah(totalCollected)}
-                </div>
-                <div className="stat-card-footer">
-                  Penerimaan iuran dari {filterRealMembers(branchMembers).length} pegawai
+                {/* Card 3: Sisa Kas Bersih */}
+                <div className="exp-stat-card card-balance">
+                  <div className="stat-card-header">
+                    <span className="stat-card-title">Sisa Kas Bersih</span>
+                    <span className={`stat-card-pill ${netBalance >= 0 ? "pill-gold" : "pill-red"}`}>
+                      {netBalance >= 0 ? "Surplus" : "Defisit"}
+                    </span>
+                  </div>
+                  <div className={`stat-card-value font-mono ${netBalance >= 0 ? "text-gold" : "text-red"}`}>
+                    {formatRupiah(animatedNetBalance)}
+                  </div>
+                  <div className="stat-card-footer">
+                    Selisih iuran terkumpul - realisasi belanja
+                  </div>
                 </div>
               </div>
 
-              {/* Card 3: Sisa Kas Bersih */}
-              <div className="exp-stat-card card-balance">
-                <div className="stat-card-header">
-                  <span className="stat-card-title">Sisa Kas Bersih</span>
-                  <span className={`stat-card-pill ${netBalance >= 0 ? "pill-gold" : "pill-red"}`}>
-                    {netBalance >= 0 ? "Surplus" : "Defisit"}
-                  </span>
-                </div>
-                <div className={`stat-card-value font-mono ${netBalance >= 0 ? "text-gold" : "text-red"}`}>
-                  {formatRupiah(netBalance)}
-                </div>
-                <div className="stat-card-footer">
-                  Selisih iuran terkumpul - realisasi belanja
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content Card: Toolbar + Data Table */}
-            <div className="monitoring-expense-table-card">
+              {/* Main Content Card: Toolbar + Data Table */}
+              <div className="monitoring-expense-table-card monitoring-card-stagger-3">
               {/* Toolbar: Search + Category Filter */}
               <div className="exp-card-toolbar">
                 <div className="toolbar-search-wrap">
@@ -813,7 +855,8 @@ export default function MonitoringCabangView({
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* =====================================================================

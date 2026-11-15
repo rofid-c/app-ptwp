@@ -17,6 +17,12 @@ import {
   EyeOff,
   RefreshCw,
   Lock,
+  Copy,
+  Check,
+  Sparkles,
+  AlertTriangle,
+  X,
+  Loader2,
 } from "lucide-react";
 import {
   getAccountRequests,
@@ -39,6 +45,10 @@ export default function AdminView({ currentUser }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [notification, setNotification] = useState(null);
   const [approvedModalData, setApprovedModalData] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
 
   const [newUser, setNewUser] = useState({
     name: "",
@@ -52,6 +62,7 @@ export default function AdminView({ currentUser }) {
   });
 
   const loadData = async () => {
+    setIsRefreshing(true);
     try {
       const [resReq, resUsers] = await Promise.all([
         fetch("/api/requests", { cache: "no-store" }),
@@ -70,6 +81,8 @@ export default function AdminView({ currentUser }) {
     } catch (err) {
       console.error("Gagal memuat data dari API MySQL:", err);
       showToast("Gagal terhubung ke MySQL Laragon.", "error");
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 350);
     }
   };
 
@@ -79,11 +92,26 @@ export default function AdminView({ currentUser }) {
 
   const showToast = (message, type = "success") => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    setTimeout(() => {
+      setNotification((curr) => (curr?.message === message ? null : curr));
+    }, 4000);
+  };
+
+  const handleCopy = (text, key) => {
+    if (!text) return;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      showToast(`Tersalin: "${text}"`, "info");
+      setTimeout(() => {
+        setCopiedKey((curr) => (curr === key ? null : curr));
+      }, 2000);
+    }
   };
 
   const handleApprove = async (req) => {
     try {
+      setProcessingId(req.id);
       const res = await fetch("/api/requests", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -109,12 +137,15 @@ export default function AdminView({ currentUser }) {
       }
     } catch (e) {
       showToast("Gagal memproses permohonan ke MySQL.", "error");
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleReject = async (id, name) => {
     if (confirm(`Yakin ingin menolak permohonan akun untuk "${name}"?`)) {
       try {
+        setProcessingId(id);
         const res = await fetch("/api/requests", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -126,6 +157,8 @@ export default function AdminView({ currentUser }) {
         }
       } catch (e) {
         showToast("Gagal menolak permohonan.", "error");
+      } finally {
+        setProcessingId(null);
       }
     }
   };
@@ -171,6 +204,7 @@ export default function AdminView({ currentUser }) {
     }
 
     try {
+      setIsSubmitting(true);
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,6 +230,8 @@ export default function AdminView({ currentUser }) {
       }
     } catch (e) {
       showToast("Gagal menghubungi server database.", "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -227,279 +263,196 @@ export default function AdminView({ currentUser }) {
     const matchSatker = satkerFilter === "ALL" || u.satker === satkerFilter;
     return matchSearch && matchSatker;
   });
+
   return (
-    <div style={{ padding: "24px 20px", maxWidth: "1280px", margin: "0 auto", color: "var(--text-primary)" }}>
-      {/* Toast Notification */}
+    <div className="admin-view-root" style={{ padding: "24px 20px", maxWidth: "1280px", margin: "0 auto", color: "var(--text-primary)" }}>
+      {/* Toast Notification Interaktif dengan Progress Bar */}
       {notification && (
         <div
+          className="admin-toast-box"
           style={{
-            position: "fixed",
-            top: "24px",
-            right: "24px",
-            zIndex: 9999,
-            padding: "12px 20px",
-            borderRadius: "10px",
-            fontSize: "13.5px",
-            fontWeight: 700,
-            background: notification.type === "error" ? "#fee2e2" : notification.type === "info" ? "#e0f2fe" : "#dcfce7",
-            color: notification.type === "error" ? "#dc2626" : notification.type === "info" ? "#0284c7" : "#15803d",
+            background: notification.type === "error" ? "#fef2f2" : notification.type === "info" ? "#f0f9ff" : "#f0fdf4",
+            color: notification.type === "error" ? "#b91c1c" : notification.type === "info" ? "#0369a1" : "#15803d",
             border: `1.5px solid ${notification.type === "error" ? "#fca5a5" : notification.type === "info" ? "#bae6fd" : "#86efac"}`,
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
           }}
         >
-          <span>{notification.type === "error" ? "⚠️" : "✓"}</span>
-          <span>{notification.message}</span>
+          <div className="admin-toast-content">
+            <span style={{ fontSize: "16px", display: "flex", alignItems: "center" }}>
+              {notification.type === "error" ? (
+                <AlertTriangle size={18} color="#dc2626" />
+              ) : notification.type === "info" ? (
+                <Sparkles size={18} color="#0284c7" />
+              ) : (
+                <CheckCircle2 size={18} color="#16a34a" />
+              )}
+            </span>
+            <span style={{ flex: 1 }}>{notification.message}</span>
+            <button
+              type="button"
+              onClick={() => setNotification(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "inherit",
+                cursor: "pointer",
+                padding: "2px",
+                display: "inline-flex",
+                opacity: 0.7,
+              }}
+              title="Tutup notifikasi"
+            >
+              <X size={15} />
+            </button>
+          </div>
+          <div
+            className="admin-toast-progress-bar"
+            style={{
+              background: notification.type === "error" ? "#ef4444" : notification.type === "info" ? "#0284c7" : "#16a34a",
+            }}
+          />
         </div>
       )}
 
-      {/* HEADER BANNER KHUSUS ADMIN */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #062e1e 0%, #0d4a32 50%, #062319 100%)",
-          color: "#ffffff",
-          borderRadius: "18px",
-          padding: "26px 28px",
-          marginBottom: "24px",
-          boxShadow: "0 10px 25px -5px rgba(6, 46, 30, 0.4)",
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "18px",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "14px",
-              background: "linear-gradient(135deg, #16a34a 0%, #0f5132 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-              border: "2px solid #fef08a",
-            }}
-          >
-            <ShieldCheck size={32} color="#fef08a" />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 800,
-                  letterSpacing: "1px",
-                  textTransform: "uppercase",
-                  background: "#fef08a",
-                  color: "#1e3a2b",
-                  padding: "3px 8px",
-                  borderRadius: "6px",
-                }}
-              >
-                SUPER ADMINISTRATOR
-              </span>
-              <span style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.75)" }}>
-                Akses Universal Seluruh Satker
-              </span>
+      {/* HEADER BANNER KHUSUS ADMIN DENGAN EFEK INTERAKTIF */}
+      <div className="admin-header-banner">
+        <div className="admin-banner-glow" />
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "18px", position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "15px",
+                background: "linear-gradient(135deg, #16a34a 0%, #0f5132 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 6px 16px rgba(0, 0, 0, 0.35)",
+                border: "2px solid #fef08a",
+                transition: "transform 0.25s ease",
+              }}
+            >
+              <ShieldCheck size={32} color="#fef08a" />
             </div>
-            <h1 style={{ fontSize: "22px", fontWeight: 800, margin: 0, letterSpacing: "-0.5px" }}>
-              Portal Manajemen Akun & Otorisasi RBAC
-            </h1>
-            <p style={{ fontSize: "13px", color: "rgba(255, 255, 255, 0.8)", margin: "4px 0 0 0" }}>
-              Setujui permohonan akun masuk, terbitkan izin akses login, atau cabut hak akses pengguna.
-            </p>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "5px", flexWrap: "wrap" }}>
+                <span className="admin-banner-badge">
+                  <Sparkles size={11} />
+                  SUPER ADMINISTRATOR
+                </span>
+                <span style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.8)", fontWeight: 500 }}>
+                  Otoritas Akses Wilayah Hukum PTA Bandar Lampung
+                </span>
+              </div>
+              <h1 style={{ fontSize: "22px", fontWeight: 800, margin: 0, letterSpacing: "-0.5px" }}>
+                Portal Manajemen Akun & Otorisasi RBAC
+              </h1>
+              <p style={{ fontSize: "13px", color: "rgba(255, 255, 255, 0.85)", margin: "4px 0 0 0" }}>
+                Setujui permohonan akun masuk, terbitkan izin akses login, atau cabut hak akses pengguna.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={loadData}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            background: "rgba(255, 255, 255, 0.15)",
-            color: "#ffffff",
-            border: "1px solid rgba(255, 255, 255, 0.25)",
-            padding: "9px 16px",
-            borderRadius: "10px",
-            fontSize: "12.5px",
-            fontWeight: 700,
-            cursor: "pointer",
-            backdropFilter: "blur(4px)",
-          }}
-        >
-          <RefreshCw size={15} />
-          <span>Segarkan Data</span>
-        </button>
+          <button
+            type="button"
+            onClick={loadData}
+            disabled={isRefreshing}
+            className="admin-refresh-btn"
+            title="Segarkan data permohonan dan akun langsung dari MySQL"
+          >
+            <RefreshCw size={15} className={isRefreshing ? "admin-spin-icon" : ""} />
+            <span>{isRefreshing ? "Menyegarkan..." : "Segarkan Data"}</span>
+          </button>
+        </div>
       </div>
 
-      {/* STATS SUMMARY CARDS */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-          marginBottom: "24px",
-        }}
-      >
+      {/* STATS SUMMARY CARDS DENGAN INTERAKSI HOVER & QUICK FILTER */}
+      <div className="admin-stats-grid">
+        {/* Card 1: Permohonan Menunggu */}
         <div
-          style={{
-            background: "var(--bg-card, #ffffff)",
-            border: "1.5px solid var(--border-light, #e2e8f0)",
-            borderRadius: "14px",
-            padding: "18px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          className="admin-stat-card"
+          onClick={() => {
+            setActiveSubTab("requests");
+            setStatusFilter("pending");
           }}
+          title="Klik untuk melihat permohonan yang menunggu persetujuan"
         >
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "10px",
-              background: "#fef3c7",
-              color: "#d97706",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Clock size={22} />
+          <div className="admin-stat-icon-wrap" style={{ background: "#fef3c7", color: "#d97706" }}>
+            <Clock size={23} />
           </div>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 600 }}>
-              Permohonan Menunggu
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 700, display: "flex", alignItems: "center" }}>
+              <span>Permohonan Menunggu</span>
+              {pendingRequestsCount > 0 && <span className="admin-ping-dot" title="Perlu ditindaklanjuti" />}
             </div>
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "#d97706" }}>
+            <div style={{ fontSize: "26px", fontWeight: 800, color: "#d97706", lineHeight: 1.2, marginTop: "2px" }}>
               {pendingRequestsCount}
             </div>
           </div>
         </div>
 
+        {/* Card 2: Total Akun Terdaftar */}
         <div
-          style={{
-            background: "var(--bg-card, #ffffff)",
-            border: "1.5px solid var(--border-light, #e2e8f0)",
-            borderRadius: "14px",
-            padding: "18px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          className="admin-stat-card"
+          onClick={() => {
+            setActiveSubTab("users");
           }}
+          title="Klik untuk melihat daftar seluruh akun aktif"
         >
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "10px",
-              background: "#dcfce7",
-              color: "#16a34a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <UserCheck size={22} />
+          <div className="admin-stat-icon-wrap" style={{ background: "#dcfce7", color: "#16a34a" }}>
+            <UserCheck size={23} />
           </div>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 600 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 700 }}>
               Total Akun Terdaftar
             </div>
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "#16a34a" }}>
+            <div style={{ fontSize: "26px", fontWeight: 800, color: "#16a34a", lineHeight: 1.2, marginTop: "2px" }}>
               {users.length}
             </div>
           </div>
         </div>
 
+        {/* Card 3: Satker Terlayani */}
         <div
-          style={{
-            background: "var(--bg-card, #ffffff)",
-            border: "1.5px solid var(--border-light, #e2e8f0)",
-            borderRadius: "14px",
-            padding: "18px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          className="admin-stat-card"
+          onClick={() => {
+            setSatkerFilter("ALL");
           }}
+          title="Klik untuk reset filter satuan kerja"
         >
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "10px",
-              background: "#f1f5f9",
-              color: "#475569",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Building2 size={22} />
+          <div className="admin-stat-icon-wrap" style={{ background: "#f1f5f9", color: "#475569" }}>
+            <Building2 size={23} />
           </div>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 600 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", fontWeight: 700 }}>
               Satker Terlayani
             </div>
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--text-primary, #0f172a)" }}>
+            <div style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-primary, #0f172a)", lineHeight: 1.2, marginTop: "2px" }}>
               {SAMPLE_SATKER.length} Satker
             </div>
           </div>
         </div>
       </div>
-      {/* NAVIGATION TABS ADMIN */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: "1.5px solid var(--border-light, #e2e8f0)",
-          marginBottom: "20px",
-          gap: "12px",
-        }}
-      >
-        <div style={{ display: "flex", gap: "8px" }}>
+
+      {/* NAVIGATION TABS ADMIN & SEARCH BAR INTERAKTIF */}
+      <div className="admin-tabs-nav-bar">
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           <button
             type="button"
             onClick={() => setActiveSubTab("requests")}
-            style={{
-              padding: "10px 18px",
-              border: "none",
-              background: "transparent",
-              borderBottom: activeSubTab === "requests" ? "3px solid #0f5132" : "3px solid transparent",
-              color: activeSubTab === "requests" ? "#0f5132" : "var(--text-muted, #64748b)",
-              fontSize: "14px",
-              fontWeight: 800,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className={`admin-nav-tab ${activeSubTab === "requests" ? "active" : ""}`}
           >
             <span>Permohonan Masuk (Izin Akun)</span>
-            {pendingRequestsCount > 0 && (
-              <span
-                style={{
-                  background: "#dc2626",
-                  color: "#ffffff",
-                  fontSize: "11px",
-                  fontWeight: 800,
-                  padding: "2px 7px",
-                  borderRadius: "12px",
-                }}
-              >
+            {pendingRequestsCount > 0 ? (
+              <span className="admin-badge-count admin-badge-pulse-red">
                 {pendingRequestsCount}
+              </span>
+            ) : (
+              <span
+                className="admin-badge-count"
+                style={{ background: "var(--border-light, #e2e8f0)", color: "var(--text-muted, #64748b)" }}
+              >
+                {requests.length}
               </span>
             )}
           </button>
@@ -507,30 +460,12 @@ export default function AdminView({ currentUser }) {
           <button
             type="button"
             onClick={() => setActiveSubTab("users")}
-            style={{
-              padding: "10px 18px",
-              border: "none",
-              background: "transparent",
-              borderBottom: activeSubTab === "users" ? "3px solid #0f5132" : "3px solid transparent",
-              color: activeSubTab === "users" ? "#0f5132" : "var(--text-muted, #64748b)",
-              fontSize: "14px",
-              fontWeight: 800,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className={`admin-nav-tab ${activeSubTab === "users" ? "active" : ""}`}
           >
             <span>Daftar Akun Terdaftar (Hapus Akses)</span>
             <span
-              style={{
-                background: "var(--border-light, #e2e8f0)",
-                color: "var(--text-muted, #64748b)",
-                fontSize: "11px",
-                fontWeight: 800,
-                padding: "2px 7px",
-                borderRadius: "12px",
-              }}
+              className="admin-badge-count"
+              style={{ background: "var(--border-light, #e2e8f0)", color: "var(--text-muted, #64748b)" }}
             >
               {users.length}
             </span>
@@ -539,73 +474,44 @@ export default function AdminView({ currentUser }) {
           <button
             type="button"
             onClick={() => setActiveSubTab("add_user")}
-            style={{
-              padding: "10px 18px",
-              border: "none",
-              background: "transparent",
-              borderBottom: activeSubTab === "add_user" ? "3px solid #0f5132" : "3px solid transparent",
-              color: activeSubTab === "add_user" ? "#0f5132" : "var(--text-muted, #64748b)",
-              fontSize: "14px",
-              fontWeight: 800,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className={`admin-nav-tab ${activeSubTab === "add_user" ? "active" : ""}`}
           >
             <Plus size={16} />
             <span>Tambah Akun Baru</span>
           </button>
         </div>
 
-        {/* Global Search Bar */}
+        {/* Global Search Bar & Satker Filter */}
         {activeSubTab !== "add_user" && (
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "var(--bg-card, #ffffff)",
-                border: "1.5px solid var(--border-light, #cbd5e1)",
-                borderRadius: "10px",
-                padding: "6px 12px",
-              }}
-            >
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <div className="admin-search-wrapper">
               <Search size={15} color="#64748b" />
               <input
                 type="text"
                 placeholder="Cari nama, satker, email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: "12.5px",
-                  background: "transparent",
-                  color: "var(--text-primary)",
-                  width: "180px",
-                }}
+                className="admin-search-input"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="admin-clear-search-btn"
+                  title="Bersihkan pencarian"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             {/* Filter Satker */}
             <select
               value={satkerFilter}
               onChange={(e) => setSatkerFilter(e.target.value)}
-              style={{
-                padding: "7px 10px",
-                borderRadius: "10px",
-                border: "1.5px solid var(--border-light, #cbd5e1)",
-                fontSize: "12px",
-                background: "var(--bg-card, #ffffff)",
-                color: "var(--text-primary)",
-                outline: "none",
-                cursor: "pointer",
-                maxWidth: "180px",
-              }}
+              className="admin-satker-select"
             >
-              <option value="ALL">Semua Satker</option>
+              <option value="ALL">Semua Satker ({SAMPLE_SATKER.length})</option>
               {SAMPLE_SATKER.map((satker) => (
                 <option key={satker} value={satker}>
                   {satker.replace("Pengadilan Agama", "PA").replace("Pengadilan Tinggi Agama", "PTA")}
@@ -621,96 +527,88 @@ export default function AdminView({ currentUser }) {
           ======================================================== */}
       {activeSubTab === "requests" && (
         <div>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setStatusFilter("ALL")}
+              className="admin-filter-pill-btn"
               style={{
-                padding: "5px 12px",
-                borderRadius: "8px",
-                border: "none",
-                fontSize: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
                 background: statusFilter === "ALL" ? "#0f5132" : "var(--border-light, #e2e8f0)",
                 color: statusFilter === "ALL" ? "#ffffff" : "var(--text-muted, #64748b)",
+                boxShadow: statusFilter === "ALL" ? "0 2px 8px rgba(15, 81, 50, 0.3)" : "none",
               }}
             >
-              Semua ({requests.length})
+              <span>Semua Permohonan</span>
+              <span style={{ fontSize: "11px", opacity: 0.9 }}>({requests.length})</span>
             </button>
+
             <button
               type="button"
               onClick={() => setStatusFilter("pending")}
+              className="admin-filter-pill-btn"
               style={{
-                padding: "5px 12px",
-                borderRadius: "8px",
-                border: "none",
-                fontSize: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
                 background: statusFilter === "pending" ? "#d97706" : "var(--border-light, #e2e8f0)",
                 color: statusFilter === "pending" ? "#ffffff" : "var(--text-muted, #64748b)",
+                boxShadow: statusFilter === "pending" ? "0 2px 8px rgba(217, 119, 6, 0.3)" : "none",
               }}
             >
-              Menunggu Izin ({pendingRequestsCount})
+              <Clock size={13} />
+              <span>Menunggu Izin</span>
+              <span style={{ fontSize: "11px", opacity: 0.9 }}>({pendingRequestsCount})</span>
             </button>
+
             <button
               type="button"
               onClick={() => setStatusFilter("approved")}
+              className="admin-filter-pill-btn"
               style={{
-                padding: "5px 12px",
-                borderRadius: "8px",
-                border: "none",
-                fontSize: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
                 background: statusFilter === "approved" ? "#16a34a" : "var(--border-light, #e2e8f0)",
                 color: statusFilter === "approved" ? "#ffffff" : "var(--text-muted, #64748b)",
+                boxShadow: statusFilter === "approved" ? "0 2px 8px rgba(22, 163, 74, 0.3)" : "none",
               }}
             >
-              Disetujui ({requests.filter((r) => r.status === "approved").length})
+              <CheckCircle2 size={13} />
+              <span>Disetujui</span>
+              <span style={{ fontSize: "11px", opacity: 0.9 }}>
+                ({requests.filter((r) => r.status === "approved").length})
+              </span>
             </button>
           </div>
 
           {filteredRequests.length === 0 ? (
             <div
+              className="admin-table-card"
               style={{
-                padding: "48px 20px",
+                padding: "54px 20px",
                 textAlign: "center",
-                background: "var(--bg-card, #ffffff)",
-                borderRadius: "16px",
-                border: "1.5px dashed var(--border-light, #cbd5e1)",
+                borderStyle: "dashed",
               }}
             >
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}>📋</div>
-              <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>
+              <div className="admin-empty-icon-float" style={{ fontSize: "44px", marginBottom: "14px" }}>
+                📋
+              </div>
+              <h3 style={{ fontSize: "16.5px", fontWeight: 700, margin: "0 0 6px 0" }}>
                 Tidak Ada Permohonan Akun
               </h3>
-              <p style={{ fontSize: "13px", color: "var(--text-muted, #64748b)" }}>
-                Belum ada permohonan baru yang diajukan melalui formulir pendaftaran.
+              <p style={{ fontSize: "13px", color: "var(--text-muted, #64748b)", margin: 0 }}>
+                {searchQuery || satkerFilter !== "ALL" || statusFilter !== "ALL"
+                  ? "Tidak ada permohonan yang sesuai dengan filter atau kata kunci pencarian Anda."
+                  : "Belum ada permohonan baru yang diajukan melalui formulir pendaftaran."}
               </p>
             </div>
           ) : (
-            <div
-              style={{
-                background: "var(--bg-card, #ffffff)",
-                borderRadius: "16px",
-                border: "1.5px solid var(--border-light, #e2e8f0)",
-                overflow: "hidden",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
-              }}
-            >
+            <div className="admin-table-card">
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-app, #f8fafc)", borderBottom: "1.5px solid var(--border-light, #e2e8f0)" }}>
-                      <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Pemohon</th>
-                      <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Email Instansi</th>
-                      <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Satuan Kerja</th>
-                      <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>WhatsApp</th>
-                      <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Jabatan</th>
-                      <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 700 }}>Status</th>
-                      <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 700 }}>Aksi Kelola</th>
+                      <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Pemohon</th>
+                      <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Email Instansi</th>
+                      <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Satuan Kerja</th>
+                      <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>WhatsApp</th>
+                      <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Jabatan</th>
+                      <th style={{ padding: "14px 18px", textAlign: "center", fontWeight: 700 }}>Status</th>
+                      <th style={{ padding: "14px 18px", textAlign: "center", fontWeight: 700 }}>Aksi Kelola</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -718,18 +616,20 @@ export default function AdminView({ currentUser }) {
                       const isPending = !req.status || req.status === "pending";
                       const isApproved = req.status === "approved";
                       const isRejected = req.status === "rejected";
+                      const isItemLoading = processingId === req.id;
 
                       return (
                         <tr
                           key={req.id}
+                          className="admin-interactive-row"
                           style={{
                             borderBottom: "1px solid var(--border-light, #f1f5f9)",
-                            background: isPending ? "rgba(254, 243, 199, 0.2)" : "transparent",
+                            background: isPending ? "rgba(254, 243, 199, 0.22)" : "transparent",
                           }}
                         >
-                          <td style={{ padding: "12px 16px" }}>
+                          <td style={{ padding: "14px 18px" }}>
                             <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{req.name}</div>
-                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
                               {new Date(req.createdAt || Date.now()).toLocaleDateString("id-ID", {
                                 day: "numeric",
                                 month: "short",
@@ -742,14 +642,14 @@ export default function AdminView({ currentUser }) {
                               <span
                                 style={{
                                   fontSize: "10.5px",
-                                  padding: "2px 6px",
-                                  borderRadius: "4px",
+                                  padding: "2px 7px",
+                                  borderRadius: "5px",
                                   background: req.password ? "#dcfce7" : "#f1f5f9",
                                   color: req.password ? "#15803d" : "#64748b",
                                   fontWeight: 600,
                                   display: "inline-flex",
                                   alignItems: "center",
-                                  gap: "3px",
+                                  gap: "3.5px",
                                 }}
                               >
                                 <Lock size={10} />
@@ -758,42 +658,42 @@ export default function AdminView({ currentUser }) {
                             </div>
                           </td>
 
-                          <td style={{ padding: "12px 16px" }}>
-                            <span style={{ fontFamily: "monospace", color: "#0284c7", fontWeight: 600 }}>
-                              {req.email}
+                          <td style={{ padding: "14px 18px" }}>
+                            <span
+                              onClick={() => handleCopy(req.email, `req_email_${req.id}`)}
+                              className="admin-copyable-pill"
+                              style={{ color: "#0284c7", background: "#f0f9ff", borderColor: "#bae6fd" }}
+                              title="Klik untuk menyalin email"
+                            >
+                              <span>{req.email}</span>
+                              {copiedKey === `req_email_${req.id}` ? <Check size={11} color="#0284c7" /> : <Copy size={11} color="#0284c7" />}
                             </span>
                           </td>
 
-                          <td style={{ padding: "12px 16px" }}>
+                          <td style={{ padding: "14px 18px" }}>
                             <span style={{ fontWeight: 600 }}>{req.satker}</span>
                           </td>
 
-                          <td style={{ padding: "12px 16px" }}>
+                          <td style={{ padding: "14px 18px" }}>
                             <a
                               href={`https://wa.me/${String(req.phone || "").replace(/^0/, "62")}?text=${encodeURIComponent(
                                 `Halo Bapak/Ibu ${req.name}, pengajuan akun PTWP Anda sedang diproses oleh Administrator.`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                color: "#16a34a",
-                                fontWeight: 700,
-                                textDecoration: "none",
-                              }}
+                              className="admin-wa-pill"
+                              title="Hubungi pemohon via WhatsApp"
                             >
                               <Phone size={13} />
                               <span>{req.phone}</span>
                             </a>
                           </td>
 
-                          <td style={{ padding: "12px 16px" }}>
+                          <td style={{ padding: "14px 18px" }}>
                             <span
                               style={{
-                                background: "#f1f5f9",
-                                padding: "3px 8px",
+                                background: "var(--bg-app, #f1f5f9)",
+                                padding: "3.5px 9px",
                                 borderRadius: "6px",
                                 fontWeight: 600,
                                 fontSize: "11.5px",
@@ -802,25 +702,25 @@ export default function AdminView({ currentUser }) {
                               {req.title || "Pegawai"}
                             </span>
                             {req.note && (
-                              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "3px" }}>
                                 💬 {req.note}
                               </div>
                             )}
                           </td>
 
-                          <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                          <td style={{ padding: "14px 18px", textAlign: "center" }}>
                             {isPending && (
                               <span
                                 style={{
                                   background: "#fef3c7",
                                   color: "#b45309",
-                                  padding: "4px 9px",
+                                  padding: "5px 10px",
                                   borderRadius: "8px",
                                   fontSize: "11.5px",
                                   fontWeight: 700,
                                   display: "inline-flex",
                                   alignItems: "center",
-                                  gap: "4px",
+                                  gap: "5px",
                                 }}
                               >
                                 <Clock size={12} />
@@ -832,13 +732,13 @@ export default function AdminView({ currentUser }) {
                                 style={{
                                   background: "#dcfce7",
                                   color: "#15803d",
-                                  padding: "4px 9px",
+                                  padding: "5px 10px",
                                   borderRadius: "8px",
                                   fontSize: "11.5px",
                                   fontWeight: 700,
                                   display: "inline-flex",
                                   alignItems: "center",
-                                  gap: "4px",
+                                  gap: "5px",
                                 }}
                               >
                                 <CheckCircle2 size={12} />
@@ -850,7 +750,7 @@ export default function AdminView({ currentUser }) {
                                 style={{
                                   background: "#fee2e2",
                                   color: "#b91c1c",
-                                  padding: "4px 9px",
+                                  padding: "5px 10px",
                                   borderRadius: "8px",
                                   fontSize: "11.5px",
                                   fontWeight: 700,
@@ -861,30 +761,27 @@ export default function AdminView({ currentUser }) {
                             )}
                           </td>
 
-                          <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                          <td style={{ padding: "14px 18px", textAlign: "center" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
                               {isPending && (
                                 <button
                                   type="button"
                                   onClick={() => handleApprove(req)}
-                                  title="Izinkan Akun & Terbitkan Akses"
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "5px",
-                                    background: "#16a34a",
-                                    color: "#ffffff",
-                                    border: "none",
-                                    padding: "6px 12px",
-                                    borderRadius: "8px",
-                                    fontSize: "12px",
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    boxShadow: "0 2px 6px rgba(22, 163, 74, 0.3)",
-                                  }}
+                                  disabled={isItemLoading}
+                                  className="admin-btn-action-approve"
+                                  title="Izinkan Akun & Terbitkan Akses Login"
                                 >
-                                  <UserCheck size={14} />
-                                  <span>Izinkan Akun</span>
+                                  {isItemLoading ? (
+                                    <>
+                                      <Loader2 size={14} className="admin-spin-icon" />
+                                      <span>Memproses...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck size={14} />
+                                      <span>Izinkan Akun</span>
+                                    </>
+                                  )}
                                 </button>
                               )}
 
@@ -892,20 +789,9 @@ export default function AdminView({ currentUser }) {
                                 <button
                                   type="button"
                                   onClick={() => handleReject(req.id, req.name)}
-                                  title="Tolak Permohonan"
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    background: "#fee2e2",
-                                    color: "#dc2626",
-                                    border: "1px solid #fecaca",
-                                    padding: "6px 10px",
-                                    borderRadius: "8px",
-                                    fontSize: "12px",
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                  }}
+                                  disabled={isItemLoading}
+                                  className="admin-btn-action-reject"
+                                  title="Tolak Permohonan Akun"
                                 >
                                   <UserX size={14} />
                                   <span>Tolak</span>
@@ -915,15 +801,8 @@ export default function AdminView({ currentUser }) {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteRequest(req.id)}
+                                className="admin-btn-action-delete"
                                 title="Hapus Riwayat Pengajuan"
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: "var(--text-muted, #94a3b8)",
-                                  cursor: "pointer",
-                                  padding: "6px",
-                                  borderRadius: "6px",
-                                }}
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -939,138 +818,145 @@ export default function AdminView({ currentUser }) {
           )}
         </div>
       )}
+
       {/* ========================================================
           SUBTAB 2: DAFTAR AKUN TERDAFTAR (HAPUS AKSES)
           ======================================================== */}
       {activeSubTab === "users" && (
-        <div
-          style={{
-            background: "var(--bg-card, #ffffff)",
-            borderRadius: "16px",
-            border: "1.5px solid var(--border-light, #e2e8f0)",
-            overflow: "hidden",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
-          }}
-        >
+        <div className="admin-table-card">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
               <thead>
                 <tr style={{ background: "var(--bg-app, #f8fafc)", borderBottom: "1.5px solid var(--border-light, #e2e8f0)" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Nama Pengguna</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Username Login</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Satuan Kerja</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Peran / Jabatan</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700 }}>Password</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 700 }}>Hak Akses</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 700 }}>Aksi</th>
+                  <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Nama Pengguna</th>
+                  <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Username Login</th>
+                  <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Satuan Kerja</th>
+                  <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Peran / Jabatan</th>
+                  <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: 700 }}>Keamanan Password</th>
+                  <th style={{ padding: "14px 18px", textAlign: "center", fontWeight: 700 }}>Hak Akses</th>
+                  <th style={{ padding: "14px 18px", textAlign: "center", fontWeight: 700 }}>Aksi Kelola</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u) => {
-                  const isSuper = u.role === "super_admin" || u.username.toLowerCase() === "aku admin" || u.username.toLowerCase() === "root";
-                  const isVisiblePassword = showPasswordMap[u.username];
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)" }}>
+                      Tidak ditemukan pengguna yang sesuai dengan pencarian.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const isSuper = u.role === "super_admin" || u.username.toLowerCase() === "aku admin" || u.username.toLowerCase() === "root";
+                    const isCopied = copiedKey === `user_${u.username}`;
 
-                  return (
-                    <tr key={u.username} style={{ borderBottom: "1px solid var(--border-light, #f1f5f9)" }}>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{u.name}</div>
-                        {u.email && <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{u.email}</div>}
-                      </td>
+                    return (
+                      <tr key={u.username} className="admin-interactive-row" style={{ borderBottom: "1px solid var(--border-light, #f1f5f9)" }}>
+                        <td style={{ padding: "14px 18px" }}>
+                          <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{u.name}</div>
+                          {u.email && <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{u.email}</div>}
+                        </td>
 
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#0f5132", background: "#f0fdf4", padding: "3px 8px", borderRadius: "6px" }}>
-                          {u.username}
-                        </span>
-                      </td>
+                        <td style={{ padding: "14px 18px" }}>
+                          <span
+                            onClick={() => handleCopy(u.username, `user_${u.username}`)}
+                            className="admin-copyable-pill"
+                            title="Klik untuk menyalin username"
+                          >
+                            <span>{u.username}</span>
+                            {isCopied ? <Check size={11} color="#16a34a" /> : <Copy size={11} color="#16a34a" />}
+                          </span>
+                        </td>
 
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ fontWeight: 600 }}>{u.satker || "Belum Ditetapkan"}</span>
-                      </td>
+                        <td style={{ padding: "14px 18px" }}>
+                          <span style={{ fontWeight: 600 }}>{u.satker || "Belum Ditetapkan"}</span>
+                        </td>
 
-                      <td style={{ padding: "12px 16px" }}>
-                        <span
-                          style={{
-                            fontSize: "11.5px",
-                            fontWeight: 700,
-                            padding: "3px 8px",
-                            borderRadius: "6px",
-                            background: isSuper ? "#fef3c7" : u.role === "bendahara" ? "#dbeafe" : "#f1f5f9",
-                            color: isSuper ? "#b45309" : u.role === "bendahara" ? "#1e40af" : "#475569",
-                          }}
-                        >
-                          {u.roleLabel || u.title || "Pegawai"}
-                        </span>
-                      </td>
-
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <td style={{ padding: "14px 18px" }}>
                           <span
                             style={{
-                              fontFamily: "monospace",
-                              fontSize: "11px",
-                              color: "#059669",
-                              background: "#ecfdf5",
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                              fontWeight: 600,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            <ShieldCheck size={12} />
-                            Terenkripsi (scrypt)
-                          </span>
-                        </div>
-                      </td>
-
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                        <span
-                          style={{
-                            background: "#dcfce7",
-                            color: "#15803d",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            padding: "3px 8px",
-                            borderRadius: "6px",
-                          }}
-                        >
-                          Aktif
-                        </span>
-                      </td>
-
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                        {isSuper ? (
-                          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic" }}>
-                            Super Admin
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleRevokeUser(u.username, u.name)}
-                            title="Hapus Hak Akses Pengguna"
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                              background: "#fee2e2",
-                              color: "#dc2626",
-                              border: "1px solid #fecaca",
-                              padding: "5px 10px",
-                              borderRadius: "8px",
                               fontSize: "11.5px",
                               fontWeight: 700,
-                              cursor: "pointer",
+                              padding: "3.5px 9px",
+                              borderRadius: "6px",
+                              background: isSuper ? "#fef3c7" : u.role === "bendahara" ? "#dbeafe" : "#f1f5f9",
+                              color: isSuper ? "#b45309" : u.role === "bendahara" ? "#1e40af" : "#475569",
                             }}
                           >
-                            <UserX size={13} />
-                            <span>Hapus Akses</span>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                            {u.roleLabel || u.title || "Pegawai"}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: "14px 18px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span
+                              style={{
+                                fontFamily: "monospace",
+                                fontSize: "11px",
+                                color: "#059669",
+                                background: "#ecfdf5",
+                                border: "1px solid #a7f3d0",
+                                padding: "2.5px 8px",
+                                borderRadius: "6px",
+                                fontWeight: 600,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              <ShieldCheck size={12} />
+                              Terenkripsi (scrypt)
+                            </span>
+                          </div>
+                        </td>
+
+                        <td style={{ padding: "14px 18px", textAlign: "center" }}>
+                          <span
+                            style={{
+                              background: "#dcfce7",
+                              color: "#15803d",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              padding: "3.5px 9px",
+                              borderRadius: "6px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                background: "#16a34a",
+                                display: "inline-block",
+                              }}
+                            />
+                            Aktif
+                          </span>
+                        </td>
+
+                        <td style={{ padding: "14px 18px", textAlign: "center" }}>
+                          {isSuper ? (
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic", fontWeight: 600 }}>
+                              Super Admin
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleRevokeUser(u.username, u.name)}
+                              className="admin-btn-action-reject"
+                              title="Hapus Hak Akses Pengguna dari MySQL"
+                            >
+                              <UserX size={13} />
+                              <span>Hapus Akses</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -1081,29 +967,22 @@ export default function AdminView({ currentUser }) {
           SUBTAB 3: TAMBAH AKUN CEPAT OLEH ADMIN
           ======================================================== */}
       {activeSubTab === "add_user" && (
-        <div
-          style={{
-            maxWidth: "600px",
-            margin: "0 auto",
-            background: "var(--bg-card, #ffffff)",
-            borderRadius: "18px",
-            border: "1.5px solid var(--border-light, #e2e8f0)",
-            padding: "28px",
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.04)",
-          }}
-        >
-          <div style={{ marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "18px", fontWeight: 800, margin: "0 0 4px 0" }}>
-              Tambah Akun Pengguna Langsung
-            </h2>
+        <div className="admin-form-card">
+          <div style={{ marginBottom: "22px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <Plus size={20} color="#16a34a" />
+              <h2 style={{ fontSize: "18px", fontWeight: 800, margin: 0 }}>
+                Tambah Akun Pengguna Langsung
+              </h2>
+            </div>
             <p style={{ fontSize: "12.5px", color: "var(--text-muted, #64748b)", margin: 0 }}>
-              Buat akun langsung untuk pegawai atau bendahara tanpa harus mengisi formulir pendaftaran.
+              Buat akun langsung untuk pegawai atau bendahara tanpa harus mengisi formulir pendaftaran luar.
             </p>
           </div>
 
-          <form onSubmit={handleAddDirectUserSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <form onSubmit={handleAddDirectUserSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+              <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
                 Nama Lengkap & Gelar <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <input
@@ -1111,24 +990,14 @@ export default function AdminView({ currentUser }) {
                 placeholder="Contoh: Rina Anggraini, S.H."
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1.5px solid var(--border-light, #cbd5e1)",
-                  fontSize: "13px",
-                  background: "var(--bg-app, #f8fafc)",
-                  color: "var(--text-primary)",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
+                className="admin-input-field"
                 required
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
               <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
                   Username Login <span style={{ color: "#dc2626" }}>*</span>
                 </label>
                 <input
@@ -1136,23 +1005,13 @@ export default function AdminView({ currentUser }) {
                   placeholder="Contoh: rina_gs"
                   value={newUser.username}
                   onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1.5px solid var(--border-light, #cbd5e1)",
-                    fontSize: "13px",
-                    background: "var(--bg-app, #f8fafc)",
-                    color: "var(--text-primary)",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  className="admin-input-field"
                   required
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
                   Password Awal <span style={{ color: "#dc2626" }}>*</span>
                 </label>
                 <input
@@ -1160,41 +1019,20 @@ export default function AdminView({ currentUser }) {
                   placeholder="Password"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1.5px solid var(--border-light, #cbd5e1)",
-                    fontSize: "13px",
-                    background: "var(--bg-app, #f8fafc)",
-                    color: "var(--text-primary)",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  className="admin-input-field"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+              <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
                 Satuan Kerja (Otorisasi Akses RBAC) <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <select
                 value={newUser.satker}
                 onChange={(e) => setNewUser({ ...newUser, satker: e.target.value })}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1.5px solid var(--border-light, #cbd5e1)",
-                  fontSize: "13px",
-                  background: "var(--bg-app, #f8fafc)",
-                  color: "var(--text-primary)",
-                  outline: "none",
-                  cursor: "pointer",
-                  boxSizing: "border-box",
-                }}
+                className="admin-input-field"
               >
                 {SAMPLE_SATKER.map((satker) => (
                   <option key={satker} value={satker}>
@@ -1204,26 +1042,15 @@ export default function AdminView({ currentUser }) {
               </select>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
               <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
                   Peran di Sistem
                 </label>
                 <select
                   value={newUser.role}
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1.5px solid var(--border-light, #cbd5e1)",
-                    fontSize: "13px",
-                    background: "var(--bg-app, #f8fafc)",
-                    color: "var(--text-primary)",
-                    outline: "none",
-                    cursor: "pointer",
-                    boxSizing: "border-box",
-                  }}
+                  className="admin-input-field"
                 >
                   <option value="anggota">Anggota Pegawai</option>
                   <option value="bendahara">Bendahara Cabang</option>
@@ -1232,7 +1059,7 @@ export default function AdminView({ currentUser }) {
               </div>
 
               <div>
-                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
                   No. WhatsApp (Kontak)
                 </label>
                 <input
@@ -1240,43 +1067,27 @@ export default function AdminView({ currentUser }) {
                   placeholder="081234..."
                   value={newUser.phone}
                   onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1.5px solid var(--border-light, #cbd5e1)",
-                    fontSize: "13px",
-                    background: "var(--bg-app, #f8fafc)",
-                    color: "var(--text-primary)",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  className="admin-input-field"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                width: "100%",
-                padding: "12px",
-                marginTop: "10px",
-                borderRadius: "12px",
-                border: "none",
-                background: "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
-                color: "#ffffff",
-                fontSize: "14px",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
-              }}
+              disabled={isSubmitting}
+              className="admin-btn-submit-form"
             >
-              <UserCheck size={16} />
-              <span>Simpan & Berikan Akses</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="admin-spin-icon" />
+                  <span>Menyimpan ke Database MySQL...</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck size={16} />
+                  <span>Simpan & Berikan Akses</span>
+                </>
+              )}
             </button>
           </form>
         </div>
@@ -1286,82 +1097,68 @@ export default function AdminView({ currentUser }) {
           MODAL POP-UP KREDENSIAL HASIL APPROVAL AKUN
           ======================================================== */}
       {approvedModalData && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.6)",
-            backdropFilter: "blur(4px)",
-            zIndex: 99999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-          }}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              color: "#0f172a",
-              borderRadius: "20px",
-              padding: "28px",
-              maxWidth: "480px",
-              width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                background: "#dcfce7",
-                color: "#16a34a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 16px auto",
-              }}
-            >
-              <CheckCircle2 size={32} />
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal-container">
+            <div className="admin-modal-icon-circle">
+              <CheckCircle2 size={34} />
             </div>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 800, margin: "0 0 6px 0" }}>
+            <h3 style={{ fontSize: "18.5px", fontWeight: 800, margin: "0 0 6px 0" }}>
               Akses Akun Berhasil Diterbitkan!
             </h3>
-            <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 20px 0" }}>
+            <p style={{ fontSize: "13px", color: "var(--text-muted, #64748b)", margin: "0 0 20px 0" }}>
               Akun resmi untuk <strong>{approvedModalData.name}</strong> telah aktif dan siap digunakan.
             </p>
 
             <div
               style={{
-                background: "#f8fafc",
-                border: "1.5px solid #e2e8f0",
-                borderRadius: "12px",
-                padding: "16px",
+                background: "var(--bg-app, #f8fafc)",
+                border: "1.5px solid var(--border-light, #e2e8f0)",
+                borderRadius: "14px",
+                padding: "16px 18px",
                 textAlign: "left",
                 fontSize: "13px",
-                marginBottom: "20px",
+                marginBottom: "22px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "8px",
+                gap: "10px",
               }}
             >
               <div>
-                <span style={{ color: "#64748b" }}>Satuan Kerja:</span>{" "}
+                <span style={{ color: "var(--text-muted, #64748b)" }}>Satuan Kerja:</span>{" "}
                 <strong>{approvedModalData.satker}</strong>
               </div>
-              <div>
-                <span style={{ color: "#64748b" }}>Username Login:</span>{" "}
-                <strong style={{ fontFamily: "monospace", color: "#0f5132" }}>{approvedModalData.username}</strong>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <span style={{ color: "var(--text-muted, #64748b)" }}>Username:</span>{" "}
+                  <strong style={{ fontFamily: "monospace", color: "#0f5132" }}>{approvedModalData.username}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(approvedModalData.username, "modal_username")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#0f5132",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                  }}
+                  title="Salin Username"
+                >
+                  {copiedKey === "modal_username" ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
+                  <span>{copiedKey === "modal_username" ? "Tersalin" : "Salin"}</span>
+                </button>
               </div>
               <div>
-                <span style={{ color: "#64748b" }}>Password:</span>{" "}
-                <strong style={{ fontFamily: "monospace", color: "#0f5132" }}>{approvedModalData.password}</strong>
+                <span style={{ color: "var(--text-muted, #64748b)" }}>Password:</span>{" "}
+                <strong style={{ fontFamily: "monospace", color: "#0f5132" }}>{approvedModalData.password || "••••••••"}</strong>
                 {approvedModalData.isSelfPassword ? (
                   <span style={{ marginLeft: "8px", fontSize: "11px", color: "#16a34a", fontWeight: 700 }}>
-                    ✓ (Diatur sendiri oleh pemohon)
+                    ✓ (Diatur sendiri saat mendaftar)
                   </span>
                 ) : (
                   <span style={{ marginLeft: "8px", fontSize: "11px", color: "#64748b" }}>
@@ -1381,19 +1178,17 @@ export default function AdminView({ currentUser }) {
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="admin-btn-action-approve"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "8px",
                     width: "100%",
-                    padding: "11px",
-                    borderRadius: "10px",
-                    background: "#16a34a",
-                    color: "#ffffff",
-                    fontWeight: 700,
-                    fontSize: "13px",
+                    padding: "12px",
+                    borderRadius: "12px",
                     textDecoration: "none",
+                    fontSize: "13px",
                   }}
                 >
                   <MessageCircle size={16} />
@@ -1406,14 +1201,15 @@ export default function AdminView({ currentUser }) {
                 onClick={() => setApprovedModalData(null)}
                 style={{
                   width: "100%",
-                  padding: "10px",
-                  borderRadius: "10px",
-                  border: "1.5px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#334155",
+                  padding: "11px",
+                  borderRadius: "12px",
+                  border: "1.5px solid var(--border-light, #cbd5e1)",
+                  background: "var(--bg-card, #ffffff)",
+                  color: "var(--text-primary, #334155)",
                   fontWeight: 700,
                   fontSize: "13px",
                   cursor: "pointer",
+                  transition: "all 0.2s ease",
                 }}
               >
                 Tutup Jendela
