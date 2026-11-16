@@ -1448,9 +1448,6 @@ export default function DashboardView({
               <span className="metric-card-label">
                 Total Pengeluaran
               </span>
-              <span className="metric-card-badge">
-                {cashbook.filter((c) => c.type === "out").length} Belanja
-              </span>
             </div>
             <div className="font-mono-num metric-card-val">
               {formatRupiah(animatedCashOut)}
@@ -1465,9 +1462,6 @@ export default function DashboardView({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <span className="metric-card-label">
                 Saldo Kas
-              </span>
-              <span className="metric-card-badge">
-                Kas Aktif
               </span>
             </div>
             <div className="font-mono-num metric-card-val">
