@@ -282,12 +282,21 @@ export default function Navbar({
               type="button"
               className="island-tool-btn"
               onClick={onPrint}
-              title={`Cetak Laporan - ${courtDisplayName}`}
+              title={activeTab === "dashboard" ? `Cetak Laporan - ${courtDisplayName}` : "Cetak Laporan Resmi (PDF/Print)"}
             >
-              <Building2 size={15} color="#0f5132" />
-              <span className="tool-text" style={{ maxWidth: "340px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {courtDisplayName}
-              </span>
+              {activeTab === "dashboard" ? (
+                <>
+                  <Building2 size={15} color="#0f5132" />
+                  <span className="tool-text" style={{ maxWidth: "340px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {courtDisplayName}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Printer size={15} color="#0f5132" />
+                  <span className="tool-text">Cetak PDF</span>
+                </>
+              )}
             </button>
           </div>
         )
