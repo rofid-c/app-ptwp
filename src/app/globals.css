@@ -2283,8 +2283,8 @@ body {
 .stitch-metric-in,
 .stitch-metric-out,
 .stitch-metric-balance {
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-light, #e2e8f0);
+  background: var(--bg-surface, #ff7300);
+  border: 1px solid var(--border-light, #ffffff);
   border-radius: 12px;
   padding: 18px;
   box-shadow: var(--shadow-sm);

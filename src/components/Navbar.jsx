@@ -9,7 +9,6 @@ import {
   Calendar,
   Search,
   Clock,
-  Building2,
   FileSpreadsheet,
   TrendingUp,
   LayoutDashboard,
@@ -285,12 +284,9 @@ export default function Navbar({
               title={activeTab === "dashboard" ? `Cetak Laporan - ${courtDisplayName}` : "Cetak Laporan Resmi (PDF/Print)"}
             >
               {activeTab === "dashboard" ? (
-                <>
-                  <Building2 size={15} color="#0f5132" />
-                  <span className="tool-text" style={{ maxWidth: "340px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {courtDisplayName}
-                  </span>
-                </>
+                <span className="tool-text" style={{ maxWidth: "340px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {courtDisplayName}
+                </span>
               ) : (
                 <>
                   <Printer size={15} color="#0f5132" />
