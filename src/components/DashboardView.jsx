@@ -196,21 +196,11 @@ export default function DashboardView({
 
   const [selectedPointIdx, setSelectedPointIdx] = useState(activeMonthIdx !== -1 ? activeMonthIdx : 8);
   const [hoveredPointIdx, setHoveredPointIdx] = useState(null);
-  const [visibleLines, setVisibleLines] = useState({
+  const [visibleLines] = useState({
     balance: true,
     inflows: true,
     outflows: true,
   });
-
-  const toggleLine = (key) => {
-    setVisibleLines((prev) => {
-      const activeCount = Object.values(prev).filter(Boolean).length;
-      if (activeCount === 1 && prev[key]) {
-        return prev;
-      }
-      return { ...prev, [key]: !prev[key] };
-    });
-  };
 
   useEffect(() => {
     if (activeMonthIdx !== -1) {
@@ -632,113 +622,6 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Legend / Filter Toggles (Saldo Kas - Uang Masuk - Pengeluaran) */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-          {/* Saldo Kas Toggle (Biru) */}
-          <button
-            type="button"
-            onClick={() => toggleLine("balance")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "4px 10px",
-              borderRadius: "99px",
-              fontSize: "11.5px",
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-              border: visibleLines.balance
-                ? "1.5px solid #3b82f6"
-                : "1px dashed var(--border-light, #cbd5e1)",
-              background: visibleLines.balance ? "rgba(59, 130, 246, 0.12)" : "transparent",
-              color: visibleLines.balance ? "#1d4ed8" : "var(--text-muted)",
-              opacity: visibleLines.balance ? 1 : 0.5,
-            }}
-            title="Klik untuk tampilkan/sembunyikan Saldo Kas"
-          >
-            <span
-              style={{
-                width: "12px",
-                height: "3px",
-                borderRadius: "2px",
-                background: visibleLines.balance ? "#2563eb" : "#94a3b8",
-                display: "inline-block",
-              }}
-            />
-            <span>Saldo Kas</span>
-          </button>
-
-          {/* Uang Masuk Toggle (Hijau) */}
-          <button
-            type="button"
-            onClick={() => toggleLine("inflows")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "4px 10px",
-              borderRadius: "99px",
-              fontSize: "11.5px",
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-              border: visibleLines.inflows
-                ? "1.5px solid #22c55e"
-                : "1px dashed var(--border-light, #cbd5e1)",
-              background: visibleLines.inflows ? "rgba(34, 197, 94, 0.12)" : "transparent",
-              color: visibleLines.inflows ? "#15803d" : "var(--text-muted)",
-              opacity: visibleLines.inflows ? 1 : 0.5,
-            }}
-            title="Klik untuk tampilkan/sembunyikan Uang Masuk"
-          >
-            <span
-              style={{
-                width: "12px",
-                height: "3px",
-                borderRadius: "2px",
-                background: visibleLines.inflows ? "#16a34a" : "#94a3b8",
-                display: "inline-block",
-              }}
-            />
-            <span>Uang Masuk</span>
-          </button>
-
-          {/* Pengeluaran Toggle (Merah) */}
-          <button
-            type="button"
-            onClick={() => toggleLine("outflows")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "4px 10px",
-              borderRadius: "99px",
-              fontSize: "11.5px",
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-              border: visibleLines.outflows
-                ? "1.5px solid #ef4444"
-                : "1px dashed var(--border-light, #cbd5e1)",
-              background: visibleLines.outflows ? "rgba(239, 68, 68, 0.12)" : "transparent",
-              color: visibleLines.outflows ? "#b91c1c" : "var(--text-muted)",
-              opacity: visibleLines.outflows ? 1 : 0.5,
-            }}
-            title="Klik untuk tampilkan/sembunyikan Pengeluaran"
-          >
-            <span
-              style={{
-                width: "12px",
-                height: "3px",
-                borderRadius: "2px",
-                background: visibleLines.outflows ? "#dc2626" : "#94a3b8",
-                display: "inline-block",
-              }}
-            />
-            <span>Pengeluaran</span>
-          </button>
-        </div>
       </div>
 
       {/* Interactive Chart Container */}
