@@ -1389,7 +1389,7 @@ export default function DashboardView({
                       maxWidth: "100%",
                     }}
                   >
-                    {entry.date} • {entry.category}
+                    {entry.category}
                   </div>
                 </div>
               </div>
