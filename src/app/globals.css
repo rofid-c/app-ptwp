@@ -2277,6 +2277,185 @@ body {
   background: #eab308;
 }
 
+/* =========================================================================
+   Dashboard Top Metric Cards (Light: White cards, Dark: Colored cards)
+   ========================================================================= */
+.stitch-metric-in,
+.stitch-metric-out,
+.stitch-metric-balance {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+/* Light Mode: Card 1 (Iuran Terkumpul) */
+.stitch-metric-in .metric-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stitch-metric-in .metric-card-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--money-in, #15803d);
+  letter-spacing: -0.3px;
+}
+.stitch-metric-in .metric-card-track {
+  width: 100%;
+  background: var(--border-light, #e2e8f0);
+  height: 6px;
+  border-radius: 99px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.stitch-metric-in .metric-card-bar {
+  background: var(--money-in, #15803d);
+  height: 100%;
+  border-radius: 99px;
+  transition: width 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Light Mode: Card 2 (Total Pengeluaran) */
+.stitch-metric-out .metric-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stitch-metric-out .metric-card-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ef4444;
+  letter-spacing: -0.3px;
+}
+.stitch-metric-out .metric-card-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* Light Mode: Card 3 (Saldo Kas) */
+.stitch-metric-balance .metric-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stitch-metric-balance .metric-card-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.3px;
+}
+.stitch-metric-balance .metric-card-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--money-gold-bg, #fef9c3);
+  color: var(--money-gold, #ca8a04);
+}
+
+/* Top Accent Hairlines in Light Mode */
+.stitch-metric-in .metric-card-top-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #0f5132;
+}
+.stitch-metric-out .metric-card-top-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #ef4444;
+}
+.stitch-metric-balance .metric-card-top-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #eab308;
+}
+
+/* =========================================================================
+   DARK MODE: Colored Cards (Hijau Gelap, Merah, Oranye dengan Teks Putih)
+   ========================================================================= */
+[data-theme="dark"] .stitch-metric-in {
+  background: #0f5132 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="dark"] .stitch-metric-in .metric-card-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+[data-theme="dark"] .stitch-metric-in .metric-card-val {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .stitch-metric-in .metric-card-track {
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+[data-theme="dark"] .stitch-metric-in .metric-card-bar {
+  background: #4ade80 !important;
+}
+[data-theme="dark"] .stitch-metric-in .metric-card-top-line {
+  display: none;
+}
+
+[data-theme="dark"] .stitch-metric-out {
+  background: #b91c1c !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="dark"] .stitch-metric-out .metric-card-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+[data-theme="dark"] .stitch-metric-out .metric-card-val {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .stitch-metric-out .metric-card-badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+[data-theme="dark"] .stitch-metric-out .metric-card-top-line {
+  display: none;
+}
+
+[data-theme="dark"] .stitch-metric-balance {
+  background: #ea580c !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="dark"] .stitch-metric-balance .metric-card-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+[data-theme="dark"] .stitch-metric-balance .metric-card-val {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .stitch-metric-balance .metric-card-badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+[data-theme="dark"] .stitch-metric-balance .metric-card-top-line {
+  display: none;
+}
+
 .stitch-dash-chart-row {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);

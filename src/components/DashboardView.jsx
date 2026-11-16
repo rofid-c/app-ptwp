@@ -1417,90 +1417,60 @@ export default function DashboardView({
     <div className="stitch-dash-container">
       {/* 1. Kartu Metrik Dashboard (Iuran Terkumpul, Total Pengeluaran & Saldo Kas Cabang) */}
       <div className="stitch-dash-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-        {/* Card 1: Iuran Terkumpul (Hijau Gelap) */}
-        <div
-          className="stitch-card widen-stagger widen-delay-2"
-          style={{
-            background: "#0f5132",
-            borderColor: "rgba(255, 255, 255, 0.12)",
-            color: "#ffffff",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
+        {/* Card 1: Iuran Terkumpul */}
+        <div className="stitch-metric-in widen-stagger widen-delay-2">
+          <div className="metric-card-top-line" />
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255, 255, 255, 0.85)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <span className="metric-card-label">
                 Iuran Terkumpul
               </span>
             </div>
-            <div className="font-mono-num" style={{ fontSize: "22px", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px" }}>
+            <div className="font-mono-num metric-card-val">
               {formatRupiah(animatedCollected)}
             </div>
           </div>
-          <div style={{ width: "100%", background: "rgba(255, 255, 255, 0.22)", height: "6px", borderRadius: "99px", marginTop: "12px", overflow: "hidden" }}>
+          <div className="metric-card-track">
             <div
+              className="metric-card-bar"
               style={{
                 width: `${Math.min(100, Math.max(0, animatedPercent))}%`,
-                height: "100%",
-                background: "#4ade80",
-                borderRadius: "99px",
-                transition: "width 1600ms cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             />
           </div>
         </div>
 
-        {/* Card 2: Total Pengeluaran (Merah) */}
-        <div
-          className="stitch-card widen-stagger widen-delay-3"
-          style={{
-            background: "#b91c1c",
-            borderColor: "rgba(255, 255, 255, 0.12)",
-            color: "#ffffff",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
+        {/* Card 2: Total Pengeluaran */}
+        <div className="stitch-metric-out widen-stagger widen-delay-3">
+          <div className="metric-card-top-line" />
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255, 255, 255, 0.85)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <span className="metric-card-label">
                 Total Pengeluaran
               </span>
-              <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "rgba(255, 255, 255, 0.2)", color: "#ffffff" }}>
+              <span className="metric-card-badge">
                 {cashbook.filter((c) => c.type === "out").length} Belanja
               </span>
             </div>
-            <div className="font-mono-num" style={{ fontSize: "22px", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px" }}>
+            <div className="font-mono-num metric-card-val">
               {formatRupiah(animatedCashOut)}
             </div>
           </div>
         </div>
 
-        {/* Card 3: Saldo Kas (Oranye) */}
-        <div
-          className="stitch-card widen-stagger widen-delay-4"
-          style={{
-            background: "#ea580c",
-            borderColor: "rgba(255, 255, 255, 0.12)",
-            color: "#ffffff",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
+        {/* Card 3: Saldo Kas */}
+        <div className="stitch-metric-balance widen-stagger widen-delay-4">
+          <div className="metric-card-top-line" />
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255, 255, 255, 0.85)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <span className="metric-card-label">
                 Saldo Kas
               </span>
-              <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "99px", background: "rgba(255, 255, 255, 0.2)", color: "#ffffff" }}>
+              <span className="metric-card-badge">
                 Kas Aktif
               </span>
             </div>
-            <div className="font-mono-num" style={{ fontSize: "22px", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px" }}>
+            <div className="font-mono-num metric-card-val">
               {formatRupiah(animatedBalance)}
             </div>
           </div>
