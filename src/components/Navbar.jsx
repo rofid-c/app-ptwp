@@ -60,6 +60,29 @@ export default function Navbar({
     satkerText.includes("pengadilan tinggi agama") ||
     satkerText.includes("pta");
 
+  const rawSatker =
+    currentUser?.satker ||
+    settings?.institution ||
+    settings?.satker ||
+    "Pengadilan Agama Gunung Sugih";
+
+  const getUnabbreviatedSatker = (str) => {
+    if (!str) return "Pengadilan Agama Gunung Sugih";
+    let cleaned = String(str).trim();
+    cleaned = cleaned.replace(/^PTA\b/i, "Pengadilan Tinggi Agama");
+    cleaned = cleaned.replace(/^PA\b/i, "Pengadilan Agama");
+    if (cleaned === cleaned.toUpperCase()) {
+      cleaned = cleaned
+        .toLowerCase()
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    }
+    return cleaned;
+  };
+
+  const courtDisplayName = getUnabbreviatedSatker(rawSatker);
+
   const [timeStr, setTimeStr] = useState("");
 
   // Sliding pill indicator untuk 3 sub-tab monitoring di pulau tengah ("ijo-ijo bergeser")
@@ -259,10 +282,12 @@ export default function Navbar({
               type="button"
               className="island-tool-btn"
               onClick={onPrint}
-              title="Cetak Laporan Resmi (PDF/Print)"
+              title={`Cetak Laporan - ${courtDisplayName}`}
             >
-              <Printer size={15} color="#0f5132" />
-              <span className="tool-text">Cetak PDF</span>
+              <Building2 size={15} color="#0f5132" />
+              <span className="tool-text" style={{ maxWidth: "340px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {courtDisplayName}
+              </span>
             </button>
           </div>
         )

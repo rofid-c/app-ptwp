@@ -1415,35 +1415,7 @@ export default function DashboardView({
 
   return (
     <div className="stitch-dash-container">
-      {/* 1. Header Banner Dashboard */}
-      {!hideHeader && (
-        <div className="stitch-dash-header widen-stagger widen-delay-1">
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <h2 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>Dashboard Utama</h2>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  padding: "2px 8px",
-                  borderRadius: "99px",
-                  background: "#0b3b2b",
-                  color: "#ffffff",
-                  letterSpacing: "0.5px",
-                  textTransform: "uppercase",
-                }}
-              >
-                Eksekutif
-              </span>
-            </div>
-            <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "2px" }}>
-              Ikhtisar perbendaharaan dan kepatuhan iuran PTWP {settings.institution || "Pengadilan Agama Gunung Sugih"}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Kartu Metrik Dashboard (Iuran Terkumpul, Total Pengeluaran & Saldo Kas Cabang) */}
+      {/* 1. Kartu Metrik Dashboard (Iuran Terkumpul, Total Pengeluaran & Saldo Kas Cabang) */}
       <div className="stitch-dash-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
         {/* Card 1: Iuran Terkumpul (Hijau Gelap) */}
         <div
