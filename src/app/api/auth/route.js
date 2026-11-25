@@ -52,12 +52,20 @@ export async function POST(request) {
 
     // 3. Verifikasi Satker
     const userSatkerNorm = String(user.satker || "").trim().toLowerCase();
-    if (!isSuperAdmin && !isPusat && cleanSatker && userSatkerNorm !== cleanSatker) {
-      return NextResponse.json({
-        success: false,
-        error: `Akun ini terdaftar pada ${user.satker}. Silakan pilih Satuan Kerja yang sesuai.`,
-        registeredSatker: user.satker
-      });
+    if (!isSuperAdmin && !isPusat) {
+      if (!cleanSatker) {
+        return NextResponse.json({
+          success: false,
+          error: "Silakan pilih Satuan Kerja / Cabang Pengadilan Anda terlebih dahulu.",
+        });
+      }
+      if (userSatkerNorm !== cleanSatker) {
+        return NextResponse.json({
+          success: false,
+          error: `Akun ini terdaftar pada ${user.satker}. Silakan pilih Satuan Kerja yang sesuai.`,
+          registeredSatker: user.satker
+        });
+      }
     }
 
     const activeSatker = satker || user.satker || "Pengadilan Agama Gunung Sugih";

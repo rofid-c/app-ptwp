@@ -1072,6 +1072,19 @@ export default function AdminView({ currentUser }) {
               </div>
             </div>
 
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
+                Alamat Email
+              </label>
+              <input
+                type="email"
+                placeholder="nama@instansi.go.id"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="admin-input-field"
+              />
+            </div>
+
             <button
               type="submit"
               disabled={isSubmitting}

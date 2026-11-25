@@ -193,4 +193,21 @@ CREATE TABLE `audit_logs` (
   INDEX `idx_audit_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 10. TABEL RESET PASSWORD & KODE REDEEM SEKALI PAKAI (PASSWORD_RESETS)
+DROP TABLE IF EXISTS `password_resets`;
+CREATE TABLE `password_resets` (
+  `id` VARCHAR(64) PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `username` VARCHAR(100) NOT NULL,
+  `satker` VARCHAR(255) NOT NULL,
+  `redeem_code_hash` VARCHAR(255) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used_at` DATETIME NULL DEFAULT NULL,
+  `ip_address` VARCHAR(50) DEFAULT '127.0.0.1',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_pr_username` (`username`),
+  INDEX `idx_pr_hash` (`redeem_code_hash`),
+  INDEX `idx_pr_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- SELESAI

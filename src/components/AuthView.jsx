@@ -23,6 +23,10 @@ import {
   ExternalLink,
   ChevronDown,
   Check,
+  RefreshCw,
+  Copy,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { verifyCredentials } from "@/services/storageService";
 
@@ -56,7 +60,7 @@ export default function AuthView({
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [loginSatker, setLoginSatker] = useState("Pengadilan Agama Gunung Sugih");
+  const [loginSatker, setLoginSatker] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
 
   // Formulir Pengajuan Akun state (Gambar 2 - Hubungi Administrasi)
@@ -95,6 +99,243 @@ export default function AuthView({
   const [errorMsg, setErrorMsg] = useState("");
   const [targetSatker, setTargetSatker] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Lupa Password & Kode Redeem state
+  const [forgotStep, setForgotStep] = useState(1); // 1: Verifikasi + Captcha, 2: Tampil Kode Redeem, 3: Masukkan Kode Redeem, 4: Buat PW Baru, 5: Sukses
+  const [forgotName, setForgotName] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotPhone, setForgotPhone] = useState("");
+  const [captchaSvg, setCaptchaSvg] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [generatedRedeemCode, setGeneratedRedeemCode] = useState("");
+  const [redeemExpiresIn, setRedeemExpiresIn] = useState(0);
+  const [redeemAccount, setRedeemAccount] = useState(null);
+  const [copiedRedeem, setCopiedRedeem] = useState(false);
+  const [inputRedeemCode, setInputRedeemCode] = useState("");
+  const [resetGrantToken, setResetGrantToken] = useState("");
+  const [verifiedRedeemAccount, setVerifiedRedeemAccount] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [resetResultAccount, setResetResultAccount] = useState(null);
+
+  useEffect(() => {
+    if (mode !== "forgot_password" || (forgotStep !== 2 && forgotStep !== 3) || redeemExpiresIn <= 0) return;
+    const timer = setInterval(() => {
+      setRedeemExpiresIn((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [mode, forgotStep, redeemExpiresIn]);
+
+  const loadCaptcha = async () => {
+    setCaptchaLoading(true);
+    setCaptchaInput("");
+    try {
+      const res = await fetch("/api/auth/forgot-password", { cache: "no-store" });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setCaptchaSvg(json.captchaSvg || "");
+          setCaptchaToken(json.captchaToken || "");
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memuat CAPTCHA:", err);
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  const openForgotPasswordMode = () => {
+    setMode("forgot_password");
+    setForgotStep(1);
+    setErrorMsg("");
+    setSuccessMsg("");
+    setTargetSatker("");
+    setForgotName("");
+    setForgotEmail("");
+    setForgotPhone("");
+    setGeneratedRedeemCode("");
+    setRedeemExpiresIn(0);
+    setRedeemAccount(null);
+    setCopiedRedeem(false);
+    setInputRedeemCode("");
+    setResetGrantToken("");
+    setVerifiedRedeemAccount(null);
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setShowNewPassword(false);
+    setShowConfirmNewPassword(false);
+    setResetResultAccount(null);
+    loadCaptcha();
+  };
+
+  const formatCountdown = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  const handleForgotVerifySubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (!forgotName.trim()) {
+      setErrorMsg("Mohon masukkan Nama Lengkap atau Username akun Anda.");
+      return;
+    }
+    if (!forgotEmail.trim() || !forgotEmail.includes("@")) {
+      setErrorMsg("Mohon masukkan Alamat Email terdaftar yang valid.");
+      return;
+    }
+    if (!forgotPhone.trim()) {
+      setErrorMsg("Mohon masukkan Nomor WhatsApp yang terdaftar.");
+      return;
+    }
+    if (!captchaInput.trim()) {
+      setErrorMsg("Mohon ketik kode CAPTCHA terlebih dahulu.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "request",
+          name: forgotName.trim(),
+          email: forgotEmail.trim(),
+          phone: forgotPhone.trim(),
+          captchaToken,
+          captchaInput: captchaInput.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setGeneratedRedeemCode(json.redeemCode);
+        setRedeemExpiresIn(Number(json.expiresInSeconds || 900));
+        setRedeemAccount(json.account || null);
+        setCopiedRedeem(false);
+        setInputRedeemCode("");
+        setResetGrantToken("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setForgotStep(2);
+      } else {
+        setErrorMsg(json.error || "Verifikasi gagal. Silakan periksa kembali data Anda.");
+        if (json.refreshCaptcha) {
+          loadCaptcha();
+        }
+      }
+    } catch (err) {
+      console.error("Forgot password request error:", err);
+      setErrorMsg("Gagal terhubung ke server database MySQL. Pastikan Laragon aktif.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyRedeemCodeSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (!inputRedeemCode.trim()) {
+      setErrorMsg("Mohon masukkan Kode Redeem terlebih dahulu.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "verify_redeem",
+          redeemCode: inputRedeemCode.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.resetGrantToken) {
+        setResetGrantToken(json.resetGrantToken);
+        setVerifiedRedeemAccount(json.account || null);
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setShowNewPassword(false);
+        setShowConfirmNewPassword(false);
+        setForgotStep(4);
+      } else {
+        setErrorMsg(json.error || "Kode Redeem salah atau sudah kedaluwarsa.");
+      }
+    } catch (err) {
+      console.error("Verify redeem code error:", err);
+      setErrorMsg("Gagal terhubung ke server database MySQL.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleRedeemPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (!resetGrantToken || !inputRedeemCode.trim()) {
+      setErrorMsg("Silakan masukkan dan verifikasi Kode Redeem terlebih dahulu.");
+      setForgotStep(3);
+      return;
+    }
+    if (!newPassword.trim() || newPassword.trim().length < 6) {
+      setErrorMsg("Kata sandi baru minimal 6 karakter.");
+      return;
+    }
+    if (newPassword.trim() !== confirmNewPassword.trim()) {
+      setErrorMsg("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "redeem",
+          resetGrantToken,
+          redeemCode: inputRedeemCode.trim(),
+          newPassword: newPassword.trim(),
+          confirmPassword: confirmNewPassword.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setResetResultAccount({
+          username: json.username,
+          satker: json.satker,
+        });
+        setGeneratedRedeemCode("");
+        setInputRedeemCode("");
+        setResetGrantToken("");
+        setVerifiedRedeemAccount(null);
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setForgotStep(5);
+      } else {
+        setErrorMsg(json.error || "Kode Redeem tidak valid atau sudah kedaluwarsa.");
+      }
+    } catch (err) {
+      console.error("Redeem password error:", err);
+      setErrorMsg("Gagal terhubung ke server database MySQL.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const handleRequestAccountSubmit = async (e) => {
     e.preventDefault();
@@ -356,7 +597,7 @@ export default function AuthView({
             position: "relative",
           }}
         >
-            {/* Header Login vs Formulir Pengajuan Akun */}
+            {/* Header Login vs Lupa Password vs Formulir Pengajuan Akun */}
             {mode === "login" ? (
               <div style={{ marginBottom: "22px", textAlign: "center" }}>
                 <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0" }}>
@@ -365,6 +606,73 @@ export default function AuthView({
                 <p style={{ fontSize: "12.5px", color: "#64748b", margin: 0 }}>
                   Silakan masukkan kredensial akun PTWP Anda
                 </p>
+              </div>
+            ) : mode === "forgot_password" ? (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("login");
+                      setErrorMsg("");
+                      setSuccessMsg("");
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "#f1f5f9",
+                      border: "none",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#475569",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Kembali ke Login</span>
+                  </button>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color: "#0f5132",
+                      background: "#dcfce7",
+                      padding: "4px 9px",
+                      borderRadius: "6px",
+                    }}
+                  >
+                    {forgotStep <= 4 ? `Langkah ${forgotStep} / 4` : "Reset Selesai"}
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: "18px" }}>
+                  <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0" }}>
+                    {forgotStep === 1
+                      ? "Lupa Kata Sandi"
+                      : forgotStep === 2
+                      ? "Kode Redeem Sementara"
+                      : forgotStep === 3
+                      ? "Verifikasi Kode Redeem"
+                      : forgotStep === 4
+                      ? "Buat Kata Sandi Baru"
+                      : "Kata Sandi Diperbarui"}
+                  </h2>
+                  <p style={{ fontSize: "12px", color: "#64748b", margin: 0, lineHeight: 1.45 }}>
+                    {forgotStep === 1
+                      ? "Masukkan nama lengkap, alamat email, dan nomor WhatsApp terdaftar, lalu selesaikan CAPTCHA."
+                      : forgotStep === 2
+                      ? "Salin atau catat kode redeem berikut sebelum masa berlakunya habis."
+                      : forgotStep === 3
+                      ? "Masukkan kode redeem Anda terlebih dahulu untuk melanjutkan ke pembuatan kata sandi baru."
+                      : forgotStep === 4
+                      ? "Kode redeem terverifikasi. Silakan buat kata sandi baru untuk akun Anda."
+                      : "Akun Anda kini dapat diakses menggunakan kata sandi yang baru."}
+                  </p>
+                </div>
               </div>
             ) : (
               <div>
@@ -491,7 +799,7 @@ export default function AuthView({
                 FORMULIR 1: LOGIN
                 ======================================================== */}
             {mode === "login" ? (
-              <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <form key="login-form" onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 {/* Pilihan Satker */}
                 <div>
                   <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
@@ -511,8 +819,8 @@ export default function AuthView({
                         borderRadius: "10px",
                         border: `1.5px solid ${isLoginDropdownOpen ? "#16a34a" : "#cbd5e1"}`,
                         fontSize: "13px",
-                        fontWeight: 600,
-                        color: "#0f172a",
+                        fontWeight: loginSatker ? 600 : 500,
+                        color: loginSatker ? "#0f172a" : "#94a3b8",
                         background: "#f8fafc",
                         outline: "none",
                         cursor: "pointer",
@@ -522,7 +830,7 @@ export default function AuthView({
                       }}
                     >
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {loginSatker}
+                        {loginSatker || "Pilih Satuan Kerja / Cabang Pengadilan..."}
                       </span>
                       <ChevronDown
                         size={16}
@@ -630,16 +938,21 @@ export default function AuthView({
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
                     <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>Password</label>
-                    <a
-                      href="#forgot"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        alert("Silakan hubungi administrator atau bendahara cabang untuk reset kata sandi.");
+                    <button
+                      type="button"
+                      onClick={openForgotPasswordMode}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontSize: "11.5px",
+                        color: "#0f5132",
+                        fontWeight: 600,
+                        cursor: "pointer",
                       }}
-                      style={{ fontSize: "11.5px", color: "#0f5132", fontWeight: 600, textDecoration: "none" }}
                     >
                       Lupa password?
-                    </a>
+                    </button>
                   </div>
                   <div
                     style={{
@@ -751,6 +1064,805 @@ export default function AuthView({
                   </button>
                 </div>
               </form>
+            ) : mode === "forgot_password" ? (
+              /* ========================================================
+                 FORMULIR LUPA PASSWORD & KODE REDEEM
+                 ======================================================== */
+              <div>
+                {forgotStep === 1 && (
+                  <form
+                    key="forgot-step-1-form"
+                    onSubmit={handleForgotVerifySubmit}
+                    autoComplete="off"
+                    style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+                  >
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                        Nama Lengkap atau Username <span style={{ color: "#dc2626" }}>*</span>
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <User size={18} color="#64748b" />
+                        <input
+                          type="text"
+                          name="forgot_name"
+                          autoComplete="off"
+                          placeholder="Sesuai nama atau username terdaftar"
+                          value={forgotName}
+                          onChange={(e) => setForgotName(e.target.value)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            width: "100%",
+                            fontSize: "13.5px",
+                            color: "#0f172a",
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                        Alamat Email Terdaftar <span style={{ color: "#dc2626" }}>*</span>
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <Mail size={18} color="#64748b" />
+                        <input
+                          type="email"
+                          name="forgot_email"
+                          autoComplete="off"
+                          placeholder="Contoh: nama@instansi.go.id"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            width: "100%",
+                            fontSize: "13.5px",
+                            color: "#0f172a",
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                        Nomor WhatsApp Terdaftar <span style={{ color: "#dc2626" }}>*</span>
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <Phone size={18} color="#64748b" />
+                        <input
+                          type="tel"
+                          name="forgot_phone"
+                          autoComplete="off"
+                          placeholder="Contoh: 08123456789"
+                          value={forgotPhone}
+                          onChange={(e) => setForgotPhone(e.target.value)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            width: "100%",
+                            fontSize: "13.5px",
+                            color: "#0f172a",
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* CAPTCHA Box */}
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                        Verifikasi Keamanan (CAPTCHA) <span style={{ color: "#dc2626" }}>*</span>
+                      </label>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                        <div
+                          style={{
+                            flex: "0 0 auto",
+                            width: "170px",
+                            height: "52px",
+                            borderRadius: "10px",
+                            border: "1.5px solid #cbd5e1",
+                            background: "#f1f5f9",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {captchaLoading ? (
+                            <span style={{ fontSize: "11.5px", color: "#64748b" }}>Memuat...</span>
+                          ) : captchaSvg ? (
+                            <img
+                              src={`data:image/svg+xml;utf8,${encodeURIComponent(captchaSvg)}`}
+                              alt="Kode CAPTCHA"
+                              style={{ width: "170px", height: "52px", display: "block", userSelect: "none" }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: "11.5px", color: "#dc2626" }}>Gagal memuat</span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={loadCaptcha}
+                          disabled={captchaLoading}
+                          title="Muat ulang CAPTCHA"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "6px",
+                            padding: "10px 12px",
+                            borderRadius: "10px",
+                            border: "1.5px solid #cbd5e1",
+                            background: "#ffffff",
+                            color: "#334155",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            height: "52px",
+                          }}
+                        >
+                          <RefreshCw size={15} />
+                          <span>Ganti</span>
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        name="forgot_captcha"
+                        autoComplete="off"
+                        placeholder="Ketik 5 karakter CAPTCHA di atas"
+                        value={captchaInput}
+                        onChange={(e) => setCaptchaInput(e.target.value.toUpperCase())}
+                        maxLength={8}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          borderRadius: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          fontSize: "13.5px",
+                          fontFamily: "monospace",
+                          letterSpacing: "2px",
+                          fontWeight: 700,
+                          background: "#f8fafc",
+                          color: "#0f172a",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "12px",
+                        marginTop: "4px",
+                        borderRadius: "12px",
+                        border: "none",
+                        background: forgotLoading
+                          ? "#94a3b8"
+                          : "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        cursor: forgotLoading ? "not-allowed" : "pointer",
+                        boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
+                      }}
+                    >
+                      <ShieldCheck size={16} />
+                      <span>{forgotLoading ? "Memverifikasi..." : "Verifikasi & Buat Kode Redeem"}</span>
+                    </button>
+
+                    <div style={{ textAlign: "center", paddingTop: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorMsg("");
+                          setInputRedeemCode("");
+                          setResetGrantToken("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setForgotStep(3);
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#0f5132",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        Sudah memiliki Kode Redeem aktif? Masukkan kode di sini
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {forgotStep === 2 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    <div
+                      style={{
+                        background: "#f0fdf4",
+                        border: "1.5px solid #86efac",
+                        borderRadius: "14px",
+                        padding: "16px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: "11.5px", fontWeight: 700, color: "#15803d", textTransform: "uppercase", marginBottom: "6px" }}>
+                        Kode Redeem Reset Password
+                      </div>
+
+                      <div
+                        style={{
+                          fontFamily: "monospace",
+                          fontSize: "22px",
+                          fontWeight: 800,
+                          letterSpacing: "2px",
+                          color: "#0f5132",
+                          background: "#ffffff",
+                          border: "1px dashed #16a34a",
+                          borderRadius: "10px",
+                          padding: "12px 10px",
+                          marginBottom: "10px",
+                          userSelect: "all",
+                        }}
+                      >
+                        {generatedRedeemCode}
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (navigator?.clipboard?.writeText) {
+                              navigator.clipboard.writeText(generatedRedeemCode);
+                              setCopiedRedeem(true);
+                              setTimeout(() => setCopiedRedeem(false), 2000);
+                            }
+                          }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            background: "#ffffff",
+                            border: "1px solid #86efac",
+                            color: "#0f5132",
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {copiedRedeem ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                          <span>{copiedRedeem ? "Kode Tersalin" : "Salin Kode"}</span>
+                        </button>
+
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            background: redeemExpiresIn > 0 ? "#fef3c7" : "#fee2e2",
+                            color: redeemExpiresIn > 0 ? "#b45309" : "#dc2626",
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          <Clock size={13} />
+                          <span>
+                            {redeemExpiresIn > 0
+                              ? `Berlaku ${formatCountdown(redeemExpiresIn)}`
+                              : "Kode Kedaluwarsa"}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {redeemAccount && (
+                      <div
+                        style={{
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "10px",
+                          padding: "10px 12px",
+                          fontSize: "12px",
+                          color: "#334155",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                        }}
+                      >
+                        <div><strong>Nama:</strong> {redeemAccount.name}</div>
+                        {redeemAccount.email && <div><strong>Email:</strong> {redeemAccount.email}</div>}
+                        <div><strong>Username Login:</strong> <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{redeemAccount.username}</span></div>
+                        <div><strong>Satker:</strong> {redeemAccount.satker}</div>
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "8px",
+                        background: "#fffbeb",
+                        border: "1px solid #fde68a",
+                        borderRadius: "10px",
+                        padding: "10px 12px",
+                        fontSize: "11.5px",
+                        color: "#92400e",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: "1px" }} />
+                      <span>
+                        Kode dibuat acak hanya untuk sekali pakai dan akan hangus otomatis jika sudah digunakan atau masa berlakunya habis.
+                      </span>
+                    </div>
+
+                    {redeemExpiresIn > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorMsg("");
+                          setInputRedeemCode("");
+                          setResetGrantToken("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setForgotStep(3);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          width: "100%",
+                          padding: "12px",
+                          borderRadius: "12px",
+                          border: "none",
+                          background: "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
+                          color: "#ffffff",
+                          fontSize: "14px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
+                        }}
+                      >
+                        <span>Next: Masukkan Kode Redeem</span>
+                        <ArrowRight size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openForgotPasswordMode}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          width: "100%",
+                          padding: "12px",
+                          borderRadius: "12px",
+                          border: "none",
+                          background: "#dc2626",
+                          color: "#ffffff",
+                          fontSize: "14px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <RefreshCw size={16} />
+                        <span>Waktu Habis — Buat Kode Baru</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {forgotStep === 3 && (
+                  <form
+                    key="forgot-step-3-form"
+                    onSubmit={handleVerifyRedeemCodeSubmit}
+                    autoComplete="off"
+                    style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                        <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>
+                          Masukkan Kode Redeem <span style={{ color: "#dc2626" }}>*</span>
+                        </label>
+                        {generatedRedeemCode && (
+                          <span style={{ fontSize: "11.5px", fontWeight: 700, color: redeemExpiresIn > 0 ? "#b45309" : "#dc2626" }}>
+                            {redeemExpiresIn > 0 ? `Sisa waktu ${formatCountdown(redeemExpiresIn)}` : "Kedaluwarsa"}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <KeyRound size={18} color="#64748b" />
+                        <input
+                          type="text"
+                          name="ptwp_redeem_code_input"
+                          autoComplete="off"
+                          spellCheck={false}
+                          placeholder="Contoh: PTWP-XXXX-XXXX"
+                          value={inputRedeemCode}
+                          onChange={(e) => setInputRedeemCode(e.target.value.toUpperCase())}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            width: "100%",
+                            fontSize: "14px",
+                            fontFamily: "monospace",
+                            fontWeight: 700,
+                            letterSpacing: "1px",
+                            color: "#0f172a",
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "12px",
+                        marginTop: "2px",
+                        borderRadius: "12px",
+                        border: "none",
+                        background: forgotLoading
+                          ? "#94a3b8"
+                          : "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        cursor: forgotLoading ? "not-allowed" : "pointer",
+                        boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
+                      }}
+                    >
+                      <span>{forgotLoading ? "Memeriksa Kode..." : "Verifikasi Kode Redeem"}</span>
+                      <ArrowRight size={16} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg("");
+                        if (generatedRedeemCode) {
+                          setForgotStep(2);
+                        } else {
+                          openForgotPasswordMode();
+                        }
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #cbd5e1",
+                        background: "#ffffff",
+                        color: "#475569",
+                        fontWeight: 600,
+                        fontSize: "12.5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {generatedRedeemCode ? "Lihat Kode Redeem Lagi" : "Minta Kode Redeem Baru"}
+                    </button>
+                  </form>
+                )}
+
+                {forgotStep === 4 && (
+                  <form
+                    key="forgot-step-4-form"
+                    onSubmit={handleRedeemPasswordSubmit}
+                    autoComplete="off"
+                    style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+                  >
+                    <div
+                      style={{
+                        background: "#f0fdf4",
+                        border: "1px solid #86efac",
+                        borderRadius: "10px",
+                        padding: "10px 12px",
+                        fontSize: "12px",
+                        color: "#166534",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "3px",
+                      }}
+                    >
+                      <div style={{ fontWeight: 700 }}>✓ Kode Redeem Terverifikasi ({inputRedeemCode})</div>
+                      {verifiedRedeemAccount && (
+                        <div>
+                          Akun: <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{verifiedRedeemAccount.username}</span> ({verifiedRedeemAccount.satker})
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                        Kata Sandi Baru <span style={{ color: "#dc2626" }}>*</span>
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <Lock size={18} color="#64748b" />
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          name="ptwp_new_password"
+                          autoComplete="new-password"
+                          placeholder="Minimal 6 karakter"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            width: "100%",
+                            fontSize: "13.5px",
+                            color: "#0f172a",
+                          }}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword((p) => !p)}
+                          style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", display: "flex", alignItems: "center" }}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                        Ulangi Kata Sandi Baru <span style={{ color: "#dc2626" }}>*</span>
+                      </label>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          border: "1.5px solid #cbd5e1",
+                          borderRadius: "10px",
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <Lock size={18} color="#64748b" />
+                        <input
+                          type={showConfirmNewPassword ? "text" : "password"}
+                          name="ptwp_confirm_new_password"
+                          autoComplete="new-password"
+                          placeholder="Ketik ulang kata sandi baru"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            width: "100%",
+                            fontSize: "13.5px",
+                            color: "#0f172a",
+                          }}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmNewPassword((p) => !p)}
+                          style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", display: "flex", alignItems: "center" }}
+                        >
+                          {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "12px",
+                        marginTop: "4px",
+                        borderRadius: "12px",
+                        border: "none",
+                        background: forgotLoading
+                          ? "#94a3b8"
+                          : "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        cursor: forgotLoading ? "not-allowed" : "pointer",
+                        boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
+                      }}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{forgotLoading ? "Menyimpan..." : "Simpan Kata Sandi Baru"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg("");
+                        setResetGrantToken("");
+                        setNewPassword("");
+                        setConfirmNewPassword("");
+                        setForgotStep(3);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: "10px",
+                        border: "1.5px solid #cbd5e1",
+                        background: "#ffffff",
+                        color: "#475569",
+                        fontWeight: 600,
+                        fontSize: "12.5px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Kembali ke Input Kode Redeem
+                    </button>
+                  </form>
+                )}
+
+                {forgotStep === 5 && (
+                  <div style={{ textAlign: "center", padding: "10px 4px" }}>
+                    <div
+                      style={{
+                        width: "56px",
+                        height: "56px",
+                        borderRadius: "50%",
+                        background: "#dcfce7",
+                        color: "#16a34a",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 16px auto",
+                        boxShadow: "0 6px 16px rgba(22, 163, 74, 0.2)",
+                      }}
+                    >
+                      <CheckCircle2 size={30} />
+                    </div>
+
+                    <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", marginBottom: "8px" }}>
+                      Kata Sandi Berhasil Diubah!
+                    </h3>
+                    <p style={{ fontSize: "13px", color: "#475569", lineHeight: 1.5, marginBottom: "18px" }}>
+                      Kata sandi baru telah aktif dan kode redeem sudah hangus secara otomatis.
+                    </p>
+
+                    {resetResultAccount && (
+                      <div
+                        style={{
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "12px",
+                          padding: "12px 14px",
+                          marginBottom: "18px",
+                          textAlign: "left",
+                          fontSize: "12.5px",
+                          color: "#334155",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "5px",
+                        }}
+                      >
+                        <div><strong>Username Login:</strong> <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{resetResultAccount.username}</span></div>
+                        <div><strong>Satker:</strong> {resetResultAccount.satker}</div>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (resetResultAccount?.username) {
+                          setLoginIdentifier(resetResultAccount.username);
+                        }
+                        setLoginSatker("");
+                        setLoginPassword("");
+                        setErrorMsg("");
+                        setSuccessMsg("Silakan pilih Satuan Kerja dan masuk menggunakan kata sandi baru Anda.");
+                        setMode("login");
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        border: "none",
+                        background: "linear-gradient(135deg, #146c43 0%, #0f5132 100%)",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: "0 4px 12px rgba(15, 81, 50, 0.35)",
+                      }}
+                    >
+                      <span>Masuk ke Akun Sekarang</span>
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : reqSubmitted ? (
               /* Tampilan Konfirmasi Sukses Pengajuan Akun */
               <div style={{ textAlign: "center", padding: "12px 4px" }}>

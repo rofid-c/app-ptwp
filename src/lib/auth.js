@@ -73,6 +73,148 @@ export function createSessionToken(user) {
 }
 
 /**
+ * Buat signed token untuk verifikasi CAPTCHA tanpa menyimpan plaintext jawaban di client
+ */
+export function createCaptchaToken(answer) {
+  const normalized = String(answer || "").trim().toUpperCase();
+  const nonce = crypto.randomBytes(8).toString("hex");
+  const answerHash = crypto
+    .createHmac("sha256", AUTH_SECRET)
+    .update(`${nonce}:${normalized}`)
+    .digest("hex");
+
+  const payload = {
+    nonce,
+    answerHash,
+    exp: Date.now() + 5 * 60 * 1000, // berlaku 5 menit
+  };
+
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", AUTH_SECRET)
+    .update(payloadBase64)
+    .digest("base64url");
+
+  return `${payloadBase64}.${signature}`;
+}
+
+/**
+ * Verifikasi jawaban CAPTCHA terhadap signed token
+ */
+export function verifyCaptchaToken(token, userInput) {
+  if (!token || typeof token !== "string" || !userInput) {
+    return { valid: false, reason: "Kode CAPTCHA wajib diisi." };
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 2) {
+    return { valid: false, reason: "Token CAPTCHA tidak valid." };
+  }
+
+  const [payloadBase64, signature] = parts;
+  const expectedSignature = crypto
+    .createHmac("sha256", AUTH_SECRET)
+    .update(payloadBase64)
+    .digest("base64url");
+
+  const sigBuffer = Buffer.from(signature);
+  const expSigBuffer = Buffer.from(expectedSignature);
+  if (sigBuffer.length !== expSigBuffer.length || !crypto.timingSafeEqual(sigBuffer, expSigBuffer)) {
+    return { valid: false, reason: "Token CAPTCHA tidak valid." };
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(payloadBase64, "base64url").toString("utf-8"));
+    if (!payload.exp || Date.now() > payload.exp) {
+      return { valid: false, reason: "CAPTCHA sudah kedaluwarsa. Silakan muat ulang CAPTCHA." };
+    }
+
+    const normalized = String(userInput).trim().toUpperCase();
+    const expectedHash = crypto
+      .createHmac("sha256", AUTH_SECRET)
+      .update(`${payload.nonce}:${normalized}`)
+      .digest("hex");
+
+    const actualBuf = Buffer.from(expectedHash, "hex");
+    const expectedBuf = Buffer.from(payload.answerHash, "hex");
+    if (actualBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(actualBuf, expectedBuf)) {
+      return { valid: false, reason: "Kode CAPTCHA tidak sesuai. Silakan periksa kembali." };
+    }
+
+    return { valid: true, nonce: payload.nonce };
+  } catch (e) {
+    return { valid: false, reason: "Token CAPTCHA rusak." };
+  }
+}
+
+/**
+ * Hash kode redeem dengan HMAC-SHA256 sebelum disimpan/dicocokkan di database
+ */
+export function hashRedeemCode(code) {
+  const normalized = String(code || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+  return crypto
+    .createHmac("sha256", AUTH_SECRET)
+    .update(`redeem:${normalized}`)
+    .digest("hex");
+}
+
+/**
+ * Buat token otorisasi singkat setelah Kode Redeem berhasil diverifikasi
+ * sehingga pengguna dapat melanjutkan ke tahap pembuatan kata sandi baru
+ */
+export function createResetGrantToken({ resetId, userId, username, satker }) {
+  const payload = {
+    resetId,
+    userId,
+    username,
+    satker,
+    exp: Date.now() + 10 * 60 * 1000, // berlaku 10 menit untuk mengisi password baru
+  };
+
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", AUTH_SECRET)
+    .update(`grant:${payloadBase64}`)
+    .digest("base64url");
+
+  return `${payloadBase64}.${signature}`;
+}
+
+/**
+ * Verifikasi token otorisasi reset password
+ */
+export function verifyResetGrantToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+
+  const [payloadBase64, signature] = parts;
+  const expectedSignature = crypto
+    .createHmac("sha256", AUTH_SECRET)
+    .update(`grant:${payloadBase64}`)
+    .digest("base64url");
+
+  const sigBuffer = Buffer.from(signature);
+  const expSigBuffer = Buffer.from(expectedSignature);
+  if (sigBuffer.length !== expSigBuffer.length || !crypto.timingSafeEqual(sigBuffer, expSigBuffer)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(payloadBase64, "base64url").toString("utf-8"));
+    if (!payload.exp || Date.now() > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * Verifikasi dan decode signed session token
  */
 export function verifySessionToken(token) {
